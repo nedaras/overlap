@@ -1,4 +1,5 @@
 const overlay = document.createElement('div')
+const header = document.createElement('header')
 
 overlay.style.position = 'fixed'
 overlay.style.top = '0'
@@ -10,7 +11,7 @@ overlay.style.background = '#1f1f1f'
 overlay.style.display = 'none'
 overlay.style.placeItems = 'center'
 
-overlay.innerHTML = `<div>Hello World</div>`
+overlay.innerHTML = `<div style="color: #f1f1f1; font-family: sans-serif; font-size: min(4vw, 32px);" >Drop Image Here</div>`
 
 let i = 0
 const images = []
@@ -32,6 +33,7 @@ overlay.ondrop = ((event) => {
 
     img.style.maxWidth = '100%'
     img.style.maxHeight = '100vh'
+    img.style.transition = 'transform 0.35s ease';
 
     i = images.length
     images.push({
@@ -52,30 +54,6 @@ document.body.appendChild(overlay)
 
 window.addEventListener('keydown', (event) => {
 
-  //if (event.key == 'ArrowRight') {
-
-    //i++
-
-    //console.log(i)
-
-    //overlay.children[0].replaceWith(images[i].element)
-
-    //return
-
-  //}
-
-  //if (event.key == 'ArrowLeft') {
-
-    //i--
-
-    //console.log(i)
-
-    //overlay.children[0].replaceWith(images[i].element)
-
-    //return
-
-  //}
-
   if (images.length && overlay.style.display != 'none') {
 
     if (event.key == 'ArrowRight') i++
@@ -87,8 +65,22 @@ window.addEventListener('keydown', (event) => {
 
   }
 
-  if (event.key.toLocaleLowerCase() != 'g') return
+  if (!(event.key == 'Shift' && event.location == 2)) return
 
   overlay.style.display = overlay.style.display == 'none' ? 'grid' : 'none'
 
+})
+
+let zoomLevel = 1;
+overlay.addEventListener('wheel', (event) => {
+  if (images.length && overlay.style.display !== 'none') {
+    const img = images[i].element;
+
+    zoomLevel += event.deltaY > 0 ? -(0.1 * zoomLevel) : (0.1 * zoomLevel);
+
+    zoomLevel = Math.max(1, Math.min(zoomLevel, 50))
+
+    img.style.transform = `scale(${zoomLevel})`;
+
+  }
 })
