@@ -16,6 +16,9 @@ overlay.innerHTML = `<div style="color: #f1f1f1; font-family: sans-serif; font-s
 let i = 0
 const images = []
 
+let offsetX = 0
+let offsetY = 0
+
 overlay.ondrop = ((event) => {
 
   event.preventDefault()
@@ -33,7 +36,7 @@ overlay.ondrop = ((event) => {
 
     img.style.maxWidth = '100%'
     img.style.maxHeight = '100vh'
-    img.style.transition = 'transform 0.35s ease';
+    img.style.transition = 'transform 0.35s ease'
 
     i = images.length
     images.push({
@@ -65,7 +68,7 @@ window.addEventListener('keydown', (event) => {
 
   }
 
-  if (!(event.key == 'Shift' && event.location == 2)) return
+  if (event.key != 'Insert') return
 
   overlay.style.display = overlay.style.display == 'none' ? 'grid' : 'none'
 
@@ -80,7 +83,7 @@ overlay.addEventListener('wheel', (event) => {
 
     zoomLevel = Math.max(1, Math.min(zoomLevel, 50))
 
-    img.style.transform = `scale(${zoomLevel})`;
+    img.style.transform = `scale(${zoomLevel})`
 
   }
 })
