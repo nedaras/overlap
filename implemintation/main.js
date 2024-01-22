@@ -133,6 +133,7 @@ const canZoom = (state) => ({
       element,
       transform: { scale }
     } = state
+
     const { left, top } = element.getBoundingClientRect()
     const newScale = getNewScale(deltaScale, state)
     const originX = x - left
@@ -282,103 +283,10 @@ const addZoomPan = ({ container, image }) => {
     scaleSensitivity: 20
   })
 
-  const onStart = (event) => {
-    deviceHasTouch = true
-
-    if (stateIs(state, 'multiGesture')) return
-
-    const touchCount = event.touches.length
-
-    if (touchCount === 2 && stateIs(state, 'idle', 'singleGesture')) {
-      const { x, y } = getMidPoint(event)
-
-      start.x = x
-      start.y = y
-      start.distance = getPinchDistance(event) / currentScale()
-      start.touches = [event.touches[0], event.touches[1]]
-
-      lastTapTime = 0 // Reset to prevent misinterpretation as a double tap
-      state = 'multiGesture'
-      return
-    }
-
-    if (touchCount !== 1) {
-      state = 'idle'
-      return
-    }
-
-    state = 'singleGesture'
-
-    const [touch] = event.touches
-
-    start.x = touch.pageX
-    start.y = touch.pageY
-    start.distance = 0
-    start.touches = [touch]
-  }
-
-  const onMove = (event) => {
-    if (stateIs(state, 'idle')) return
-
-    const touchCount = event.touches.length
-
-    if (stateIs(state, 'multiGesture') && touchCount === 2) {
-      event.preventDefault()
-      const scale = getPinchDistance(event) / start.distance
-
-      const { x, y } = getMidPoint(event)
-
-      instance.zoomPan({ scale, x, y, deltaX: x - start.x, deltaY: y - start.y })
-
-      start.x = x
-      start.y = y
-      return
-    }
-
-    if (
-      currentScale() === MIN_SCALE ||
-      !stateIs(state, 'singleGesture') ||
-      touchCount !== 1 ||
-      event.touches[0]?.identifier !== start.touches[0]?.identifier
-    ) {
-      return
-    }
-    event.preventDefault()
-
-    const [touch] = event.touches
-
-    const deltaX = touch.pageX - start.x
-    const deltaY = touch.pageY - start.y
-
-    instance.panBy({ originX: deltaX, originY: deltaY })
-
-    start.x = touch.pageX
-    start.y = touch.pageY
-  }
-
-  const onEndTouch = (event) => {
-    if (stateIs(state, 'idle') || event.touches.length !== 0) {
-      return
-    }
-
-    const currentTime = new Date().getTime()
-    const tapLength = currentTime - lastTapTime
-
-    if (tapLength < DOUBLE_TAP_TIME && tapLength > 0) {
-      event.preventDefault()
-      const [touch] = event.changedTouches
-      if (!touch) return
-      setCurrentScale(onDoubleTap({ instance, scale: currentScale(), x: touch.clientX, y: touch.clientY }))
-    }
-
-    lastTapTime = currentTime
-    setCurrentScale(instance.getScale())
-    state = 'idle'
-  }
-
   const onWheel = (event) => {
     if (deviceHasTouch) return
     event.preventDefault()
+
     instance.zoom({
       deltaScale: Math.sign(event.deltaY) > 0 ? -1 : 1,
       x: event.pageX,
@@ -421,11 +329,6 @@ const addZoomPan = ({ container, image }) => {
     onMouseEnd()
   }
 
-  container.addEventListener('touchstart', onStart, { passive: false })
-  container.addEventListener('touchmove', onMove, { passive: false })
-  container.addEventListener('touchend', onEndTouch, { passive: false })
-  container.addEventListener('touchcancel', onEndTouch, { passive: false })
-
   container.addEventListener('mousemove', onMouseMove, { passive: false })
   container.addEventListener('mouseup', onMouseUp, { passive: false })
   container.addEventListener('mouseleave', onMouseEnd, { passive: false })
@@ -446,10 +349,6 @@ const addZoomPan = ({ container, image }) => {
   }
 
   const destroy = () => {
-    container.removeEventListener('touchstart', onStart)
-    container.removeEventListener('touchmove', onMove)
-    container.removeEventListener('touchend', onEndTouch)
-    container.removeEventListener('touchcancel', onEndTouch)
 
     container.removeEventListener('mousemove', onMouseMove)
     container.removeEventListener('mouseup', onMouseUp)
