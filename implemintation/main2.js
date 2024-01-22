@@ -10,7 +10,13 @@ function setScale(scale) {
 	const translateX = matrix.m41
 	const translateY = matrix.m42
 
-	image.style.transform = `matrix(${scale}, 0, 0, ${scale}, ${translateX}, ${translateY})`
+	const height = image.offsetHeight * scale
+	const width = image.offsetWidth * scale
+
+	const rangeY = Math.max(0, height - container.offsetHeight) / 2
+	const rangeX = Math.max(0, width - container.offsetWidth) / 2
+
+	image.style.transform = `matrix(${scale}, 0, 0, ${scale}, ${Math.max(Math.min(translateX, rangeX), -rangeX)}, ${Math.max(Math.min(translateY, rangeY), -rangeY)})`
 
 }
 
@@ -23,7 +29,8 @@ function setTransform(translateX, translateY) {
 
 }
 
-container.addEventListener('mousemove', ({ movementX, movementY, buttons }) => {
+// We need to check if our on click started with image dragging
+window.addEventListener('mousemove', ({ movementX, movementY, buttons }) => {
 
 	if (buttons != 1) return
 
@@ -32,7 +39,12 @@ container.addEventListener('mousemove', ({ movementX, movementY, buttons }) => {
 	const translateX = matrix.m41
 	const translateY = matrix.m42
 
-	setTransform(translateX + movementX, translateY + movementY)
+	const { height, width } = image.getBoundingClientRect()
+
+	const rangeY = Math.max(0, height - container.offsetHeight) / 2
+	const rangeX = Math.max(0, width - container.offsetWidth) / 2
+
+	setTransform(Math.max(Math.min(translateX + movementX, rangeX), -rangeX), Math.max(Math.min(translateY + movementY, rangeY), -rangeY))
 
 })
 
