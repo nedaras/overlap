@@ -225,7 +225,7 @@ const renderer = ({
 }
 
 const MIN_SCALE = 1
-const MAX_SCALE = 4
+const MAX_SCALE = 50
 const DOUBLE_TAP_TIME = 185 // milliseconds
 
 const stateIs = (state, ...states) => states.includes(state)
