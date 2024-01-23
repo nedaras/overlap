@@ -1,3 +1,5 @@
+// TODO: we gon have to use like wrapper for image so we could animate scale and transform separate
+
 const container = document.getElementById('root')
 const image = document.getElementById('image')
 
@@ -23,9 +25,8 @@ function setScale(scale) {
 function setTransform(translateX, translateY) {
 
 	const matrix = new DOMMatrix(image.style.getPropertyValue('transform'))
-	const scale = matrix.a
 
-	image.style.transform = `matrix(${scale}, 0, 0, ${scale}, ${translateX}, ${translateY})`
+	image.style.transform = `matrix(${matrix.a}, 0, 0, ${matrix.d}, ${translateX}, ${translateY})`
 
 }
 
