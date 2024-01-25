@@ -3,9 +3,55 @@
 const container = document.getElementById('root')
 const image = document.getElementById('image')
 
+const images = []
+let currentImage = 0
+
+function saveImage(image) {
+
+	const matrix = new DOMMatrix(image.style.getPropertyValue('transform'))
+
+	currentImage = images.length
+
+	images.push({ src: image.src, matrix })
+
+}
+
+function loadImage(index) {
+
+	const { src, matrix } = images[index]
+
+	currentImage = index
+	scale = matrix.a
+
+	image.style.transform = `matrix(${scale}, 0, 0, ${scale}, ${matrix.m41}, ${matrix.m42})`
+	image.src = src
+
+}
+
+container.ondrop = (event) => {
+
+	event.preventDefault()
+
+  for (const file of event.dataTransfer.files) {
+
+    if (!file.type.startsWith('image/')) continue
+
+    image.src = URL.createObjectURL(file)
+
+		setScale(1)
+		saveImage(image)
+
+  }
+
+}
+
+container.ondragover  = ((event) => event.preventDefault())
+
 let scale = 1
 
-function setScale(scale) {
+function setScale(_scale) {
+
+	scale = _scale
 
 	const matrix = new DOMMatrix(image.style.getPropertyValue('transform'))
 
@@ -55,5 +101,48 @@ container.addEventListener('wheel', ({ deltaY }) => {
 	scale = Math.min(Math.max(scale, 1), 50)
 
 	setScale(scale)
+
+})
+
+function rotateImage() {
+
+
+
+}
+
+function deleteImage() {
+
+	if (currentImage <= 0) return // show no images or smth
+
+	images.splice(currentImage, 1)
+	currentImage--
+
+	loadImage(currentImage)
+
+}
+
+window.addEventListener('keydown', (event) => {
+
+	if (event.key == 'ArrowRight' && currentImage + 1 < images.length) {
+
+		const matrix = new DOMMatrix(image.style.getPropertyValue('transform'))
+		images[currentImage] = { src: image.src, matrix }
+
+		currentImage++
+
+		loadImage(currentImage)
+
+	}
+
+	if (event.key == 'ArrowLeft' && currentImage > 0) {
+
+		const matrix = new DOMMatrix(image.style.getPropertyValue('transform'))
+		images[currentImage] = { src: image.src, matrix }
+
+		currentImage--
+
+		loadImage(currentImage)
+
+	}
 
 })
