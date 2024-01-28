@@ -112,7 +112,22 @@ function rotateImage() {
 
 function deleteImage() {
 
-	if (currentImage <= 0) return // show no images or smth
+	if (images.length <= 1)
+	{
+
+		image.src = ''
+
+		return
+
+	}
+	if (currentImage <= 0) {
+
+		images.shift()
+		loadImage(currentImage)
+
+		return
+
+	}
 
 	images.splice(currentImage, 1)
 	currentImage--
@@ -122,6 +137,8 @@ function deleteImage() {
 }
 
 window.addEventListener('keydown', (event) => {
+
+	console.log(currentImage)
 
 	if (event.key == 'ArrowRight' && currentImage + 1 < images.length) {
 
