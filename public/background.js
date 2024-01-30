@@ -30,6 +30,7 @@
 
   const header = applyGlobalStyles(document.createElement('header'))
   const imageRegion = applyGlobalStyles(document.createElement('div'))
+  const image = applyGlobalStyles(document.createElement('img'))
 
   container.style.position = 'fixed'
   container.style.top = '0'
@@ -58,20 +59,39 @@
   imageRegion.style.justifyContent = 'center'
   imageRegion.style.alignItems = 'center'
 
-  imageRegion.innerHTML = `<h1 style="position: absolute; color: #f1f1f1; font-size: 28px;">Drop images in.</h1><img style="max-height: 100%; max-width: 100%;" draggable="false">`
+  imageRegion.innerHTML = `<h1 style="position: absolute; color: #f1f1f1; font-size: 28px;">Drop images in.</h1>`
+
+  image.draggable = false
+  image.src = ''
+  image.style.maxHeight = '100%'
+  image.style.maxWidth = '100%'
+  image.style.zIndex = '10'
+
+  imageRegion.appendChild(image)
 
   container.appendChild(header)
   container.appendChild(imageRegion)
 
+  container.ondrop = (event) => {
+
+    event.preventDefault()
+
+    for (const file of event.dataTransfer.files) {
+      
+      if (!file.type.startsWith('image/')) continue
+
+      image.src = URL.createObjectURL(file)
+
+    }
+
+  }
+
+  container.addEventListener('wheel', (event) => event.preventDefault())
+  container.ondragover = ((event) => event.preventDefault())
+
   window.addEventListener('keydown', (event) => {
 
     if (event.key == 'Insert') document.body.appendChild(container)
-
-  })
-
-  container.addEventListener('wheel', (event) => {
-
-    event.preventDefault()
 
   })
 
