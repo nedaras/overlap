@@ -126,6 +126,7 @@
   container.addEventListener('wheel', (event) => event.preventDefault())
   container.ondragover = ((event) => event.preventDefault())
 
+  // NOTE: event is handled when images src is null
   imageRegion.addEventListener('wheel', ({ deltaY }) => {
 
     event.preventDefault()
@@ -134,6 +135,25 @@
     scale = Math.min(Math.max(scale, 1), 50)
   
     setScale(scale)
+
+  })
+
+  // NOTE: event is handled when images src is null
+  window.addEventListener('mousemove', ({ movementX, movementY, buttons }) => {
+
+    if (buttons != 1) return
+
+    const matrix = new DOMMatrix(image.style.getPropertyValue('transform'))
+
+    const translateX = matrix.m41
+    const translateY = matrix.m42
+  
+    const { height, width } = image.getBoundingClientRect()
+  
+    const rangeY = Math.max(0, height - container.offsetHeight) / 2
+    const rangeX = Math.max(0, width - container.offsetWidth) / 2
+  
+    setTransform(Math.max(Math.min(translateX + movementX, rangeX), -rangeX), Math.max(Math.min(translateY + movementY, rangeY), -rangeY))
 
   })
 
