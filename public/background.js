@@ -181,12 +181,8 @@
 
       image.src = URL.createObjectURL(file)
 
-      image.onload = () => {
-
-        setScale(1)
-        saveImage(image)
-
-      }
+      setScale(1)
+      saveImage(image)
 
     }
 
@@ -288,8 +284,8 @@
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    canvas.width = image.height;
-    canvas.height = image.width;
+    canvas.width = image.naturalHeight;
+    canvas.height = image.naturalWidth;
 
     ctx.rotate(Math.PI / 2);
     ctx.drawImage(image, 0, -canvas.width)
@@ -298,7 +294,7 @@
 
       image.src = URL.createObjectURL(blob)
 
-      image.onload = () => setScale(1)
+      setScale(1)
 
     }, 'image/webp', 1)
 
