@@ -100,12 +100,6 @@
 
   }
 
-  /**
-   * @param {string} text
-   * @returns {string}
-   */
-  const li = (text) => `<li style="display: grid; place-items: center; width: 40px; height: 40px; border-radius: 15px;">${text}</li>` // TODO: hover effects
-
   const container = applyGlobalStyles(document.createElement('div'))
 
   const header = applyGlobalStyles(document.createElement('header'))
@@ -187,8 +181,12 @@
 
       image.src = URL.createObjectURL(file)
 
-      setScale(1)
-      saveImage(image)
+      image.onload = () => {
+
+        setScale(1)
+        saveImage(image)
+
+      }
 
     }
 
@@ -197,7 +195,6 @@
   container.addEventListener('wheel', (event) => event.preventDefault())
   container.ondragover = ((event) => event.preventDefault())
 
-  // NOTE: event is handled when images src is null
   imageRegion.addEventListener('wheel', ({ deltaY }) => {
 
     event.preventDefault()
@@ -209,7 +206,6 @@
 
   })
 
-  // NOTE: event is handled when images src is null
   window.addEventListener('mousemove', ({ movementX, movementY, buttons }) => {
 
     if (buttons != 1) return
@@ -302,7 +298,7 @@
 
       image.src = URL.createObjectURL(blob)
 
-      // TODO: clamp or sum
+      image.onload = () => setScale(1)
 
     }, 'image/webp', 1)
 
