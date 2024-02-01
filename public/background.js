@@ -149,8 +149,6 @@
   header.style.placeItems = 'center'
   header.style.color = '#dbdbdb'
 
-  //header.innerHTML = `<ul style="display: flex; list-style: none;">${li(rotateSVG)}${li(deleteSVG)}</ul>`
-
   imageRegion.style.width = '100%'
   imageRegion.style.height = 'calc(100% - 48px)'
   imageRegion.style.background = '#1f1f1f'
@@ -260,7 +258,53 @@
 
   deleteButton.onclick = () =>{
 
-    console.log(currentImage)
+    if (images.length < 1) return
+
+    if (images.length == 1) {
+
+      images.pop()
+      image.src = ''
+
+      return
+
+    }
+
+    if (currentImage <= 0) {
+
+      images.shift()
+      loadImage(currentImage)
+
+      return
+
+    }
+
+    images.splice(currentImage, 1)
+
+    currentImage--
+    loadImage(currentImage)
+
+  }
+
+  rotateButton.onclick = () => {
+
+    if (images.length < 1) return
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = image.height;
+    canvas.height = image.width;
+
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(image, 0, -canvas.width)
+
+    canvas.toBlob((blob) => {
+
+      image.src = URL.createObjectURL(blob)
+
+      // TODO: clamp or sum
+
+    }, 'image/webp', 1)
 
   }
 
