@@ -222,7 +222,11 @@
 
   window.addEventListener('keydown', (event) => {
 
-    if (event.key == 'Insert') container.parentNode ? document.body.removeChild(container) : document.body.appendChild(container)
+    chrome.storage.local.get([ 'shortcut' ]).then(({ shortcut }) => {
+
+      if (event.key.toUpperCase() === shortcut ? shortcut : 'INSERT') container.parentNode ? document.body.removeChild(container) : document.body.appendChild(container)
+
+    })
 
     if (!container.parentNode) return
 

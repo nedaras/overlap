@@ -1,9 +1,32 @@
-import { createSignal } from 'solid-js'
+import { createSignal, onCleanup } from 'solid-js'
 
 export default function App() {
 
   const [ active, setActive ] = createSignal(true)
-  
+  const [ shortcut, setShortcut ] = createSignal('')
+
+  chrome.storage.local.get([ 'shortcut' ], ({ shortcut }) => {
+
+    setShortcut(shortcut ? shortcut : 'INSERT')
+
+  })
+
+  function handleInput({ key }: KeyboardEvent) {
+
+    chrome.storage.local.set({ shortcut: key.toUpperCase() }).then(() => setShortcut(key.toUpperCase()))
+
+    window.removeEventListener('keydown', handleInput)
+
+  }
+
+  function selectKey() {
+
+    window.addEventListener('keydown', handleInput)
+
+  }
+
+  onCleanup(() => window.removeEventListener('keydown', handleInput))
+
   return <>
     <header>
 
@@ -18,9 +41,9 @@ export default function App() {
       </li>
       <li class='py-1' >
         <div class='hover:bg-gray-100 px-1' >
-          <div class='flex justify-between gap-8 w-full text-left pl-4' >
+          <div class='flex justify-between gap-8 w-full text-left pl-4' onClick={selectKey} >
             <div>Shortcut</div>
-            <div>"key"</div>
+            <div>{ shortcut() }</div>
           </div>
         </div>
       </li>
