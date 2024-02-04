@@ -11,9 +11,9 @@ export default function App() {
 
   })
 
-  function handleInput({ key }: KeyboardEvent) {
+  function handleInput({ code }: KeyboardEvent) { // TODO: need better names for da keys
 
-    chrome.storage.local.set({ shortcut: key.toUpperCase() }).then(() => setShortcut(key.toUpperCase()))
+    chrome.storage.local.set({ shortcut: code.toUpperCase() }).then(() => setShortcut(code.toUpperCase()))
 
     window.removeEventListener('keydown', handleInput)
 
