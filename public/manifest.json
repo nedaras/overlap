@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "version": "1.0.0",
-  "name": "overlap",
+  "name": "Overlap",
+  "description": "Show and hide images over webpages.",
   "action": {
     "default_popup": "index.html"
   },
