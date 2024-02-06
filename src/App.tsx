@@ -23,9 +23,13 @@ export default function App() {
   const toggle = () => setActive((active) => {
 
     chrome.storage.local.set({ active: !active })
-    chrome.tabs.query({ active: true, currentWindow: true }, ([ tab ]) => {
+    chrome.tabs.query({ }, (tabs) => {
 
-      chrome.tabs.sendMessage(tab.id!, { activate: !active })
+      for (let tab of tabs) {
+
+        tab.id && chrome.tabs.sendMessage(tab.id, { activate: !active }).catch(() => {}) // its trowing some errors
+
+      }
 
     })
 

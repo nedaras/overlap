@@ -225,7 +225,7 @@
    */
   function handleInput({ code }) {
 
-    chrome.storage.local.get([ 'shortcut' ]).then(({ shortcut }) => {
+    chrome.storage.local.get([ 'shortcut', ]).then(({ shortcut }) => {
 
       if (code.toUpperCase() === (shortcut ? shortcut : 'INSERT')) container.parentNode ? document.body.removeChild(container) : document.body.appendChild(container)
 
