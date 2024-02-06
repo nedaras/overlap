@@ -220,17 +220,20 @@
 
   })
 
-  window.addEventListener('keydown', (event) => {
+  /**
+   * @param {KeyboardEvent} event
+   */
+  function handleInput({ code }) {
 
     chrome.storage.local.get([ 'shortcut' ]).then(({ shortcut }) => {
 
-      if (event.key.toUpperCase() === shortcut ? shortcut : 'INSERT') container.parentNode ? document.body.removeChild(container) : document.body.appendChild(container)
+      if (code.toUpperCase() === (shortcut ? shortcut : 'INSERT')) container.parentNode ? document.body.removeChild(container) : document.body.appendChild(container)
 
     })
 
     if (!container.parentNode) return
 
-    if (event.key == 'ArrowRight' && currentImage + 1 < images.length) {
+    if (code == 'ArrowRight' && currentImage + 1 < images.length) {
 
       saveCurrentImage()
       
@@ -240,7 +243,7 @@
   
     }
   
-    if (event.key == 'ArrowLeft' && currentImage > 0) {
+    if (code == 'ArrowLeft' && currentImage > 0) {
       
       saveCurrentImage()
   
@@ -250,7 +253,7 @@
   
     }
 
-  })
+  }
 
   deleteButton.onclick = () =>{
 
@@ -303,5 +306,17 @@
     }, 'image/webp', 1)
 
   }
+
+  chrome.storage.local.get([ 'active' ], ({ active }) => (active === undefined ? true : active) && window.addEventListener('keydown', handleInput))
+  chrome.runtime.onMessage.addListener(({ activate }) => {
+
+    if (activate === undefined) return
+    if (activate) { window.addEventListener('keydown', handleInput); return }
+
+    container.parentNode && document.body.removeChild(container)
+
+    window.removeEventListener('keydown', handleInput)
+
+  })
 
 })()
