@@ -4,12 +4,12 @@ const http = std.http;
 const crypto = std.crypto;
 const fmt = std.fmt;
 const process = std.process;
+const net = std.net;
 const Sha256 = crypto.hash.sha2.Sha256;
 const Uri = std.Uri;
 const Allocator = std.mem.Allocator;
 const base64 = std.base64.standard;
 const native_os = builtin.os.tag;
-const is_windows = native_os == .windows;
 const assert = std.debug.assert;
 
 pub fn main() !void {
@@ -27,7 +27,7 @@ pub fn main() !void {
 
     assert(base64.Encoder.encode(&challange, &hash).len == 44);
 
-    const url = try makeUrl(allocator, .{
+    const url = try makeAuthUrl(allocator, .{
         .client_id = "4323d146458c487a9e69c8a6741c5a2b",
         .challange = &challange,
         .redirect_uri = "http://127.0.0.1:26822/oauth/spotify",
@@ -35,21 +35,36 @@ pub fn main() !void {
     defer allocator.free(url);
 
     try openUrl(allocator, url);
+
+    const host = net.Address.initIp4(.{ 127, 0, 0, 1}, 26822);
+
+    var server = try host.listen(.{ .kernel_backlog = 1, .reuse_address = true });
+    defer server.deinit();
+
+    const connection = try server.accept();
+
+    var buf: [4096]u8 = undefined;
+    var http_server = http.Server.init(connection, &buf);
+
+    var request = try http_server.receiveHead();
+    std.debug.print("{s}\n", .{request.head.target});
+
+    try request.respond(&verifier, .{ .keep_alive = false });
 }
 
 fn openUrl(allocator: Allocator, url: []const u8) (process.Child.SpawnError || process.Child.WaitError)!void {
-    var argv: [if (is_windows) 3 else 2][]const u8 = undefined;
-    argv[if (is_windows) 2 else 1] = url;
-
-    switch (native_os) {
-        .windows => {
-            argv[0] = "rundll32";
-            argv[1] = "url.dll,FileProtocolHandler";
+    const argv = blk: switch (native_os) {
+        .windows => break :blk [_][]const u8{
+            "rundll32",
+            "url.dll,FileProtocolHandler",
+            url,
         },
-        .linux => argv[0] = "xdg-open",
-        .macos => argv[0] = "open",
+        .linux => break :blk [_][]const u8{
+            "xdg-open",
+            url,
+        },
         else => @compileError("Opening url links for " ++ @tagName(native_os) ++ " is not supported."),
-    }
+    };
 
     var child = process.Child.init(&argv, allocator);
     child.stdin_behavior = .Ignore;
@@ -68,7 +83,8 @@ const Args = struct {
     redirect_uri: []const u8,
 };
 
-fn makeUrl(allocator: Allocator, args: Args) error{OutOfMemory}![]u8 {
+// there is no need to alloc this, but...
+fn makeAuthUrl(allocator: Allocator, args: Args) error{OutOfMemory}![]u8 {
     return fmt.allocPrint(allocator, "https://accounts.spotify.com/authorize?response_type=code&client_id={s}&scope=user-read-private%20user-read-email&code_challenge_method=S256&code_challenge={s}&redirect_uri={s}", .{args.client_id, args.challange, args.redirect_uri});
 }
 
