@@ -42,14 +42,17 @@ pub fn main() !void {
     defer server.deinit();
 
     const connection = try server.accept();
+    const stream = connection.stream;
 
     var buf: [4096]u8 = undefined;
-    var http_server = http.Server.init(connection, &buf);
+    const amt = try stream.read(&buf);
 
-    var request = try http_server.receiveHead();
-    std.debug.print("{s}\n", .{request.head.target});
+    std.debug.print("{s}\n", .{buf[0..amt]});
 
-    try request.respond(&verifier, .{ .keep_alive = false });
+    try fmt.format(stream.writer(), "HTTP/1.1 200 OK\r\nContent-Length: {d}\r\nConnection: close\r\n\r\n{s}", .{
+        verifier.len,
+        verifier,
+    });
 }
 
 fn openUrl(allocator: Allocator, url: []const u8) (process.Child.SpawnError || process.Child.WaitError)!void {
