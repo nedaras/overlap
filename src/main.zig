@@ -1,5 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const Spotify = @import("Spotify.zig");
 const http = std.http;
 const crypto = std.crypto;
 const fmt = std.fmt;
@@ -13,10 +14,11 @@ const native_os = builtin.os.tag;
 const assert = std.debug.assert;
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{ .verbose_log = true }){};
+    var gpa = std.heap.GeneralPurposeAllocator(.{ .verbose_log = false }){};
     defer _ = gpa.deinit();
 
     const allocator = gpa.allocator();
+
 
     var hash: [32]u8 = undefined;
     var verifier: [64]u8 = undefined;
@@ -27,6 +29,15 @@ pub fn main() !void {
 
     assert(base64.Encoder.encode(&challange, &hash).len == 44);
 
+    var spotify = Spotify.init(allocator, .{
+        .client_id = "4323d146458c487a9e69c8a6741c5a2b",
+        .verifier = &verifier,
+        .redirect_uri = "http://127.0.0.1:26822/oauth/spotify",
+    });
+    defer spotify.deinit();
+
+    _ = try spotify.retreiveAccessToken("...");
+
     const url = try makeAuthUrl(allocator, .{
         .client_id = "4323d146458c487a9e69c8a6741c5a2b",
         .challange = &challange,
@@ -36,23 +47,23 @@ pub fn main() !void {
 
     try openUrl(allocator, url);
 
-    const host = net.Address.initIp4(.{ 127, 0, 0, 1}, 26822);
+    //const host = net.Address.initIp4(.{ 127, 0, 0, 1}, 26822);
 
-    var server = try host.listen(.{ .kernel_backlog = 1, .reuse_address = true });
-    defer server.deinit();
+    //var server = try host.listen(.{ .kernel_backlog = 1, .reuse_address = true });
+    //defer server.deinit();
 
-    const connection = try server.accept();
-    const stream = connection.stream;
+    //const connection = try server.accept();
+    //const stream = connection.stream;
 
-    var buf: [4096]u8 = undefined;
-    const amt = try stream.read(&buf);
+    //var buf: [4096]u8 = undefined;
+    //const amt = try stream.read(&buf);
 
-    std.debug.print("{s}\n", .{buf[0..amt]});
+    //std.debug.print("{s}\n", .{buf[0..amt]});
 
-    try fmt.format(stream.writer(), "HTTP/1.1 200 OK\r\nContent-Length: {d}\r\nConnection: close\r\n\r\n{s}", .{
-        verifier.len,
-        verifier,
-    });
+    //try fmt.format(stream.writer(), "HTTP/1.1 200 OK\r\nContent-Length: {d}\r\nConnection: close\r\n\r\n{s}", .{
+        //verifier.len,
+        //verifier,
+    //});
 }
 
 fn openUrl(allocator: Allocator, url: []const u8) (process.Child.SpawnError || process.Child.WaitError)!void {
