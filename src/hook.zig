@@ -54,22 +54,47 @@ pub fn testing() !void {
     defer device_context.Release();
 
     const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
+    const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
 
     try minhook.MH_Initialize();
 
     try minhook.MH_CreateHook(SwapChainPresent, present, &hkPresent, &o_present);
+    try minhook.MH_CreateHook(SwapChainResizeBuffers, resize_buffers, &hkResizeBuffers, &o_resize_buffers);
+
     try minhook.MH_EnableHook(SwapChainPresent, present);
+    try minhook.MH_EnableHook(SwapChainResizeBuffers, resize_buffers);
 
     std.time.sleep(std.time.ns_per_s * 15);
 
     try minhook.MH_DisableHook(SwapChainPresent, present);
+    try minhook.MH_DisableHook(SwapChainResizeBuffers, resize_buffers);
+
     try minhook.MH_Uninitialize();
 }
 
 const SwapChainPresent = @TypeOf(hkPresent);
-var o_present: *SwapChainPresent = undefined;
+const SwapChainResizeBuffers = @TypeOf(hkResizeBuffers);
 
-fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
-    std.debug.print("hooked!!!\n", .{});
+var o_present: *SwapChainPresent = undefined;
+var o_resize_buffers: *SwapChainResizeBuffers = undefined;
+
+fn hkPresent(
+    pSwapChain: *dxgi.IDXGISwapChain,
+    SyncInterval: windows.UINT,
+    Flags: windows.UINT
+) callconv(windows.WINAPI) windows.HRESULT {
+    std.debug.print("hkPresent\n", .{});
     return o_present(pSwapChain, SyncInterval, Flags);
+}
+
+fn hkResizeBuffers(
+    pSwapChain: *dxgi.IDXGISwapChain,
+    BufferCount: windows.UINT,
+    Width: windows.UINT,
+    Height: windows.UINT,
+    NewFormat: dxgi.DXGI_FORMAT,
+    SwapChainFlags: windows.UINT
+) callconv(windows.WINAPI) windows.HRESULT {
+    std.debug.print("hkResizeBuffers\n", .{});
+    return o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
