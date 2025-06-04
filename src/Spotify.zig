@@ -5,87 +5,94 @@ const json = std.json;
 const crypto = std.crypto;
 const Allocator = std.mem.Allocator;
 const Sha256 = crypto.hash.sha2.Sha256;
-const base64 = std.base64.standard;
+const Uri = std.Uri;
+const base64 = std.base64;
+const assert = std.debug.assert;
 
-client: http.Client,
-verifier: []const u8,
+allocator: Allocator,
+http_client: *http.Client,
 
-client_id: []const u8,
+client_id: *const [32]u8,
+code_verifier: *const [64]u8,
+
 redirect_uri: []const u8,
 
 const Self = @This();
 
-const Args = struct {
-    client_id: []const u8,
-    redirect_uri: []const u8,
-};
-
-pub fn init(allocator: Allocator, args: Args) Allocator.Error!Self {
-    const verifier = try allocator.alloc(u8, 64);
-    randomString(verifier);
-
-    return .{
-        .client = http.Client{ 
-            .allocator = allocator,
-        },
-        .verifier = verifier,
-        .client_id = args.client_id,
-        .redirect_uri = args.redirect_uri,
-    };
-}
-
-pub fn deinit(self: *Self) void {
-    self.client.allocator.free(self.verifier);
-    self.client.deinit();
-}
-
-pub fn generateOAuthUrl(self: *Self) Allocator.Error![]u8 {
+pub fn generateOAuthUrl(self: Self) Allocator.Error![]u8 {
     var hash: [32]u8 = undefined;
-    var challange: [44]u8 = undefined;
+    var challange: [43]u8 = undefined;
 
-    Sha256.hash(self.verifier, &hash, .{});
+    Sha256.hash(self.code_verifier, &hash, .{});
+    assert(base64.url_safe_no_pad.Encoder.encode(&challange, &hash).len == 43);
 
-    _ = std.base64.url_safe_no_pad.Encoder.encode(&challange, &hash);
-    std.debug.print("{s}\n", .{self.verifier});
-    std.debug.print("{s}\n", .{challange});
-
-    return fmt.allocPrint(self.client.allocator, "https://accounts.spotify.com/authorize?response_type=code&client_id={s}&scope=user-read-private+user-read-email&code_challenge_method=S256&code_challenge={s}&redirect_uri={s}", .{self.client_id, challange, self.redirect_uri});
+    return try fmt.allocPrint(self.allocator, "https://accounts.spotify.com/authorize?response_type=code&client_id={s}&scope=user-read-playback-state+user-modify-playback-state&code_challenge_method=S256&code_challenge={s}&redirect_uri={s}", .{ 
+        self.client_id,
+        challange,
+        self.redirect_uri
+    });
 }
 
-pub fn retreiveAccessToken(self: *Self, code: []const u8) !void {
-    const payload = try fmt.allocPrint(self.client.allocator, "client_id={s}&grant_type=authorization_code&code={s}&redirect_uri={s}&code_verifier={s}", .{
+pub fn retreiveAccessToken(self: Self, code: []const u8) !void {
+    const payload = try fmt.allocPrint(self.allocator, "client_id={s}&grant_type=authorization_code&code={s}&redirect_uri={s}&code_verifier={s}", .{
         self.client_id,
         code,
         self.redirect_uri,
-        self.verifier,
+        self.code_verifier,
     });
-    defer self.client.allocator.free(payload);
+    defer self.allocator.free(payload);
 
-    std.debug.print("{s}\n", .{payload});
+    var response = std.ArrayList(u8).init(self.allocator);
+    errdefer response.deinit();
 
-    var response = std.ArrayList(u8).init(self.client.allocator);
-    defer response.deinit();
+    const uri = Uri{
+        .scheme = "https",
+        .host = .{
+            .raw = "accounts.spotify.com",
+        },
+        .path = .{
+            .raw = "/api/token",
+        },
+    };
 
-    const status = try self.client.fetch(.{
-        .method = .POST,
-        //.location = .{ .url = "https://accounts.spotify.com/api/token" },
-        .location = .{ .url = "http://127.0.0.1:3000/api/token" },
-        .headers = .{ 
+    var header_buf: [4096]u8 = undefined;
+    var req = try self.http_client.open(.POST, uri, .{
+        .server_header_buffer = &header_buf,
+        .redirect_behavior = .not_allowed,
+        .headers = .{
             .content_type = .{ .override = "application/x-www-form-urlencoded" }
         },
-        .redirect_behavior = .not_allowed,
-        .payload = payload,
-        .response_storage = .{ .dynamic = &response },
     });
+    defer req.deinit();
 
-    std.debug.print("{}\n{s}\n", .{status.status, response.items});
-}
+    req.transfer_encoding = .{ .content_length = payload.len };
 
-fn randomString(buf: []u8) void {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    try req.send();
+    try req.writeAll(payload);
 
-    crypto.random.bytes(buf);
-    for (0..buf.len) |i| {
-        buf[i] = chars[buf[i] % chars.len];
-    }
+    try req.finish();
+    try req.wait();
+
+    // we need to walk jason without allocations would be rly rly rly nice
+
+    var scanner = json.Scanner.initStreaming(self.allocator);
+    defer scanner.deinit();
+    
+    var json_reader = json.reader(self.allocator, req.reader());
+    defer json_reader.deinit();
+
+    const parsed = try json.parseFromTokenSource(struct {
+        access_token: []const u8,
+        token_type: []const u8,
+        expires_in: u32,
+        refresh_token: []const u8,
+        scope: []const u8,
+    }, self.allocator, &json_reader, .{ .ignore_unknown_fields = true });
+    defer parsed.deinit();
+
+    std.debug.print("{s}\n", .{parsed.value.access_token});
+    std.debug.print("{s}\n", .{parsed.value.token_type});
+    std.debug.print("{d}\n", .{parsed.value.expires_in});
+    std.debug.print("{s}\n", .{parsed.value.refresh_token});
+    std.debug.print("{s}\n", .{parsed.value.scope});
 }
