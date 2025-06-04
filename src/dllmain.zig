@@ -40,6 +40,9 @@ fn entry(instance: windows.HINSTANCE) void {
         }
     };
 
+    const stdin = std.io.getStdIn();
+    _ = stdin.reader().readByte() catch {};
+
     windows.FreeConsole() catch {};
     windows.FreeLibraryAndExitThread(@ptrCast(instance), 0);
 }

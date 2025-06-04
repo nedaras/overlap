@@ -42,6 +42,19 @@ pub fn FreeConsole() FreeConsoleError!void {
         }
     }
 }
+
 pub inline fn FreeLibraryAndExitThread(hLibModule: windows.HMODULE, dwExitCode: u32) void {
     kernel32.FreeLibraryAndExitThread(hLibModule, dwExitCode);
+}
+
+pub const GetModuleHandleError = error{Unexpected};
+
+pub fn GetModuleHandle(lpModuleName: ?[:0]const u8) GetModuleHandleError!windows.HMODULE {
+    const lpModuleName_ptr = if (lpModuleName) |slice| slice.ptr else null;
+
+    return kernel32.GetModuleHandleA(lpModuleName_ptr) orelse {
+        switch (windows.kernel32.GetLastError()) {
+            else => |err| return windows.unexpectedError(err),
+        }
+    };
 }

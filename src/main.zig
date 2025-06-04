@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const Spotify = @import("Spotify.zig");
+const hook = @import("hook.zig");
 const process = std.process;
 const http = std.http;
 const base64 = std.base64;
@@ -15,6 +16,10 @@ const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 
 pub fn main() !void {
+    if (native_os == .windows) {
+        try hook.testing();
+    }
+
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
 
