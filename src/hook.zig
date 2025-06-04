@@ -17,6 +17,10 @@ pub fn testing() !void {
     sd.Windowed = windows.TRUE;
     sd.SwapEffect = dxgi.DXGI_SWAP_EFFECT_DISCARD;
 
+    var swap_chain: *dxgi.IDXGISwapChain = undefined;
+
+    var device: *d3d11.ID3D11Device = undefined;
+    var device_context: *d3d11.ID3D11DeviceContext = undefined;
 
     const feature_levels = [_]d3dcommon.D3D_FEATURE_LEVEL{
         d3dcommon.D3D_FEATURE_LEVEL_11_0,
@@ -24,7 +28,7 @@ pub fn testing() !void {
         d3dcommon.D3D_FEATURE_LEVEL_10_0,
     };
 
-    var swap_chain: *dxgi.IDXGISwapChain = undefined;
+
     const result = d3d11.D3D11CreateDeviceAndSwapChain(
         null,
         d3dcommon.D3D_DRIVER_TYPE_HARDWARE,
@@ -35,13 +39,14 @@ pub fn testing() !void {
         d3d11.D3D11_SDK_VERSION,
         &sd,
         &swap_chain,
+        &device,
         null,
-        null,
-        null,
+        &device_context,
     );
-
 
     // need to release them
     std.debug.print("{} {}\n", .{result, windows.S_OK});
     std.debug.print("ref_count: {d}\n", .{swap_chain.Release()});
+    std.debug.print("ref_count: {d}\n", .{device.Release()});
+    std.debug.print("ref_count: {d}\n", .{device_context.Release()});
 }
