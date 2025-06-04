@@ -1,13 +1,10 @@
 const std = @import("std");
 const windows = @import("windows.zig");
+const minhook = @import("minhook.zig");
 const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
 const mem = std.mem;
-
-const c = @cImport({
-    @cInclude("MinHook.h");
-});
 
 pub fn testing() !void {
     _ = try windows.GetModuleHandle("d3d11.dll");
@@ -32,7 +29,7 @@ pub fn testing() !void {
         d3dcommon.D3D_FEATURE_LEVEL_10_0,
     };
 
-    // mb make nice interface with Unexpected errors
+    // todo: mb make nice interface with Unexpected errors
     const result = d3d11.D3D11CreateDeviceAndSwapChain(
         null,
         d3dcommon.D3D_DRIVER_TYPE_HARDWARE,
@@ -56,18 +53,22 @@ pub fn testing() !void {
     defer device.Release();
     defer device_context.Release();
 
-    _ = c.MH_Initialize();
-    defer _ = c.MH_Initialize();
+    const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
 
-    _ = c.MH_CreateHook(@constCast(swap_chain.vtable[8]), @constCast(&hkPresent), @ptrCast(&o_present));
-    _ = c.MH_EnableHook(@constCast(swap_chain.vtable[8]));
-    defer _ = c.MH_DisableHook(c.MH_ALL_HOOKS);
+    try minhook.MH_Initialize();
+
+    try minhook.MH_CreateHook(SwapChainPresent, present, &hkPresent, &o_present);
+    try minhook.MH_EnableHook(SwapChainPresent, present);
 
     std.time.sleep(std.time.ns_per_s * 15);
 
+    try minhook.MH_DisableHook(SwapChainPresent, present);
+    try minhook.MH_Uninitialize();
 }
 
-var o_present: *@TypeOf(hkPresent) = undefined;
+const SwapChainPresent = @TypeOf(hkPresent);
+var o_present: *SwapChainPresent = undefined;
+
 fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
     std.debug.print("hooked!!!\n", .{});
     return o_present(pSwapChain, SyncInterval, Flags);

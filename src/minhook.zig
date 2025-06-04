@@ -1,0 +1,60 @@
+const std = @import("std");
+const minhook = @import("minhook/minhook.zig");
+
+pub const MH_InitializeError = error{Unexpected};
+
+pub fn MH_Initialize() MH_InitializeError!void {
+    return switch (minhook.MH_Initialize()) {
+        .OK => {},
+        else => |err| unexpectedError(err),
+    };
+}
+
+pub const MH_UninitializeError = error{Unexpected};
+
+pub fn MH_Uninitialize() MH_UninitializeError!void {
+    return switch (minhook.MH_Uninitialize()) {
+        .OK => {},
+        else => |err| unexpectedError(err),
+    };
+}
+
+pub const MH_CreateHookError = error{Unexpected};
+
+pub fn MH_CreateHook(comptime T: type, pTarget: *const T, pDetour: *const T, ppOriginal: **T) MH_CreateHookError!void {
+    return switch (minhook.MH_CreateHook(pTarget, pDetour, ppOriginal)) {
+        .OK => {},
+        else => |err| unexpectedError(err),
+    };
+}
+
+pub const MH_EnableHookError = error{Unexpected};
+
+pub fn MH_EnableHook(comptime T: type, pTarget: *const T) MH_EnableHookError!void {
+    return switch (minhook.MH_EnableHook(pTarget)) {
+        .OK => {},
+        else => |err| unexpectedError(err),
+    };
+}
+
+pub const MH_DisableHookError = error{Unexpected};
+
+pub fn MH_DisableHook(comptime T: type, pTarget: *const T) MH_DisableHookError!void {
+    return switch (minhook.MH_DisableHook(pTarget)) {
+        .OK => {},
+        else => |err| unexpectedError(err),
+    };
+}
+
+pub const UnexpectedError = error{
+    Unexpected,
+};
+
+pub fn unexpectedError(mh_status: minhook.MH_STATUS) UnexpectedError {
+    std.debug.print("error.Unexpected: MH_STATUS({d}): {s}\n", .{
+        @intFromEnum(mh_status),
+        @tagName(mh_status),
+    });
+    std.debug.dumpCurrentStackTrace(@returnAddress());
+    return error.Unexpected;
+}
