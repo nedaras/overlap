@@ -4,6 +4,10 @@
     .fingerprint = 0xc023841afe5520a8,
     .minimum_zig_version = "0.14.1",
     .dependencies = .{
+        .minhook = .{
+            .url = "https://github.com/TsudaKageyu/minhook/archive/refs/tags/v1.3.4.tar.gz",
+            .hash = "N-V-__8AADKXBAD5SeIOOMeNn8G9VWn9tyf4G7AObfQZ_BLj",
+        },
     },
     .paths = .{
         "build.zig",

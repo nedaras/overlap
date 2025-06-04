@@ -4,6 +4,11 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const minhook = b.dependency("minhook", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const lib_mod = b.createModule(.{
         .root_source_file = b.path("src/dllmain.zig"),
         .target = target,
@@ -13,6 +18,20 @@ pub fn build(b: *std.Build) void {
     const lib = b.addSharedLibrary(.{
         .name = "overlap",
         .root_module = lib_mod,
+    });
+
+    lib.linkLibC();
+    lib.addIncludePath(minhook.path("include"));
+
+    lib.addCSourceFiles(.{
+        .root = minhook.path("src"),
+        .files = &.{
+            "hook.c",
+            "buffer.c",
+            "hde/hde32.c",
+            "hde/hde64.c",
+            "trampoline.c",
+        },
     });
 
     b.installArtifact(lib);
@@ -26,6 +45,20 @@ pub fn build(b: *std.Build) void {
     const exe = b.addExecutable(.{
         .name = "overlap",
         .root_module = exe_mod,
+    });
+
+    exe.linkLibC();
+    exe.addIncludePath(minhook.path("include"));
+
+    exe.addCSourceFiles(.{
+        .root = minhook.path("src"),
+        .files = &.{
+            "hook.c",
+            "buffer.c",
+            "hde/hde32.c",
+            "hde/hde64.c",
+            "trampoline.c",
+        },
     });
 
     b.installArtifact(exe);

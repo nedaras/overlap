@@ -5,6 +5,10 @@ const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
 const mem = std.mem;
 
+const c = @cImport({
+    @cInclude("MinHook.h");
+});
+
 pub fn testing() !void {
     _ = try windows.GetModuleHandle("d3d11.dll");
     const window = windows.GetForegroundWindow() orelse return error.WindowNotFound;
@@ -52,9 +56,19 @@ pub fn testing() !void {
     defer device.Release();
     defer device_context.Release();
 
-    const present = swap_chain.vtable[8];
-    const resize_buffers = swap_chain.vtable[13];
+    _ = c.MH_Initialize();
+    defer _ = c.MH_Initialize();
 
-    std.debug.print("present ptr: 0x{X}\n", .{@intFromPtr(present)});
-    std.debug.print("resize_buffers ptr: 0x{X}\n", .{@intFromPtr(resize_buffers)});
+    _ = c.MH_CreateHook(@constCast(swap_chain.vtable[8]), @constCast(&hkPresent), @ptrCast(&o_present));
+    _ = c.MH_EnableHook(@constCast(swap_chain.vtable[8]));
+    defer _ = c.MH_DisableHook(c.MH_ALL_HOOKS);
+
+    std.time.sleep(std.time.ns_per_s * 15);
+
+}
+
+var o_present: *@TypeOf(hkPresent) = undefined;
+fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
+    std.debug.print("hooked!!!\n", .{});
+    return o_present(pSwapChain, SyncInterval, Flags);
 }
