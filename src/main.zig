@@ -17,7 +17,7 @@ const assert = std.debug.assert;
 
 pub fn main() !void {
     if (native_os == .windows) {
-        try hook.testing();
+        return hook.testing();
     }
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -39,10 +39,6 @@ pub fn main() !void {
         .allocator = allocator,
     };
     defer client.deinit();
-
-    if (true) {
-        return error.Sigma;
-    }
 
     const spotify = Spotify{
         .allocator = debug_allocator,
