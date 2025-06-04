@@ -1,9 +1,14 @@
 const std = @import("std");
 const kernel32 = @import("windows/kernel32.zig");
 const psapi = @import("windows/psapi.zig");
+const user32 = @import("windows/user32.zig");
 const windows = std.os.windows;
 
 pub usingnamespace windows;
+
+pub const dxgi = @import("windows/dxgi.zig");
+pub const d3d11 = @import("windows/d3d11.zig");
+pub const d3dcommon = @import("windows/d3dcommon.zig");
 
 pub const DLL_PROCESS_DETACH = 0;
 pub const DLL_PROCESS_ATTACH = 1;
@@ -21,14 +26,14 @@ pub fn DisableThreadLibraryCalls(hLibModule: windows.HMODULE) DisableThreadLibra
 }
 
 pub const AllocConsoleError = error{
-    AllreadyAllocated,
+    AccessDenied,
     Unexpected,
 };
 
 pub fn AllocConsole() AllocConsoleError!void {
     if (kernel32.AllocConsole() == windows.FALSE) {
         switch (windows.kernel32.GetLastError()) {
-            .ACCESS_DENIED => return AllocConsoleError.AllreadyAllocated,
+            .ACCESS_DENIED => return error.AccessDenied,
             else => |err| return windows.unexpectedError(err),
         }
     }
@@ -58,7 +63,7 @@ pub fn GetModuleHandle(lpModuleName: ?[:0]const u8) GetModuleHandleError!windows
 
     return kernel32.GetModuleHandleA(lpModuleName_ptr) orelse {
         switch (windows.kernel32.GetLastError()) {
-            .MOD_NOT_FOUND => return GetModuleHandleError.ModuleNotFound,
+            .MOD_NOT_FOUND => return error.ModuleNotFound,
             else => |err| return windows.unexpectedError(err),
         }
     };
@@ -77,12 +82,20 @@ pub fn GetModuleInformation(hProcess: windows.HANDLE, hModule: windows.HMODULE) 
 }
 
 
-pub const GetProcAddressError = error{Unexpected};
+pub const GetProcAddressError = error{
+    ProcedureNotFound,
+    Unexpected
+};
 
 pub fn GetProcAddress(hModule: windows.HMODULE, lpProcName: [:0]const u8) GetProcAddressError!windows.FARPROC {
     return kernel32.GetProcAddress(hModule, lpProcName) orelse {
         switch (windows.kernel32.GetLastError()) {
+            .PROC_NOT_FOUND => return error.ProcedureNotFound,
             else => |err| return windows.unexpectedError(err),
         }
     };
+}
+
+pub inline fn GetForegroundWindow() ?windows.HWND {
+    return user32.GetForegroundWindow();
 }

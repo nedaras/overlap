@@ -5,7 +5,7 @@ const Thread = std.Thread;
 
 pub export fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(windows.WINAPI) windows.BOOL {
     if (reason == windows.DLL_PROCESS_ATTACH) windows.AllocConsole() catch |err| switch (err) {
-        error.AllreadyAllocated => {},
+        error.AccessDenied => {},
         else => return windows.FALSE,
     };
 
