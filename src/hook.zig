@@ -7,7 +7,7 @@ const mem = std.mem;
 
 pub fn testing() !void {
     _ = try windows.GetModuleHandle("d3d11.dll");
-    const window = windows.GetForegroundWindow() orelse return error.NoWindow;
+    const window = windows.GetForegroundWindow() orelse return error.WindowNotFound;
 
     var sd = mem.zeroes(dxgi.DXGI_SWAP_CHAIN_DESC);
     sd.BufferCount = 1;
@@ -28,7 +28,7 @@ pub fn testing() !void {
         d3dcommon.D3D_FEATURE_LEVEL_10_0,
     };
 
-
+    // mb make nice interface with Unexpected errors
     const result = d3d11.D3D11CreateDeviceAndSwapChain(
         null,
         d3dcommon.D3D_DRIVER_TYPE_HARDWARE,
@@ -44,9 +44,17 @@ pub fn testing() !void {
         &device_context,
     );
 
-    // need to release them
-    std.debug.print("{} {}\n", .{result, windows.S_OK});
-    std.debug.print("ref_count: {d}\n", .{swap_chain.Release()});
-    std.debug.print("ref_count: {d}\n", .{device.Release()});
-    std.debug.print("ref_count: {d}\n", .{device_context.Release()});
+    if (result != windows.S_OK) {
+        return error.Unexpected;
+    }
+
+    defer swap_chain.Release();
+    defer device.Release();
+    defer device_context.Release();
+
+    const present = swap_chain.vtable[8];
+    const resize_buffers = swap_chain.vtable[13];
+
+    std.debug.print("present ptr: 0x{X}\n", .{@intFromPtr(present)});
+    std.debug.print("resize_buffers ptr: 0x{X}\n", .{@intFromPtr(resize_buffers)});
 }

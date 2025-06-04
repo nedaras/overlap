@@ -19,22 +19,22 @@ pub const D3D11_SDK_VERSION = 7;
 pub const ID3D11Device = extern struct {
     vtable: [*]const *const anyopaque,
 
-    pub inline fn Release(self: *ID3D11Device) ULONG {
+    pub inline fn Release(self: *ID3D11Device) void {
         const T = fn (*anyopaque) callconv(WINAPI) ULONG;
         const release: *const T = @ptrCast(self.vtable[2]);
 
-        return release(self);
+        _ = release(self);
     }
 };
 
 pub const ID3D11DeviceContext = extern struct {
     vtable: [*]const *const anyopaque,
 
-    pub inline fn Release(self: *ID3D11DeviceContext) ULONG {
+    pub inline fn Release(self: *ID3D11DeviceContext) void {
         const T = fn (*anyopaque) callconv(WINAPI) ULONG;
         const release: *const T = @ptrCast(self.vtable[2]);
 
-        return release(self);
+        _ = release(self);
     }
 };
 
@@ -47,8 +47,8 @@ pub extern "d3d11" fn D3D11CreateDeviceAndSwapChain(
     FeatureLevels: UINT,
     SDKVersion: UINT,
     pSwapChainDesc: ?*const DXGI_SWAP_CHAIN_DESC,
-    ppSwapChain: ?**IDXGISwapChain,
-    ppDevice: ?**ID3D11Device,
+    ppSwapChain: **IDXGISwapChain,
+    ppDevice: **ID3D11Device,
     pFeatureLevel: ?*D3D_FEATURE_LEVEL,
-    ppImmediateContext: ?**ID3D11DeviceContext,
+    ppImmediateContext: **ID3D11DeviceContext,
 ) callconv(WINAPI) HRESULT;

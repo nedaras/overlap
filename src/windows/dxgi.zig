@@ -13,11 +13,11 @@ const WINAPI = windows.WINAPI;
 pub const IDXGISwapChain = extern struct {
     vtable: [*]const *const anyopaque,
 
-    pub inline fn Release(self: *IDXGISwapChain) ULONG {
+    pub inline fn Release(self: *IDXGISwapChain) void {
         const T = fn (*anyopaque) callconv(WINAPI) ULONG;
         const release: *const T = @ptrCast(self.vtable[2]);
 
-        return release(self);
+        _ = release(self);
     }
 };
 
