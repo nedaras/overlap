@@ -7,7 +7,15 @@ const d3dcommon = windows.d3dcommon;
 const mem = std.mem;
 
 pub fn testing() !void {
-    _ = try windows.GetModuleHandle("d3d11.dll");
+    const d3d11_lib = try windows.GetModuleHandle("d3d11.dll");
+
+    const D3D11CreateDeviceAndSwapChain = *const @TypeOf(d3d11.D3D11CreateDeviceAndSwapChain);
+    const d3d11_create_device_and_swap_chain: D3D11CreateDeviceAndSwapChain = @ptrCast(try windows.GetProcAddress(
+        d3d11_lib,
+        "D3D11CreateDeviceAndSwapChain",
+    ));
+    
+
     const window = windows.GetForegroundWindow() orelse return error.WindowNotFound;
 
     var sd = mem.zeroes(dxgi.DXGI_SWAP_CHAIN_DESC);
@@ -30,7 +38,7 @@ pub fn testing() !void {
     };
 
     // todo: mb make nice interface with Unexpected errors
-    const result = d3d11.D3D11CreateDeviceAndSwapChain(
+    const result = d3d11_create_device_and_swap_chain(
         null,
         d3dcommon.D3D_DRIVER_TYPE_HARDWARE,
         null,
