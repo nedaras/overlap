@@ -99,17 +99,28 @@ const SwapChainResizeBuffers = @TypeOf(hkResizeBuffers);
 var o_present: *SwapChainPresent = undefined;
 var o_resize_buffers: *SwapChainResizeBuffers = undefined;
 
+var exiting = false;
+
 fn hkPresent(
     pSwapChain: *dxgi.IDXGISwapChain,
     SyncInterval: windows.UINT,
     Flags: windows.UINT
 ) callconv(windows.WINAPI) windows.HRESULT {
-    frame(pSwapChain) catch |err| {
+    if (!exiting) frame(pSwapChain) catch |err| {
+        exiting = true;
+
+        // prob we can append the stack traces
+        std.debug.print("error: {s}\n", .{@errorName(err)});
+        if (@errorReturnTrace()) |trace| {
+            std.debug.dumpStackTrace(trace.*);
+        }
+
         mutex.lock();
         defer mutex.unlock();
 
         exit_err = err;
     };
+
     return o_present(pSwapChain, SyncInterval, Flags);
 }
 
