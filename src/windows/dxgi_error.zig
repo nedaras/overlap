@@ -3,6 +3,18 @@ const HRESULT = std.os.windows.HRESULT;
 
 pub const DXGI_ERROR = enum(HRESULT) {
     S_OK = 0,
+    S_FALSE = 0x00000001,
+    E_NOTIMPL = @as(c_long, @bitCast(@as(c_ulong, 0x80004001))),
+    E_NOINTERFACE = @as(c_long, @bitCast(@as(c_ulong, 0x80004002))),
+    E_POINTER = @as(c_long, @bitCast(@as(c_ulong, 0x80004003))),
+    E_ABORT = @as(c_long, @bitCast(@as(c_ulong, 0x80004004))),
+    E_FAIL = @as(c_long, @bitCast(@as(c_ulong, 0x80004005))),
+    E_UNEXPECTED = @as(c_long, @bitCast(@as(c_ulong, 0x8000FFFF))),
+    E_ACCESSDENIED = @as(c_long, @bitCast(@as(c_ulong, 0x80070005))),
+    E_HANDLE = @as(c_long, @bitCast(@as(c_ulong, 0x80070006))),
+    E_OUTOFMEMORY = @as(c_long, @bitCast(@as(c_ulong, 0x8007000E))),
+    E_INVALIDARG = @as(c_long, @bitCast(@as(c_ulong, 0x80070057))),
+
     ACCESS_DENIED = @as(c_long, @bitCast(@as(c_ulong, 0x887A002B))),
     ACCESS_LOST = @as(c_long, @bitCast(@as(c_ulong, 0x887A0026))),
     ALREADY_EXISTS = @as(c_long, @bitCast(@as(c_ulong, 0x887A0036))),
