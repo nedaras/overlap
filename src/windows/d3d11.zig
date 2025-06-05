@@ -21,6 +21,7 @@ const IDXGISwapChain = dxgi.IDXGISwapChain;
 const D3D_DRIVER_TYPE = d3dcommon.D3D_DRIVER_TYPE;
 const DXGI_SWAP_CHAIN_DESC = dxgi.DXGI_SWAP_CHAIN_DESC;
 const D3D_FEATURE_LEVEL = d3dcommon.D3D_FEATURE_LEVEL;
+const D3D_PRIMITIVE_TOPOLOGY = d3dcommon.D3D_PRIMITIVE_TOPOLOGY;
 
 pub const D3D11_SDK_VERSION = 7;
 
@@ -37,6 +38,7 @@ pub const D3D11_USAGE_DYNAMIC = 2;
 pub const D3D11_USAGE_STAGING = 3;
 
 pub const ID3D11ClassLinkage = *opaque{};
+pub const ID3D11ClassInstance = *opaque{};
 
 pub const D3D11_INPUT_ELEMENT_DESC = extern struct {
     SemanticName: LPCSTR,
@@ -216,6 +218,75 @@ pub const ID3D11DeviceContext = extern struct {
 
         _ = release(self);
     }
+
+    // 0 -> 4
+
+    pub inline fn PSSetShader(
+        self: *ID3D11DeviceContext,
+        pPixelShader: *ID3D11PixelShader,
+        ClassInstances: ?[] *const ID3D11ClassInstance,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *ID3D11PixelShader, ?[*] *const ID3D11ClassInstance, UINT) callconv(WINAPI) void;
+        const vs_set_shader: *const FnType = @ptrCast(self.vtable[6]);
+
+        const class_instance_ptr = if (ClassInstances) |ci| ci.ptr else null;
+        const class_instances_len = if (ClassInstances) |ci| ci.len else 0;
+
+        vs_set_shader(self, pPixelShader, class_instance_ptr, @intCast(class_instances_len));
+    }
+    
+    pub inline fn VSSetShader(
+        self: *ID3D11DeviceContext,
+        pVertexShader: *ID3D11VertexShader,
+        ClassInstances: ?[] *const ID3D11ClassInstance,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *ID3D11VertexShader, ?[*] *const ID3D11ClassInstance, UINT) callconv(WINAPI) void;
+        const vs_set_shader: *const FnType = @ptrCast(self.vtable[8]);
+
+        const class_instance_ptr = if (ClassInstances) |ci| ci.ptr else null;
+        const class_instances_len = if (ClassInstances) |ci| ci.len else 0;
+
+        vs_set_shader(self, pVertexShader, class_instance_ptr, @intCast(class_instances_len));
+    }
+
+    pub inline fn Draw(
+        self: *ID3D11DeviceContext,
+        VertexCount: UINT,
+        StartVertexLocation: UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT) callconv(WINAPI) void;
+        const draw: *const FnType = @ptrCast(self.vtable[10]);
+
+        draw(self, VertexCount, StartVertexLocation);
+    }
+    
+    pub inline fn IASetInputLayout(self: *ID3D11DeviceContext, pInputLayout: *ID3D11InputLayout) void {
+        const FnType = fn (*ID3D11DeviceContext, *ID3D11InputLayout) callconv(WINAPI) void;
+        const ia_set_input_layout: *const FnType = @ptrCast(self.vtable[14]);
+
+        ia_set_input_layout(self, pInputLayout);
+    }
+
+    pub inline fn IASetVertexBuffers(
+        self: *ID3D11DeviceContext,
+        StartSlot: UINT,
+        VertexBuffers: []const ID3D11Buffer,
+        pStrides: *UINT,
+        pOffsets: *UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]const ID3D11Buffer, *UINT, *UINT) callconv(WINAPI) void;
+        const ia_set_input_vertex_buffers: *const FnType = @ptrCast(self.vtable[15]);
+
+        ia_set_input_vertex_buffers(self, StartSlot, @intCast(VertexBuffers.len), VertexBuffers.ptr, pStrides, pOffsets);
+    }
+
+    pub inline fn IASetPrimitiveTopology(self: *ID3D11DeviceContext, Topology: D3D_PRIMITIVE_TOPOLOGY) void {
+        const FnType = fn (*ID3D11DeviceContext, D3D_PRIMITIVE_TOPOLOGY) callconv(WINAPI) void;
+        const ia_set_primitive_topology: *const FnType = @ptrCast(self.vtable[21]);
+
+        ia_set_primitive_topology(self, Topology);
+    }
+
 };
 
 pub extern "d3d11" fn D3D11CreateDeviceAndSwapChain(
