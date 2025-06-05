@@ -30,7 +30,7 @@ pub const IDXGISwapChain = extern struct {
 
         const hr = get_device(self, riid, ppDevice);
         return switch (DXGI_ERROR_CODE(hr)) {
-            .S_OK => {},
+            .SUCCESS => {},
             else => |err| unexpectedError(err),
         };
     }
@@ -88,10 +88,12 @@ pub const UnexpectedError = error{
     Unexpected,
 };
 
+// tood: only print this error.Unexpected on Debug/ReleaseSafe
 pub fn unexpectedError(dxgi_err: DXGI_ERROR) UnexpectedError {
+    const tag_name = std.enums.tagName(DXGI_ERROR, dxgi_err) orelse "";
     std.debug.print("error.Unexpected: DXGI_ERROR({d}): {s}\n", .{
         @intFromEnum(dxgi_err),
-        @tagName(dxgi_err),
+        tag_name,
     });
     std.debug.dumpCurrentStackTrace(@returnAddress());
     return error.Unexpected;

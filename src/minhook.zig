@@ -51,9 +51,10 @@ pub const UnexpectedError = error{
 };
 
 pub fn unexpectedError(mh_status: minhook.MH_STATUS) UnexpectedError {
+    const tag_name = std.enums.tagName(minhook.MH_STATUS, mh_status) orelse "";
     std.debug.print("error.Unexpected: MH_STATUS({d}): {s}\n", .{
         @intFromEnum(mh_status),
-        @tagName(mh_status),
+        tag_name,
     });
     std.debug.dumpCurrentStackTrace(@returnAddress());
     return error.Unexpected;
