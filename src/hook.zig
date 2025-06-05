@@ -77,8 +77,8 @@ pub fn testing() !void {
     const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
     const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
 
-    const surface = try Surface.init(device);
-    defer surface.deinit();
+    //const surface = try Surface.init(device);
+    //defer surface.deinit();
 
     try minhook.MH_Initialize();
     defer minhook.MH_Uninitialize() catch {};
@@ -104,16 +104,16 @@ pub fn testing() !void {
     }
 }
 
+var surface: ?Surface = null;
 var exiting = false;
+
+const FrameError = @typeInfo(@typeInfo(@TypeOf(frame)).@"fn".return_type.?).error_union.error_set;
 
 fn hkPresent(
     pSwapChain: *dxgi.IDXGISwapChain,
     SyncInterval: windows.UINT,
     Flags: windows.UINT
 ) callconv(windows.WINAPI) windows.HRESULT {
-    // mb would be better to get device and context from this swap_chain
-    // and then init the Surface object
-
     if (!exiting) frame(pSwapChain) catch |err| {
         exiting = true;
 
@@ -131,6 +131,20 @@ fn hkPresent(
     return o_present(pSwapChain, SyncInterval, Flags);
 }
 
+fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
+    var device: *d3d11.ID3D11Device = undefined;
+
+    try swap_chain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device));
+    defer device.Release();
+
+    if (surface == null) {
+        surface = try Surface.init(device);
+    }
+
+    // ID3D11Device::GetImmediateContext
+    // try surface.?.render();
+}
+
 fn hkResizeBuffers(
     pSwapChain: *dxgi.IDXGISwapChain,
     BufferCount: windows.UINT,
@@ -142,9 +156,3 @@ fn hkResizeBuffers(
     return o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
 
-const FrameError = @typeInfo(@typeInfo(@TypeOf(frame)).@"fn".return_type.?).error_union.error_set;
-
-fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
-    _ = swap_chain;
-    return error.Panic;
-}
