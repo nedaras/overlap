@@ -5,14 +5,17 @@ const windows = std.os.windows;
 
 pub const D3D11_ERROR = @import("d3d11_err.zig").D3D11_ERROR;
 
+const INT = windows.INT;
 const GUID = windows.GUID;
 const UINT = windows.UINT;
 const ULONG = windows.ULONG;
 const SIZE_T = windows.SIZE_T;
+const LPCSTR = windows.LPCSTR;
 const WINAPI = windows.WINAPI;
 const LPCVOID = windows.LPCVOID;
 const HRESULT = windows.HRESULT;
 const HMODULE = windows.HMODULE;
+const DXGI_FORMAT = dxgi.DXGI_FORMAT;
 const IDXGIAdapter = dxgi.IDXGIAdapter;
 const IDXGISwapChain = dxgi.IDXGISwapChain;
 const D3D_DRIVER_TYPE = d3dcommon.D3D_DRIVER_TYPE;
@@ -21,7 +24,66 @@ const D3D_FEATURE_LEVEL = d3dcommon.D3D_FEATURE_LEVEL;
 
 pub const D3D11_SDK_VERSION = 7;
 
+pub const D3D11_BIND_VERTEX_BUFFER = 1;
+
+pub const D3D11_INPUT_CLASSIFICATION = INT;
+pub const D3D11_INPUT_PER_VERTEX_DATA = 0;
+pub const D3D11_INPUT_PER_INSTANCE_DATA = 1;
+
+pub const D3D11_USAGE = INT;
+pub const D3D11_USAGE_DEFAULT = 0;
+pub const D3D11_USAGE_IMMUTABLE = 1;
+pub const D3D11_USAGE_DYNAMIC = 2;
+pub const D3D11_USAGE_STAGING = 3;
+
 pub const ID3D11ClassLinkage = *opaque{};
+
+pub const D3D11_INPUT_ELEMENT_DESC = extern struct {
+    SemanticName: LPCSTR,
+    SemanticIndex: UINT,
+    Format: DXGI_FORMAT,
+    InputSlot: UINT,
+    AlignedByteOffset: UINT,
+    InputSlotClass: D3D11_INPUT_CLASSIFICATION,
+    InstanceDataStepRate: UINT,
+};
+
+pub const D3D11_BUFFER_DESC = extern struct {
+    ByteWidth: UINT,
+    Usage: D3D11_USAGE,
+    BindFlags: UINT,
+    CPUAccessFlags: UINT,
+    MiscFlags: UINT,
+    StructureByteStride: UINT,
+};
+
+pub const D3D11_SUBRESOURCE_DATA = extern struct {
+    pSysMem: LPCVOID,
+    SysMemPitch: UINT,
+    SysMemSlicePitch: UINT,
+};
+
+pub const ID3D11Buffer = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub inline fn Release(self: *ID3D11Buffer) void {
+        const FnType = fn (*ID3D11Buffer) callconv(WINAPI) ULONG;
+        const release: *const FnType = @ptrCast(self.vtable[2]);
+
+        _ = release(self);
+    }
+};
+
+pub const ID3D11InputLayout = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub inline fn Release(self: *ID3D11InputLayout) void {
+        const FnType = fn (*ID3D11InputLayout) callconv(WINAPI) ULONG;
+        const release: *const FnType = @ptrCast(self.vtable[2]);
+
+        _ = release(self);
+    }
+};
 
 pub const ID3D11VertexShader = extern struct {
     vtable: [*]const *const anyopaque,
@@ -64,6 +126,42 @@ pub const ID3D11Device = extern struct {
         const release: *const FnType = @ptrCast(self.vtable[2]);
 
         _ = release(self);
+    }
+
+    pub const CreateBufferError = error{Unexpected};
+
+    pub fn CreateBuffer(
+        self: *ID3D11Device,
+        pDesc: *D3D11_BUFFER_DESC,
+        pInitialData: ?*const D3D11_SUBRESOURCE_DATA,
+        ppBuffer: **ID3D11Buffer,
+    ) CreateBufferError!void {
+        const FnType = fn (*ID3D11Device, *D3D11_BUFFER_DESC, ?*const D3D11_SUBRESOURCE_DATA, ?**ID3D11Buffer) callconv(WINAPI) HRESULT;
+        const create_buffer: *const FnType = @ptrCast(self.vtable[3]);
+
+        const hr = create_buffer(self, pDesc, pInitialData, ppBuffer);
+        return switch (D3D11_ERROR_CODE(hr)) {
+            .S_OK => {},
+            else => |err| unexpectedError(err),
+        };
+    }
+
+    pub const CreateInputLayoutError = error{Unexpected};
+
+    pub fn CreateInputLayout(
+        self: *ID3D11Device,
+        InputElementDescs: []const D3D11_INPUT_ELEMENT_DESC,
+        ShaderBytecodeWithInputSignature: []const u8,
+        ppInputLayout: ?**ID3D11InputLayout,
+    ) !void {
+        const FnType = fn (*ID3D11Device, [*]const D3D11_INPUT_ELEMENT_DESC, SIZE_T, [*]const u8, SIZE_T, ?**ID3D11InputLayout) callconv(WINAPI) HRESULT;
+        const create_input_layout: *const FnType = @ptrCast(self.vtable[11]);
+
+        const hr = create_input_layout(self, InputElementDescs.ptr, InputElementDescs.len, ShaderBytecodeWithInputSignature.ptr, ShaderBytecodeWithInputSignature.len, ppInputLayout);
+        return switch (D3D11_ERROR_CODE(hr)) {
+            .S_OK => {},
+            else => |err| unexpectedError(err),
+        };
     }
 
     pub const CreateShaderError = error{Unexpected};

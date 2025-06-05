@@ -41,6 +41,8 @@ pub const IDXGISwapChain = extern struct {
 pub const IDXGIAdapter = *opaque{};
 
 pub const DXGI_FORMAT = INT;
+pub const DXGI_FORMAT_R32G32B32_FLOAT = 6;
+pub const DXGI_FORMAT_R32G32_FLOAT = 16;
 pub const DXGI_FORMAT_R8G8B8A8_UNORM = 28;
 
 pub const DXGI_SWAP_EFFECT = INT;

@@ -77,7 +77,7 @@ pub fn testing() !void {
     const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
     const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
 
-    const surface = try Surface.init(device, device_context);
+    const surface = try Surface.init(device);
     defer surface.deinit();
 
     try minhook.MH_Initialize();
@@ -111,6 +111,9 @@ fn hkPresent(
     SyncInterval: windows.UINT,
     Flags: windows.UINT
 ) callconv(windows.WINAPI) windows.HRESULT {
+    // mb would be better to get device and context from this swap_chain
+    // and then init the Surface object
+
     if (!exiting) frame(pSwapChain) catch |err| {
         exiting = true;
 
