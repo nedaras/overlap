@@ -197,6 +197,14 @@ pub const ID3D11Device = extern struct {
             else => |err| unexpectedError(err),
         };
     }
+
+    pub inline fn GetImmediateContext(self: *ID3D11Device, ppImmediateContext: **ID3D11DeviceContext) void {
+        const FnType = fn (*ID3D11Device, **ID3D11DeviceContext) callconv(WINAPI) void;
+        const get_immediate_context: *const FnType = @ptrCast(self.vtable[40]);
+
+        get_immediate_context(self, ppImmediateContext);
+    }
+
 };
 
 pub const ID3D11DeviceContext = extern struct {

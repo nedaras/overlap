@@ -133,16 +133,19 @@ fn hkPresent(
 
 fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
     var device: *d3d11.ID3D11Device = undefined;
+    var device_context: *d3d11.ID3D11DeviceContext = undefined;
 
     try swap_chain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device));
     defer device.Release();
+
+    device.GetImmediateContext(&device_context);
+    defer device_context.Release();
 
     if (surface == null) {
         surface = try Surface.init(device);
     }
 
-    // ID3D11Device::GetImmediateContext
-    // try surface.?.render();
+    try surface.?.render(device_context);
 }
 
 fn hkResizeBuffers(

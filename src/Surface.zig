@@ -108,5 +108,5 @@ pub fn deinit(self: Self) void {
 
 pub fn render(self: Self, device_context: *d3d11.ID3D11DeviceContext) !void {
     _ = self;
-    _ = device_context;
+    std.debug.print("ID3D11DeviceContext*: {}\n", .{device_context});
 }
