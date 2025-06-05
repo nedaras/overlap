@@ -18,8 +18,29 @@ var o_present: *SwapChainPresent = undefined;
 var o_resize_buffers: *SwapChainResizeBuffers = undefined;
 
 fn surface_init(device: *d3d11.ID3D11Device) !void {
-    var vertex_shader: *d3d11.ID3D11VertexShader = undefined;
-    try device.CreateVertexShader("sigma!", null, &vertex_shader);
+    const vertex_shader = @embedFile("shaders/vs.glsl");
+    
+    var blob: *d3dcommon.ID3DBlob = undefined;
+
+    const result = windows.d3dcompiler.D3DCompile(
+        vertex_shader.ptr,
+        vertex_shader.len,
+        null,
+        null,
+        null,
+        "VS",
+        "vs_4_0",
+        0,
+        0,
+        &blob,
+        null,
+    );
+
+    std.debug.print("compile res: {d}\n", .{result});
+
+    _ = device;
+    //var vertex_shader: *d3d11.ID3D11VertexShader = undefined;
+    //try device.CreateVertexShader("sigma!", null, &vertex_shader);
 }
 
 // Idea is simple... Hook everything we can

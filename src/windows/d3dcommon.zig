@@ -2,6 +2,27 @@ const std = @import("std");
 const windows = std.os.windows;
 
 const INT = windows.INT;
+const WINAPI = windows.WINAPI;
+const LPVOID = windows.LPVOID;
+const SIZE_T = windows.SIZE_T;
+
+pub const ID3DBlob = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub inline fn GetBufferPointer(self: *ID3DBlob) LPVOID {
+        const FnType = fn (*ID3DBlob) callconv(WINAPI) LPVOID;
+        const get_buffer_pointer: *const FnType = @ptrCast(self.vtable[3]);
+
+        return get_buffer_pointer(self);
+    }
+
+    pub inline fn GetBufferSize(self: *ID3DBlob) SIZE_T {
+        const FnType = fn (*ID3DBlob) callconv(WINAPI) SIZE_T ;
+        const get_buffer_size: *const FnType = @ptrCast(self.vtable[4]);
+
+        return get_buffer_size(self);
+    }
+};
 
 pub const D3D_FEATURE_LEVEL = INT;
 pub const D3D_FEATURE_LEVEL_9_1 = 0x9100;

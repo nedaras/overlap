@@ -9,6 +9,7 @@ pub usingnamespace windows;
 pub const dxgi = @import("windows/dxgi.zig");
 pub const d3d11 = @import("windows/d3d11.zig");
 pub const d3dcommon = @import("windows/d3dcommon.zig");
+pub const d3dcompiler = @import("windows/d3dcompiler.zig");
 
 pub const DLL_PROCESS_DETACH = 0;
 pub const DLL_PROCESS_ATTACH = 1;
