@@ -219,7 +219,7 @@ pub const ID3D11DeviceContext = extern struct {
         _ = release(self);
     }
 
-    // 0 -> 4
+    // 0 -> 7
 
     pub inline fn PSSetShader(
         self: *ID3D11DeviceContext,
@@ -227,7 +227,7 @@ pub const ID3D11DeviceContext = extern struct {
         ClassInstances: ?[] *const ID3D11ClassInstance,
     ) void {
         const FnType = fn (*ID3D11DeviceContext, *ID3D11PixelShader, ?[*] *const ID3D11ClassInstance, UINT) callconv(WINAPI) void;
-        const vs_set_shader: *const FnType = @ptrCast(self.vtable[6]);
+        const vs_set_shader: *const FnType = @ptrCast(self.vtable[9]);
 
         const class_instance_ptr = if (ClassInstances) |ci| ci.ptr else null;
         const class_instances_len = if (ClassInstances) |ci| ci.len else 0;
@@ -241,7 +241,7 @@ pub const ID3D11DeviceContext = extern struct {
         ClassInstances: ?[] *const ID3D11ClassInstance,
     ) void {
         const FnType = fn (*ID3D11DeviceContext, *ID3D11VertexShader, ?[*] *const ID3D11ClassInstance, UINT) callconv(WINAPI) void;
-        const vs_set_shader: *const FnType = @ptrCast(self.vtable[8]);
+        const vs_set_shader: *const FnType = @ptrCast(self.vtable[11]);
 
         const class_instance_ptr = if (ClassInstances) |ci| ci.ptr else null;
         const class_instances_len = if (ClassInstances) |ci| ci.len else 0;
@@ -255,14 +255,14 @@ pub const ID3D11DeviceContext = extern struct {
         StartVertexLocation: UINT,
     ) void {
         const FnType = fn (*ID3D11DeviceContext, UINT, UINT) callconv(WINAPI) void;
-        const draw: *const FnType = @ptrCast(self.vtable[10]);
+        const draw: *const FnType = @ptrCast(self.vtable[13]);
 
         draw(self, VertexCount, StartVertexLocation);
     }
     
     pub inline fn IASetInputLayout(self: *ID3D11DeviceContext, pInputLayout: *ID3D11InputLayout) void {
         const FnType = fn (*ID3D11DeviceContext, *ID3D11InputLayout) callconv(WINAPI) void;
-        const ia_set_input_layout: *const FnType = @ptrCast(self.vtable[14]);
+        const ia_set_input_layout: *const FnType = @ptrCast(self.vtable[17]);
 
         ia_set_input_layout(self, pInputLayout);
     }
@@ -275,14 +275,14 @@ pub const ID3D11DeviceContext = extern struct {
         pOffsets: *UINT,
     ) void {
         const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]const ID3D11Buffer, *UINT, *UINT) callconv(WINAPI) void;
-        const ia_set_input_vertex_buffers: *const FnType = @ptrCast(self.vtable[15]);
+        const ia_set_input_vertex_buffers: *const FnType = @ptrCast(self.vtable[18]);
 
         ia_set_input_vertex_buffers(self, StartSlot, @intCast(VertexBuffers.len), VertexBuffers.ptr, pStrides, pOffsets);
     }
 
     pub inline fn IASetPrimitiveTopology(self: *ID3D11DeviceContext, Topology: D3D_PRIMITIVE_TOPOLOGY) void {
         const FnType = fn (*ID3D11DeviceContext, D3D_PRIMITIVE_TOPOLOGY) callconv(WINAPI) void;
-        const ia_set_primitive_topology: *const FnType = @ptrCast(self.vtable[21]);
+        const ia_set_primitive_topology: *const FnType = @ptrCast(self.vtable[24]);
 
         ia_set_primitive_topology(self, Topology);
     }
