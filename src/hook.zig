@@ -29,18 +29,20 @@ fn surface_init(device: *d3d11.ID3D11Device) !void {
         null,
         null,
         "VS",
-        "vs_4_0",
+        "vs_5_0",
         0,
         0,
         &blob,
         null,
     );
 
-    std.debug.print("compile res: {d}\n", .{result});
+    std.debug.print("compile res: {d}, len: {d}\n", .{result, blob.GetBufferSize()});
 
-    _ = device;
-    //var vertex_shader: *d3d11.ID3D11VertexShader = undefined;
-    //try device.CreateVertexShader("sigma!", null, &vertex_shader);
+    const slice_ptr: [*]u8 = @ptrCast(blob.GetBufferPointer());
+    const slice = slice_ptr[0..blob.GetBufferSize()];
+
+    var vs: *d3d11.ID3D11VertexShader = undefined;
+    try device.CreateVertexShader(slice, null, &vs);
 }
 
 // Idea is simple... Hook everything we can
