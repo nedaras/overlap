@@ -2,7 +2,7 @@ const std = @import("std");
 const windows = std.os.windows;
 
 pub const d3d11 = @import("d3d11.zig");
-pub const DXGI_ERROR = @import("dxgi_error.zig").DXGI_ERROR;
+pub const DXGI_ERROR = @import("dxgi_err.zig").DXGI_ERROR;
 
 const INT = windows.INT;
 const S_OK = windows.S_OK;

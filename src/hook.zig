@@ -7,6 +7,21 @@ const d3dcommon = windows.d3dcommon;
 const mem = std.mem;
 const Thread = std.Thread;
 
+// keep in mind all this is not so thread safe
+var mutex = Thread.Mutex.Recursive.init;
+var exit_err: ?FrameError = null;
+
+const SwapChainPresent = @TypeOf(hkPresent);
+const SwapChainResizeBuffers = @TypeOf(hkResizeBuffers);
+
+var o_present: *SwapChainPresent = undefined;
+var o_resize_buffers: *SwapChainResizeBuffers = undefined;
+
+fn surface_init(device: *d3d11.ID3D11Device) !void {
+    var vertex_shader: *d3d11.ID3D11VertexShader = undefined;
+    try device.CreateVertexShader("sigma!", null, &vertex_shader);
+}
+
 // Idea is simple... Hook everything we can
 pub fn testing() !void {
     const d3d11_lib = try windows.GetModuleHandle("d3d11.dll");
@@ -65,6 +80,8 @@ pub fn testing() !void {
     const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
     const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
 
+    try surface_init(device);
+
     try minhook.MH_Initialize();
     defer minhook.MH_Uninitialize() catch {};
 
@@ -89,16 +106,6 @@ pub fn testing() !void {
     }
 }
 
-// todo: keep in mind all this is not so thread safe
-var mutex = Thread.Mutex.Recursive.init;
-var exit_err: ?FrameError = null;
-
-const SwapChainPresent = @TypeOf(hkPresent);
-const SwapChainResizeBuffers = @TypeOf(hkResizeBuffers);
-
-var o_present: *SwapChainPresent = undefined;
-var o_resize_buffers: *SwapChainResizeBuffers = undefined;
-
 var exiting = false;
 
 fn hkPresent(
@@ -109,11 +116,10 @@ fn hkPresent(
     if (!exiting) frame(pSwapChain) catch |err| {
         exiting = true;
 
-        // prob we can append the stack traces
-        std.debug.print("error: {s}\n", .{@errorName(err)});
-        if (@errorReturnTrace()) |trace| {
-            std.debug.dumpStackTrace(trace.*);
-        }
+        // stack trace crashes here idk why prob cuz trampoline  hooking by minhook
+        //if (@errorReturnTrace()) |trace| {
+        // trace here just makes no sence
+        //}
 
         mutex.lock();
         defer mutex.unlock();
@@ -132,7 +138,6 @@ fn hkResizeBuffers(
     NewFormat: dxgi.DXGI_FORMAT,
     SwapChainFlags: windows.UINT
 ) callconv(windows.WINAPI) windows.HRESULT {
-    std.debug.print("hkResizeBuffers\n", .{});
     return o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
 
