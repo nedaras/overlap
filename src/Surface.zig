@@ -35,10 +35,10 @@ pub fn init(device: *d3d11.ID3D11Device, device_context: *d3d11.ID3D11DeviceCont
     }
     defer pixel_shader_blob.Release();
 
-    try device.CreateVertexShader(vertex_shader_blob.GetBufferPointer(), vertex_shader_blob.GetBufferSize(), null, &result.vertex_shader);
+    try device.CreateVertexShader(vertex_shader_blob.slice(), null, &result.vertex_shader);
     errdefer result.vertex_shader.Release();
 
-    try device.CreatePixelShader(pixel_shader_blob.GetBufferPointer(), pixel_shader_blob.GetBufferSize(), null, &result.pixel_shader);
+    try device.CreatePixelShader(pixel_shader_blob.slice(), null, &result.pixel_shader);
     errdefer result.pixel_shader.Release();
 
     return result;

@@ -10,6 +10,11 @@ const SIZE_T = windows.SIZE_T;
 pub const ID3DBlob = extern struct {
     vtable: [*]const *const anyopaque,
 
+    pub inline fn slice(self: *ID3DBlob) []u8 {
+        const ptr: [*]u8 = @ptrCast(self.GetBufferPointer());
+        return ptr[0..self.GetBufferSize()];
+    }
+
     pub inline fn Release(self: *ID3DBlob) void {
         const FnType = fn (*ID3DBlob) callconv(WINAPI) ULONG;
         const release: *const FnType = @ptrCast(self.vtable[2]);

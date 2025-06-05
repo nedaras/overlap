@@ -14,6 +14,6 @@ VertexOutput VS(VertexInput input)
 {
   VertexOutput output;
   output.pos = float4(input.pos, 0.0, 1.0);
-  output.color = input.colot;
+  output.color = input.color;
   return output;
 }
