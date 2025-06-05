@@ -123,12 +123,14 @@ pub fn render(self: Self, device_context: *d3d11.ID3D11DeviceContext) !void {
     var stride: windows.UINT = @sizeOf(Vertex);
     var offset: windows.UINT = 0;
 
+    device_context.ClearRenderTargetView(self.render_target_view, .{ 0.5, 0.5, 1.0, 1.0 });
+    device_context.OMSetRenderTargets((&self.render_target_view)[0..1], null);
+
     device_context.IASetInputLayout(self.input_layout);
     device_context.IASetVertexBuffers(0, self.vertex_buffer[0..1], &stride, &offset);
     device_context.IASetPrimitiveTopology(d3dcommon.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     device_context.VSSetShader(self.vertex_shader, null);
     device_context.PSSetShader(self.pixel_shader, null);
 
-    device_context.OMSetRenderTargets((&self.render_target_view)[0..1], null);
     device_context.Draw(3, 0);
 }

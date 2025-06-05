@@ -353,6 +353,17 @@ pub const ID3D11DeviceContext = extern struct {
 
         om_set_render_targets(self, @intCast(RenderTargetViews.len), RenderTargetViews.ptr, pDepthStencilView);
     }
+
+    pub inline fn ClearRenderTargetView(
+        self: *ID3D11DeviceContext,
+        pRenderTargetView: *ID3D11RenderTargetView,
+        ColorRGBA: [4]f32,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *ID3D11RenderTargetView, *const [4]f32) callconv(WINAPI) void;
+        const clear_render_target_view: *const FnType = @ptrCast(self.vtable[50]);
+
+        clear_render_target_view(self, pRenderTargetView, &ColorRGBA);
+    }
 };
 
 pub extern "d3d11" fn D3D11CreateDeviceAndSwapChain(
