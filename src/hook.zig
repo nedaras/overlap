@@ -4,6 +4,7 @@ const minhook = @import("minhook.zig");
 const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
+const d3dcompiler = windows.d3dcompiler;
 const mem = std.mem;
 const Thread = std.Thread;
 
@@ -18,31 +19,32 @@ var o_present: *SwapChainPresent = undefined;
 var o_resize_buffers: *SwapChainResizeBuffers = undefined;
 
 fn surface_init(device: *d3d11.ID3D11Device) !void {
-    const vertex_shader = @embedFile("shaders/vs.glsl");
+    const vs = @embedFile("shaders/vs.glsl");
+    const ps = @embedFile("shaders/ps.glsl");
     
-    var blob: *d3dcommon.ID3DBlob = undefined;
+    var vertex_shader_blob: *d3dcommon.ID3DBlob = undefined;
+    var pixel_shader_blob: *d3dcommon.ID3DBlob = undefined;
 
-    const result = windows.d3dcompiler.D3DCompile(
-        vertex_shader.ptr,
-        vertex_shader.len,
-        null,
-        null,
-        null,
-        "VS",
-        "vs_5_0",
-        0,
-        0,
-        &blob,
-        null,
-    );
+    const a = d3dcompiler.D3DCompile(vs.ptr, vs.len, null, null, null, "VS", "vs_5_0", 0, 0, &vertex_shader_blob, null);
+    const b = d3dcompiler.D3DCompile(ps.ptr, ps.len, null, null, null, "PS", "ps_5_0", 0, 0, &pixel_shader_blob, null);
 
-    std.debug.print("compile res: {d}, len: {d}\n", .{result, blob.GetBufferSize()});
+    if (a != windows.S_OK) {
+        return error.Unexpected;
+    }
 
-    const slice_ptr: [*]u8 = @ptrCast(blob.GetBufferPointer());
-    const slice = slice_ptr[0..blob.GetBufferSize()];
+    if (b != windows.S_OK) {
+        return error.Unexpected;
+    }
 
-    var vs: *d3d11.ID3D11VertexShader = undefined;
-    try device.CreateVertexShader(slice, null, &vs);
+    var vertex_shader: *d3d11.ID3D11VertexShader = undefined;
+    var pixel_shader: *d3d11.ID3D11PixelShader = undefined;
+
+    try device.CreateVertexShader(vertex_shader_blob.GetBufferPointer(), vertex_shader_blob.GetBufferSize(), null, &vertex_shader);
+    defer vertex_shader.Release();
+
+    try device.CreatePixelShader(pixel_shader_blob.GetBufferPointer(), pixel_shader_blob.GetBufferSize(), null, &pixel_shader);
+    defer pixel_shader.Release();
+
 }
 
 // Idea is simple... Hook everything we can
