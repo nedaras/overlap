@@ -3,6 +3,7 @@ const dxgi = @import("dxgi.zig");
 const d3dcommon = @import("d3dcommon.zig");
 const windows = std.os.windows;
 
+const GUID = windows.GUID;
 const UINT = windows.UINT;
 const ULONG = windows.ULONG;
 const WINAPI = windows.WINAPI;
@@ -18,6 +19,17 @@ pub const D3D11_SDK_VERSION = 7;
 
 pub const ID3D11Device = extern struct {
     vtable: [*]const *const anyopaque,
+
+    /// __uuidof(ID3D11Device) = "db6f6ddb-ac77-4e88-8253-819df9bbf140"
+    pub const UUID = &GUID{
+        .Data1 = 0xdb6f6ddb,
+        .Data2 = 0xac77,
+        .Data3 = 0x4e88,
+        .Data4 = .{
+            0x82, 0x53,
+            0x81, 0x9d, 0xf9, 0xbb, 0xf1, 0x40,
+        },
+    };
 
     pub inline fn Release(self: *ID3D11Device) void {
         const T = fn (*anyopaque) callconv(WINAPI) ULONG;

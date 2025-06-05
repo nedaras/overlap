@@ -6,6 +6,7 @@ const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
 const mem = std.mem;
 
+// Idea is simple... Hook everything we can
 pub fn testing() !void {
     const d3d11_lib = try windows.GetModuleHandle("d3d11.dll");
 
@@ -15,7 +16,6 @@ pub fn testing() !void {
         "D3D11CreateDeviceAndSwapChain",
     ));
     
-
     const window = windows.GetForegroundWindow() orelse return error.WindowNotFound;
 
     var sd = mem.zeroes(dxgi.DXGI_SWAP_CHAIN_DESC);
@@ -91,7 +91,16 @@ fn hkPresent(
     SyncInterval: windows.UINT,
     Flags: windows.UINT
 ) callconv(windows.WINAPI) windows.HRESULT {
-    std.debug.print("hkPresent\n", .{});
+    var device: *d3d11.ID3D11Device = undefined;
+
+    const result = pSwapChain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device));
+    std.debug.print("result: {}\n", .{result});
+
+    if (result == windows.S_OK) {
+        std.debug.print("device: {}\n", .{device});
+        device.Release();
+    }
+
     return o_present(pSwapChain, SyncInterval, Flags);
 }
 

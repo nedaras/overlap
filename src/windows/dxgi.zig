@@ -4,10 +4,12 @@ const windows = std.os.windows;
 pub const d3d11 = @import("d3d11.zig");
 
 const INT = windows.INT;
-const UINT = windows.UINT;
-const ULONG = windows.ULONG;
 const HWND = windows.HWND;
 const BOOL = windows.BOOL;
+const UINT = windows.UINT;
+const ULONG = windows.ULONG;
+const HRESULT = windows.HRESULT;
+const REFCIID = *const windows.GUID;
 const WINAPI = windows.WINAPI;
 
 pub const IDXGISwapChain = extern struct {
@@ -18,6 +20,14 @@ pub const IDXGISwapChain = extern struct {
         const release: *const T = @ptrCast(self.vtable[2]);
 
         _ = release(self);
+    }
+
+    // todo: handle errors
+    pub inline fn GetDevice(self: *IDXGISwapChain, riid: REFCIID, ppDevice: **anyopaque) HRESULT {
+        const T = fn (*anyopaque, REFCIID, **anyopaque) callconv(WINAPI) HRESULT;
+        const get_device: *const T = @ptrCast(self.vtable[7]);
+
+        return get_device(self, riid, ppDevice);
     }
 };
 
