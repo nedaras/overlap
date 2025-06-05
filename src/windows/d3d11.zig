@@ -39,6 +39,10 @@ pub const D3D11_USAGE_STAGING = 3;
 
 pub const ID3D11ClassLinkage = *opaque{};
 pub const ID3D11ClassInstance = *opaque{};
+pub const ID3D11Resource = *opaque{};
+pub const ID3D11DepthStencilView = *opaque{};
+
+pub const D3D11_RENDER_TARGET_VIEW_DESC = opaque{};
 
 pub const D3D11_INPUT_ELEMENT_DESC = extern struct {
     SemanticName: LPCSTR,
@@ -63,6 +67,18 @@ pub const D3D11_SUBRESOURCE_DATA = extern struct {
     pSysMem: LPCVOID,
     SysMemPitch: UINT,
     SysMemSlicePitch: UINT,
+};
+
+
+pub const ID3D11RenderTargetView = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub inline fn Release(self: *ID3D11RenderTargetView) void {
+        const FnType = fn (*ID3D11RenderTargetView) callconv(WINAPI) ULONG;
+        const release: *const FnType = @ptrCast(self.vtable[2]);
+
+        _ = release(self);
+    }
 };
 
 pub const ID3D11Buffer = extern struct {
@@ -109,10 +125,32 @@ pub const ID3D11PixelShader = extern struct {
     }
 };
 
+pub const ID3D11Texture2D = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    /// __uuidof(ID3D11Device) = `"6f15aaf2-d208-4e89-9ab4-489535d34f9c"`
+    pub const UUID = &GUID{
+        .Data1 = 0x6f15aaf2,
+        .Data2 = 0xd208,
+        .Data3 = 0x4e89,
+        .Data4 = .{
+            0x9a, 0xb4,
+            0x48, 0x95, 0x35, 0xd3, 0x4f, 0x9c,
+        },
+    };
+
+    pub inline fn Release(self: *ID3D11Texture2D) void {
+        const FnType = fn (*ID3D11Texture2D) callconv(WINAPI) ULONG;
+        const release: *const FnType = @ptrCast(self.vtable[2]);
+
+        _ = release(self);
+    }
+};
+
 pub const ID3D11Device = extern struct {
     vtable: [*]const *const anyopaque,
 
-    /// __uuidof(ID3D11Device) = "db6f6ddb-ac77-4e88-8253-819df9bbf140"
+    /// __uuidof(ID3D11Device) = `"db6f6ddb-ac77-4e88-8253-819df9bbf140"`
     pub const UUID = &GUID{
         .Data1 = 0xdb6f6ddb,
         .Data2 = 0xac77,
@@ -142,6 +180,24 @@ pub const ID3D11Device = extern struct {
         const create_buffer: *const FnType = @ptrCast(self.vtable[3]);
 
         const hr = create_buffer(self, pDesc, pInitialData, ppBuffer);
+        return switch (D3D11_ERROR_CODE(hr)) {
+            .S_OK => {},
+            else => |err| unexpectedError(err),
+        };
+    }
+
+    pub const CreateRenderTargetViewError = error{Unexpected};
+
+    pub fn CreateRenderTargetView(
+        self: *ID3D11Device,
+        pResource: *ID3D11Resource,
+        pDesc: ?*const D3D11_RENDER_TARGET_VIEW_DESC,
+        ppRTView: **ID3D11RenderTargetView,
+    ) CreateRenderTargetViewError!void {
+        const FnType = fn (*ID3D11Device, *ID3D11Resource, ?*const D3D11_RENDER_TARGET_VIEW_DESC, ?**ID3D11RenderTargetView) callconv(WINAPI) HRESULT;
+        const create_render_target_view: *const FnType = @ptrCast(self.vtable[9]);
+
+        const hr = create_render_target_view(self, pResource, pDesc, ppRTView);
         return switch (D3D11_ERROR_CODE(hr)) {
             .S_OK => {},
             else => |err| unexpectedError(err),
@@ -224,9 +280,9 @@ pub const ID3D11DeviceContext = extern struct {
     pub inline fn PSSetShader(
         self: *ID3D11DeviceContext,
         pPixelShader: *ID3D11PixelShader,
-        ClassInstances: ?[] *const ID3D11ClassInstance,
+        ClassInstances: ?[]const *const ID3D11ClassInstance,
     ) void {
-        const FnType = fn (*ID3D11DeviceContext, *ID3D11PixelShader, ?[*] *const ID3D11ClassInstance, UINT) callconv(WINAPI) void;
+        const FnType = fn (*ID3D11DeviceContext, *ID3D11PixelShader, ?[*]const *const ID3D11ClassInstance, UINT) callconv(WINAPI) void;
         const vs_set_shader: *const FnType = @ptrCast(self.vtable[9]);
 
         const class_instance_ptr = if (ClassInstances) |ci| ci.ptr else null;
@@ -238,9 +294,9 @@ pub const ID3D11DeviceContext = extern struct {
     pub inline fn VSSetShader(
         self: *ID3D11DeviceContext,
         pVertexShader: *ID3D11VertexShader,
-        ClassInstances: ?[] *const ID3D11ClassInstance,
+        ClassInstances: ?[]const *const ID3D11ClassInstance,
     ) void {
-        const FnType = fn (*ID3D11DeviceContext, *ID3D11VertexShader, ?[*] *const ID3D11ClassInstance, UINT) callconv(WINAPI) void;
+        const FnType = fn (*ID3D11DeviceContext, *ID3D11VertexShader, ?[*]const *const ID3D11ClassInstance, UINT) callconv(WINAPI) void;
         const vs_set_shader: *const FnType = @ptrCast(self.vtable[11]);
 
         const class_instance_ptr = if (ClassInstances) |ci| ci.ptr else null;
@@ -287,6 +343,16 @@ pub const ID3D11DeviceContext = extern struct {
         ia_set_primitive_topology(self, Topology);
     }
 
+    pub inline fn OMSetRenderTargets(
+        self: *ID3D11DeviceContext,
+        RenderTargetViews: []const *const ID3D11RenderTargetView,
+        pDepthStencilView: ?*ID3D11DepthStencilView,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, [*]const *const ID3D11RenderTargetView, ?*ID3D11DepthStencilView) callconv(WINAPI) void;
+        const om_set_render_targets: *const FnType = @ptrCast(self.vtable[33]);
+
+        om_set_render_targets(self, @intCast(RenderTargetViews.len), RenderTargetViews.ptr, pDepthStencilView);
+    }
 };
 
 pub extern "d3d11" fn D3D11CreateDeviceAndSwapChain(

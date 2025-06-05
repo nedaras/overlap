@@ -26,8 +26,12 @@ pub const IDXGISwapChain = extern struct {
 
     pub const GetDeviceError = error{Unexpected};
 
-    pub fn GetDevice(self: *IDXGISwapChain, riid: REFCIID, ppDevice: **anyopaque) GetDeviceError!void {
-        const FnType = fn (*anyopaque, REFCIID, **anyopaque) callconv(WINAPI) HRESULT;
+    pub fn GetDevice(
+        self: *IDXGISwapChain,
+        riid: REFCIID,
+        ppDevice: **anyopaque
+    ) GetDeviceError!void {
+        const FnType = fn (*IDXGISwapChain, REFCIID, **anyopaque) callconv(WINAPI) HRESULT;
         const get_device: *const FnType = @ptrCast(self.vtable[7]);
 
         const hr = get_device(self, riid, ppDevice);
@@ -36,6 +40,25 @@ pub const IDXGISwapChain = extern struct {
             else => |err| unexpectedError(err),
         };
     }
+
+    pub const GetBufferError = error{Unexpected};
+
+    pub fn GetBuffer(
+        self: *IDXGISwapChain, 
+        Buffer: UINT,
+        riid: REFCIID,
+        ppSurface: **anyopaque,
+    ) GetBufferError!void {
+        const FnType = fn (*IDXGISwapChain, UINT, REFCIID, **anyopaque) callconv(WINAPI) HRESULT;
+        const get_buffer: *const FnType = @ptrCast(self.vtable[9]);
+
+        const hr = get_buffer(self, Buffer, riid, ppSurface);
+        return switch (DXGI_ERROR_CODE(hr)) {
+            .SUCCESS => {},
+            else => |err| unexpectedError(err),
+        };
+    }
+
 };
 
 pub const IDXGIAdapter = *opaque{};

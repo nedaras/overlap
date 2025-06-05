@@ -11,6 +11,8 @@ const Vertex = extern struct {
     color: [3]f32,
 };
 
+render_target_view: *d3d11.ID3D11RenderTargetView,
+
 input_layout: *d3d11.ID3D11InputLayout,
 vertex_buffer: *d3d11.ID3D11Buffer,
 
@@ -21,16 +23,25 @@ pixel_shader: *d3d11.ID3D11PixelShader,
 const Self = @This();
 
 // Idea is to have like one Surface api and have multiple backends d3d opengl vulkan
-pub fn init(device: *d3d11.ID3D11Device) !Self {
+pub fn init(swap_chain: *dxgi.IDXGISwapChain, device: *d3d11.ID3D11Device) !Self {
     const vs = @embedFile("shaders/vs.glsl");
     const ps = @embedFile("shaders/ps.glsl");
 
     var result = Self{
+        .render_target_view = undefined,
         .input_layout = undefined,
         .vertex_buffer = undefined,
         .vertex_shader = undefined,
         .pixel_shader = undefined,
     };
+
+    var back_buffer: *d3d11.ID3D11Texture2D = undefined;
+
+    try swap_chain.GetBuffer(0, d3d11.ID3D11Texture2D.UUID, @ptrCast(&back_buffer));
+    defer back_buffer.Release();
+
+    try device.CreateRenderTargetView(@ptrCast(back_buffer), null, &result.render_target_view);
+    errdefer result.render_target_view.Release();
 
     var vertex_shader_blob: *d3dcommon.ID3DBlob = undefined;
     var pixel_shader_blob: *d3dcommon.ID3DBlob = undefined;
@@ -99,11 +110,13 @@ pub fn init(device: *d3d11.ID3D11Device) !Self {
 }
 
 pub fn deinit(self: Self) void {
+    self.render_target_view.Release();
+
     self.vertex_buffer.Release();
     self.input_layout.Release();
 
     self.vertex_shader.Release();
-    self.vertex_shader.Release();
+    self.pixel_shader.Release();
 }
 
 pub fn render(self: Self, device_context: *d3d11.ID3D11DeviceContext) !void {
@@ -116,5 +129,6 @@ pub fn render(self: Self, device_context: *d3d11.ID3D11DeviceContext) !void {
     device_context.VSSetShader(self.vertex_shader, null);
     device_context.PSSetShader(self.pixel_shader, null);
 
+    device_context.OMSetRenderTargets((&self.render_target_view)[0..1], null);
     device_context.Draw(3, 0);
 }

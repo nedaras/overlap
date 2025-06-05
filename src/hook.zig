@@ -142,7 +142,7 @@ fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
     defer device_context.Release();
 
     if (surface == null) {
-        surface = try Surface.init(device);
+        surface = try Surface.init(swap_chain, device);
     }
 
     try surface.?.render(device_context);
