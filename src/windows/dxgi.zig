@@ -2,8 +2,10 @@ const std = @import("std");
 const windows = std.os.windows;
 
 pub const d3d11 = @import("d3d11.zig");
+pub const DXGI_ERROR = @import("dxgi_error.zig").DXGI_ERROR;
 
 const INT = windows.INT;
+const S_OK = windows.S_OK;
 const HWND = windows.HWND;
 const BOOL = windows.BOOL;
 const UINT = windows.UINT;
@@ -16,18 +18,21 @@ pub const IDXGISwapChain = extern struct {
     vtable: [*]const *const anyopaque,
 
     pub inline fn Release(self: *IDXGISwapChain) void {
-        const T = fn (*anyopaque) callconv(WINAPI) ULONG;
-        const release: *const T = @ptrCast(self.vtable[2]);
+        const FnType = fn (*anyopaque) callconv(WINAPI) ULONG;
+        const release: *const FnType = @ptrCast(self.vtable[2]);
 
         _ = release(self);
     }
 
-    // todo: handle errors
-    pub inline fn GetDevice(self: *IDXGISwapChain, riid: REFCIID, ppDevice: **anyopaque) HRESULT {
-        const T = fn (*anyopaque, REFCIID, **anyopaque) callconv(WINAPI) HRESULT;
-        const get_device: *const T = @ptrCast(self.vtable[7]);
+    pub fn GetDevice(self: *IDXGISwapChain, riid: REFCIID, ppDevice: **anyopaque) !void {
+        const FnType = fn (*anyopaque, REFCIID, **anyopaque) callconv(WINAPI) HRESULT;
+        const get_device: *const FnType = @ptrCast(self.vtable[7]);
 
-        return get_device(self, riid, ppDevice);
+        const hr = get_device(self, riid, ppDevice);
+        return switch (DXGI_ERROR_CODE(hr)) {
+            .S_OK => {},
+            else => |err| unexpectedError(err),
+        };
     }
 };
 
@@ -74,3 +79,20 @@ pub const DXGI_SWAP_CHAIN_DESC = extern struct {
     SwapEffect: DXGI_SWAP_EFFECT,
     Flags: UINT,
 };
+
+pub inline fn DXGI_ERROR_CODE(hr: HRESULT) DXGI_ERROR {
+    return @enumFromInt(hr);
+}
+
+pub const UnexpectedError = error{
+    Unexpected,
+};
+
+pub fn unexpectedError(dxgi_err: DXGI_ERROR) UnexpectedError {
+    std.debug.print("error.Unexpected: DXGI_ERROR({d}): {s}\n", .{
+        @intFromEnum(dxgi_err),
+        @tagName(dxgi_err),
+    });
+    std.debug.dumpCurrentStackTrace(@returnAddress());
+    return error.Unexpected;
+}

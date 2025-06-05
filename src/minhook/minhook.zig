@@ -39,6 +39,8 @@ pub const MH_STATUS = enum(INT) {
     ERROR_MODULE_NOT_FOUND = 11,
     // The specified function is not found.
     ERROR_FUNCTION_NOT_FOUND = 12,
+
+    _
 };
 
 pub extern fn MH_Initialize() callconv(WINAPI) MH_STATUS;

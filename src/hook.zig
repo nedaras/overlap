@@ -93,13 +93,10 @@ fn hkPresent(
 ) callconv(windows.WINAPI) windows.HRESULT {
     var device: *d3d11.ID3D11Device = undefined;
 
-    const result = pSwapChain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device));
-    std.debug.print("result: {}\n", .{result});
+    pSwapChain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device)) catch return o_present(pSwapChain, SyncInterval, Flags);
+    defer device.Release();
 
-    if (result == windows.S_OK) {
-        std.debug.print("device: {}\n", .{device});
-        device.Release();
-    }
+    std.debug.print("device: {}\n", .{device});
 
     return o_present(pSwapChain, SyncInterval, Flags);
 }
