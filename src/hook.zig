@@ -1,6 +1,7 @@
 const std = @import("std");
 const windows = @import("windows.zig");
 const minhook = @import("minhook.zig");
+const Surface = @import("Surface.zig");
 const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
@@ -17,35 +18,6 @@ const SwapChainResizeBuffers = @TypeOf(hkResizeBuffers);
 
 var o_present: *SwapChainPresent = undefined;
 var o_resize_buffers: *SwapChainResizeBuffers = undefined;
-
-fn surface_init(device: *d3d11.ID3D11Device) !void {
-    const vs = @embedFile("shaders/vs.glsl");
-    const ps = @embedFile("shaders/ps.glsl");
-    
-    var vertex_shader_blob: *d3dcommon.ID3DBlob = undefined;
-    var pixel_shader_blob: *d3dcommon.ID3DBlob = undefined;
-
-    const a = d3dcompiler.D3DCompile(vs.ptr, vs.len, null, null, null, "VS", "vs_5_0", 0, 0, &vertex_shader_blob, null);
-    const b = d3dcompiler.D3DCompile(ps.ptr, ps.len, null, null, null, "PS", "ps_5_0", 0, 0, &pixel_shader_blob, null);
-
-    if (a != windows.S_OK) {
-        return error.Unexpected;
-    }
-
-    if (b != windows.S_OK) {
-        return error.Unexpected;
-    }
-
-    var vertex_shader: *d3d11.ID3D11VertexShader = undefined;
-    var pixel_shader: *d3d11.ID3D11PixelShader = undefined;
-
-    try device.CreateVertexShader(vertex_shader_blob.GetBufferPointer(), vertex_shader_blob.GetBufferSize(), null, &vertex_shader);
-    defer vertex_shader.Release();
-
-    try device.CreatePixelShader(pixel_shader_blob.GetBufferPointer(), pixel_shader_blob.GetBufferSize(), null, &pixel_shader);
-    defer pixel_shader.Release();
-
-}
 
 // Idea is simple... Hook everything we can
 pub fn testing() !void {
@@ -105,7 +77,8 @@ pub fn testing() !void {
     const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
     const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
 
-    try surface_init(device);
+    const surface = try Surface.init(device, device_context);
+    defer surface.deinit();
 
     try minhook.MH_Initialize();
     defer minhook.MH_Uninitialize() catch {};
@@ -114,9 +87,9 @@ pub fn testing() !void {
     try minhook.MH_CreateHook(SwapChainResizeBuffers, resize_buffers, &hkResizeBuffers, &o_resize_buffers);
 
     try minhook.MH_EnableHook(SwapChainPresent, present);
-    try minhook.MH_EnableHook(SwapChainResizeBuffers, resize_buffers);
-
     defer minhook.MH_DisableHook(SwapChainPresent, present) catch {};
+
+    try minhook.MH_EnableHook(SwapChainResizeBuffers, resize_buffers);
     defer minhook.MH_DisableHook(SwapChainResizeBuffers, resize_buffers) catch {};
 
     while (true) {
@@ -169,12 +142,6 @@ fn hkResizeBuffers(
 const FrameError = @typeInfo(@typeInfo(@TypeOf(frame)).@"fn".return_type.?).error_union.error_set;
 
 fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
-    var device: *d3d11.ID3D11Device = undefined;
-
-    try swap_chain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device));
-    defer device.Release();
-
-    std.debug.print("device: {}\n", .{device});
-
+    _ = swap_chain;
     return error.Panic;
 }

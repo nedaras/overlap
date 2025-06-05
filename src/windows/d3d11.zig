@@ -27,7 +27,7 @@ pub const ID3D11VertexShader = extern struct {
     vtable: [*]const *const anyopaque,
 
     pub inline fn Release(self: *ID3D11VertexShader) void {
-        const FnType = fn (*anyopaque) callconv(WINAPI) ULONG;
+        const FnType = fn (*ID3D11VertexShader) callconv(WINAPI) ULONG;
         const release: *const FnType = @ptrCast(self.vtable[2]);
 
         _ = release(self);
@@ -38,7 +38,7 @@ pub const ID3D11PixelShader = extern struct {
     vtable: [*]const *const anyopaque,
 
     pub inline fn Release(self: *ID3D11PixelShader) void {
-        const FnType = fn (*anyopaque) callconv(WINAPI) ULONG;
+        const FnType = fn (*ID3D11PixelShader) callconv(WINAPI) ULONG;
         const release: *const FnType = @ptrCast(self.vtable[2]);
 
         _ = release(self);
@@ -60,13 +60,13 @@ pub const ID3D11Device = extern struct {
     };
 
     pub inline fn Release(self: *ID3D11Device) void {
-        const FnType = fn (*anyopaque) callconv(WINAPI) ULONG;
+        const FnType = fn (*ID3D11Device) callconv(WINAPI) ULONG;
         const release: *const FnType = @ptrCast(self.vtable[2]);
 
         _ = release(self);
     }
 
-    pub const CreateVertexShaderError = error{Unexpected};
+    pub const CreateShaderError = error{Unexpected};
 
     pub fn CreateVertexShader(
         self: *ID3D11Device,
@@ -74,8 +74,8 @@ pub const ID3D11Device = extern struct {
         BytecodeLength: SIZE_T,
         pClassLinkage: ?*ID3D11ClassLinkage,
         ppVertexShader: **ID3D11VertexShader,
-    ) CreateVertexShaderError!void {
-        const FnType = fn (*anyopaque, LPCVOID, SIZE_T, ?*ID3D11ClassLinkage, **ID3D11VertexShader) callconv(WINAPI) HRESULT;
+    ) CreateShaderError!void {
+        const FnType = fn (*ID3D11Device, LPCVOID, SIZE_T, ?*ID3D11ClassLinkage, **ID3D11VertexShader) callconv(WINAPI) HRESULT;
         const create_vertex_shader: *const FnType = @ptrCast(self.vtable[12]);
 
         const hr = create_vertex_shader(self, pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader);
@@ -91,8 +91,8 @@ pub const ID3D11Device = extern struct {
         BytecodeLength: SIZE_T,
         pClassLinkage: ?*ID3D11ClassLinkage,
         ppPixelShader: **ID3D11PixelShader,
-    ) CreateVertexShaderError!void {
-        const FnType = fn (*anyopaque, LPCVOID, SIZE_T, ?*ID3D11ClassLinkage, **ID3D11PixelShader) callconv(WINAPI) HRESULT;
+    ) CreateShaderError!void {
+        const FnType = fn (*ID3D11Device, LPCVOID, SIZE_T, ?*ID3D11ClassLinkage, **ID3D11PixelShader) callconv(WINAPI) HRESULT;
         const create_pixel_shader: *const FnType = @ptrCast(self.vtable[15]);
 
         const hr = create_pixel_shader(self, pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader);
@@ -107,7 +107,7 @@ pub const ID3D11DeviceContext = extern struct {
     vtable: [*]const *const anyopaque,
 
     pub inline fn Release(self: *ID3D11DeviceContext) void {
-        const FnType = fn (*anyopaque) callconv(WINAPI) ULONG;
+        const FnType = fn (*ID3D11DeviceContext) callconv(WINAPI) ULONG;
         const release: *const FnType = @ptrCast(self.vtable[2]);
 
         _ = release(self);

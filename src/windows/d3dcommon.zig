@@ -2,12 +2,20 @@ const std = @import("std");
 const windows = std.os.windows;
 
 const INT = windows.INT;
+const ULONG = windows.ULONG;
 const WINAPI = windows.WINAPI;
 const LPVOID = windows.LPVOID;
 const SIZE_T = windows.SIZE_T;
 
 pub const ID3DBlob = extern struct {
     vtable: [*]const *const anyopaque,
+
+    pub inline fn Release(self: *ID3DBlob) void {
+        const FnType = fn (*ID3DBlob) callconv(WINAPI) ULONG;
+        const release: *const FnType = @ptrCast(self.vtable[2]);
+
+        _ = release(self);
+    }
 
     pub inline fn GetBufferPointer(self: *ID3DBlob) LPVOID {
         const FnType = fn (*ID3DBlob) callconv(WINAPI) LPVOID;
