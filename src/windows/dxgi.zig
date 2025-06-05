@@ -24,7 +24,9 @@ pub const IDXGISwapChain = extern struct {
         _ = release(self);
     }
 
-    pub fn GetDevice(self: *IDXGISwapChain, riid: REFCIID, ppDevice: **anyopaque) !void {
+    pub const GetDeviceError = error{Unexpected};
+
+    pub fn GetDevice(self: *IDXGISwapChain, riid: REFCIID, ppDevice: **anyopaque) GetDeviceError!void {
         const FnType = fn (*anyopaque, REFCIID, **anyopaque) callconv(WINAPI) HRESULT;
         const get_device: *const FnType = @ptrCast(self.vtable[7]);
 

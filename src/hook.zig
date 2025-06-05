@@ -5,6 +5,7 @@ const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
 const mem = std.mem;
+const Thread = std.Thread;
 
 // Idea is simple... Hook everything we can
 pub fn testing() !void {
@@ -65,6 +66,7 @@ pub fn testing() !void {
     const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
 
     try minhook.MH_Initialize();
+    defer minhook.MH_Uninitialize() catch {};
 
     try minhook.MH_CreateHook(SwapChainPresent, present, &hkPresent, &o_present);
     try minhook.MH_CreateHook(SwapChainResizeBuffers, resize_buffers, &hkResizeBuffers, &o_resize_buffers);
@@ -72,13 +74,24 @@ pub fn testing() !void {
     try minhook.MH_EnableHook(SwapChainPresent, present);
     try minhook.MH_EnableHook(SwapChainResizeBuffers, resize_buffers);
 
-    std.time.sleep(std.time.ns_per_s * 15);
+    defer minhook.MH_DisableHook(SwapChainPresent, present) catch {};
+    defer minhook.MH_DisableHook(SwapChainResizeBuffers, resize_buffers) catch {};
 
-    try minhook.MH_DisableHook(SwapChainPresent, present);
-    try minhook.MH_DisableHook(SwapChainResizeBuffers, resize_buffers);
+    while (true) {
+        Thread.yield() catch unreachable;
 
-    try minhook.MH_Uninitialize();
+        mutex.lock();
+        defer mutex.unlock();
+
+        if (exit_err) |err| {
+            return err;
+        }
+    }
 }
+
+// todo: keep in mind all this is not so thread safe
+var mutex = Thread.Mutex.Recursive.init;
+var exit_err: ?FrameError = null;
 
 const SwapChainPresent = @TypeOf(hkPresent);
 const SwapChainResizeBuffers = @TypeOf(hkResizeBuffers);
@@ -91,13 +104,12 @@ fn hkPresent(
     SyncInterval: windows.UINT,
     Flags: windows.UINT
 ) callconv(windows.WINAPI) windows.HRESULT {
-    var device: *d3d11.ID3D11Device = undefined;
+    frame(pSwapChain) catch |err| {
+        mutex.lock();
+        defer mutex.unlock();
 
-    pSwapChain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device)) catch return o_present(pSwapChain, SyncInterval, Flags);
-    defer device.Release();
-
-    std.debug.print("device: {}\n", .{device});
-
+        exit_err = err;
+    };
     return o_present(pSwapChain, SyncInterval, Flags);
 }
 
@@ -111,4 +123,17 @@ fn hkResizeBuffers(
 ) callconv(windows.WINAPI) windows.HRESULT {
     std.debug.print("hkResizeBuffers\n", .{});
     return o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+}
+
+const FrameError = @typeInfo(@typeInfo(@TypeOf(frame)).@"fn".return_type.?).error_union.error_set;
+
+fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
+    var device: *d3d11.ID3D11Device = undefined;
+
+    try swap_chain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device));
+    defer device.Release();
+
+    std.debug.print("device: {}\n", .{device});
+
+    return error.Panic;
 }
