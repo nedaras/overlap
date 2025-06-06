@@ -29,7 +29,7 @@ pub const IDXGISwapChain = extern struct {
     pub fn GetDevice(
         self: *IDXGISwapChain,
         riid: REFCIID,
-        ppDevice: **anyopaque
+        ppDevice: **anyopaque,
     ) GetDeviceError!void {
         const FnType = fn (*IDXGISwapChain, REFCIID, **anyopaque) callconv(WINAPI) HRESULT;
         const get_device: *const FnType = @ptrCast(self.vtable[7]);
@@ -44,7 +44,7 @@ pub const IDXGISwapChain = extern struct {
     pub const GetBufferError = error{Unexpected};
 
     pub fn GetBuffer(
-        self: *IDXGISwapChain, 
+        self: *IDXGISwapChain,
         Buffer: UINT,
         riid: REFCIID,
         ppSurface: **anyopaque,
@@ -58,10 +58,9 @@ pub const IDXGISwapChain = extern struct {
             else => |err| unexpectedError(err),
         };
     }
-
 };
 
-pub const IDXGIAdapter = *opaque{};
+pub const IDXGIAdapter = *opaque {};
 
 pub const DXGI_FORMAT = INT;
 pub const DXGI_FORMAT_R32G32B32_FLOAT = 6;

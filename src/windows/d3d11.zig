@@ -38,12 +38,12 @@ pub const D3D11_USAGE_IMMUTABLE = 1;
 pub const D3D11_USAGE_DYNAMIC = 2;
 pub const D3D11_USAGE_STAGING = 3;
 
-pub const ID3D11ClassLinkage = *opaque{};
-pub const ID3D11ClassInstance = *opaque{};
-pub const ID3D11Resource = *opaque{};
-pub const ID3D11DepthStencilView = *opaque{};
+pub const ID3D11ClassLinkage = *opaque {};
+pub const ID3D11ClassInstance = *opaque {};
+pub const ID3D11Resource = *opaque {};
+pub const ID3D11DepthStencilView = *opaque {};
 
-pub const D3D11_RENDER_TARGET_VIEW_DESC = opaque{};
+pub const D3D11_RENDER_TARGET_VIEW_DESC = opaque {};
 
 pub const D3D11_VIEWPORT = extern struct {
     TopLeftX: FLOAT,
@@ -78,7 +78,6 @@ pub const D3D11_SUBRESOURCE_DATA = extern struct {
     SysMemPitch: UINT,
     SysMemSlicePitch: UINT,
 };
-
 
 pub const ID3D11RenderTargetView = extern struct {
     vtable: [*]const *const anyopaque,
@@ -145,7 +144,9 @@ pub const ID3D11Texture2D = extern struct {
         .Data3 = 0x4e89,
         .Data4 = .{
             0x9a, 0xb4,
-            0x48, 0x95, 0x35, 0xd3, 0x4f, 0x9c,
+            0x48, 0x95,
+            0x35, 0xd3,
+            0x4f, 0x9c,
         },
     };
 
@@ -167,7 +168,9 @@ pub const ID3D11Device = extern struct {
         .Data3 = 0x4e88,
         .Data4 = .{
             0x82, 0x53,
-            0x81, 0x9d, 0xf9, 0xbb, 0xf1, 0x40,
+            0x81, 0x9d,
+            0xf9, 0xbb,
+            0xf1, 0x40,
         },
     };
 
@@ -272,7 +275,6 @@ pub const ID3D11Device = extern struct {
 
         get_immediate_context(self, ppImmediateContext);
     }
-
 };
 
 pub const ID3D11DeviceContext = extern struct {
@@ -298,7 +300,7 @@ pub const ID3D11DeviceContext = extern struct {
 
         ps_set_shader(self, pPixelShader, class_instance_ptr, @intCast(class_instances_len));
     }
-    
+
     pub inline fn VSSetShader(
         self: *ID3D11DeviceContext,
         pVertexShader: *ID3D11VertexShader,
@@ -323,7 +325,7 @@ pub const ID3D11DeviceContext = extern struct {
 
         draw(self, VertexCount, StartVertexLocation);
     }
-    
+
     pub inline fn IASetInputLayout(self: *ID3D11DeviceContext, pInputLayout: *ID3D11InputLayout) void {
         const FnType = fn (*ID3D11DeviceContext, *ID3D11InputLayout) callconv(WINAPI) void;
         const ia_set_input_layout: *const FnType = @ptrCast(self.vtable[17]);

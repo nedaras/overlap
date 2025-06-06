@@ -26,11 +26,7 @@ pub fn generateOAuthUrl(self: Self) Allocator.Error![]u8 {
     Sha256.hash(self.code_verifier, &hash, .{});
     assert(base64.url_safe_no_pad.Encoder.encode(&challange, &hash).len == 43);
 
-    return try fmt.allocPrint(self.allocator, "https://accounts.spotify.com/authorize?response_type=code&client_id={s}&scope=user-read-playback-state+user-modify-playback-state&code_challenge_method=S256&code_challenge={s}&redirect_uri={s}", .{ 
-        self.client_id,
-        challange,
-        self.redirect_uri
-    });
+    return try fmt.allocPrint(self.allocator, "https://accounts.spotify.com/authorize?response_type=code&client_id={s}&scope=user-read-playback-state+user-modify-playback-state&code_challenge_method=S256&code_challenge={s}&redirect_uri={s}", .{ self.client_id, challange, self.redirect_uri });
 }
 
 pub fn retreiveAccessToken(self: Self, code: []const u8) !void {
@@ -59,9 +55,7 @@ pub fn retreiveAccessToken(self: Self, code: []const u8) !void {
     var req = try self.http_client.open(.POST, uri, .{
         .server_header_buffer = &header_buf,
         .redirect_behavior = .not_allowed,
-        .headers = .{
-            .content_type = .{ .override = "application/x-www-form-urlencoded" }
-        },
+        .headers = .{ .content_type = .{ .override = "application/x-www-form-urlencoded" } },
     });
     defer req.deinit();
 
@@ -77,7 +71,7 @@ pub fn retreiveAccessToken(self: Self, code: []const u8) !void {
 
     var scanner = json.Scanner.initStreaming(self.allocator);
     defer scanner.deinit();
-    
+
     var json_reader = json.reader(self.allocator, req.reader());
     defer json_reader.deinit();
 

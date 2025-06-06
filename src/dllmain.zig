@@ -25,7 +25,7 @@ inline fn tracedDllMain(instance: windows.HINSTANCE, reason: windows.DWORD, _: w
 
         const thread = try Thread.spawn(.{}, entry, .{instance});
         thread.detach();
-        
+
         return windows.TRUE;
     }
 

@@ -40,7 +40,7 @@ pub const MH_STATUS = enum(INT) {
     // The specified function is not found.
     ERROR_FUNCTION_NOT_FOUND = 12,
 
-    _
+    _,
 };
 
 pub extern fn MH_Initialize() callconv(WINAPI) MH_STATUS;

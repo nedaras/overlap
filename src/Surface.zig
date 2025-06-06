@@ -46,19 +46,21 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain, device: *d3d11.ID3D11Device) !Self
     var pixel_shader_blob: *d3dcommon.ID3DBlob = undefined;
 
     const hr_a = d3dcompiler.D3DCompile(vs.ptr, vs.len, null, null, null, "VS", "vs_5_0", 0, 0, &vertex_shader_blob, null);
-    if (hr_a != windows.S_OK) {
-        return error.Unexpected;
+    switch (d3d11.D3D11_ERROR_CODE(hr_a)) {
+        .S_OK => {},
+        else => |err| return d3d11.unexpectedError(err),
     }
+    errdefer result.vertex_shader.Release();
     defer vertex_shader_blob.Release();
 
     const hr_b = d3dcompiler.D3DCompile(ps.ptr, ps.len, null, null, null, "PS", "ps_5_0", 0, 0, &pixel_shader_blob, null);
-    if (hr_b != windows.S_OK) {
-        return error.Unexpected;
+    switch (d3d11.D3D11_ERROR_CODE(hr_b)) {
+        .S_OK => {},
+        else => |err| return d3d11.unexpectedError(err),
     }
     defer pixel_shader_blob.Release();
 
     try device.CreateVertexShader(vertex_shader_blob.slice(), null, &result.vertex_shader);
-    errdefer result.vertex_shader.Release();
 
     try device.CreatePixelShader(pixel_shader_blob.slice(), null, &result.pixel_shader);
     errdefer result.pixel_shader.Release();
@@ -88,7 +90,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain, device: *d3d11.ID3D11Device) !Self
     errdefer result.input_layout.Release();
 
     const verticies = &[_]Vertex{
-        .{ .pos = .{ 0.0,  0.5 }, .color = .{ 1.0, 0.0, 0.0 } }, // Top (red)
+        .{ .pos = .{ 0.0, 0.5 }, .color = .{ 1.0, 0.0, 0.0 } }, // Top (red)
         .{ .pos = .{ 0.5, -0.5 }, .color = .{ 0.0, 1.0, 0.0 } }, // Right (green)
         .{ .pos = .{ -0.5, -0.5 }, .color = .{ 0.0, 0.0, 1.0 } }, // Left (blue)
     };
@@ -119,21 +121,24 @@ pub fn deinit(self: Self) void {
 }
 
 pub fn render(self: Self, device_context: *d3d11.ID3D11DeviceContext) !void {
+    // k we need to like:
+    // * save programs ctx state
+    // * change that ctx state to our own
+    // * reset programs ctx state
+
     //const view_ports = [_]d3d11.D3D11_VIEWPORT{ .{
-        //.Width = 400.0,
-        //.Height = 400.0,
-        //.MinDepth = 0.0,
-        //.MaxDepth = 1.0,
-        //.TopLeftY = 0.0,
-        //.TopLeftX = 0.0,
+    //.Width = 400.0,
+    //.Height = 400.0,
+    //.MinDepth = 0.0,
+    //.MaxDepth = 1.0,
+    //.TopLeftY = 0.0,
+    //.TopLeftX = 0.0,
     //} };
 
     //device_context.RSSetViewports(&view_ports);
 
     var offset: windows.UINT = 0;
     var stride: windows.UINT = @sizeOf(Vertex);
-
-    device_context.ClearRenderTargetView(self.render_target_view, .{ 0.5, 0.5, 1.0, 1.0 });
 
     device_context.IASetInputLayout(self.input_layout);
     device_context.IASetVertexBuffers(0, (&self.vertex_buffer)[0..1], &stride, &offset);

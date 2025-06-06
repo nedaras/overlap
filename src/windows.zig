@@ -82,11 +82,7 @@ pub fn GetModuleInformation(hProcess: windows.HANDLE, hModule: windows.HMODULE) 
     return module_info;
 }
 
-
-pub const GetProcAddressError = error{
-    ProcedureNotFound,
-    Unexpected
-};
+pub const GetProcAddressError = error{ ProcedureNotFound, Unexpected };
 
 pub fn GetProcAddress(hModule: windows.HMODULE, lpProcName: [:0]const u8) GetProcAddressError!windows.FARPROC {
     return kernel32.GetProcAddress(hModule, lpProcName) orelse {
