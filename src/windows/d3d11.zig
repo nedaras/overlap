@@ -334,11 +334,11 @@ pub const ID3D11DeviceContext = extern struct {
     pub inline fn IASetVertexBuffers(
         self: *ID3D11DeviceContext,
         StartSlot: UINT,
-        VertexBuffers: []const ID3D11Buffer,
+        VertexBuffers: []const *const ID3D11Buffer,
         pStrides: *const UINT,
         pOffsets: *const UINT,
     ) void {
-        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]const ID3D11Buffer, *const UINT, *const UINT) callconv(WINAPI) void;
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]const *const ID3D11Buffer, *const UINT, *const UINT) callconv(WINAPI) void;
         const ia_set_input_vertex_buffers: *const FnType = @ptrCast(self.vtable[18]);
 
         ia_set_input_vertex_buffers(self, StartSlot, @intCast(VertexBuffers.len), VertexBuffers.ptr, pStrides, pOffsets);
