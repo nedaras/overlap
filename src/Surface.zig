@@ -6,6 +6,10 @@ const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
 const d3dcompiler = windows.d3dcompiler;
 
+const c = @cImport({
+    @cInclude("d3d11.h");
+});
+
 const Vertex = extern struct {
     pos: [2]f32,
     color: [3]f32,
@@ -119,6 +123,8 @@ pub fn deinit(self: Self) void {
 }
 
 pub fn render(self: Self, device_context: *d3d11.ID3D11DeviceContext) !void {
+    const c_ctx: *c.ID3D11DeviceContext = @ptrCast(device_context);
+
     //const view_ports = [_]d3d11.D3D11_VIEWPORT{ .{
         //.Width = 400.0,
         //.Height = 400.0,
@@ -126,21 +132,30 @@ pub fn render(self: Self, device_context: *d3d11.ID3D11DeviceContext) !void {
         //.MaxDepth = 1.0,
         //.TopLeftY = 0.0,
         //.TopLeftX = 0.0,
-    //} };
+    //} };/home/nedas/source/overlap/.zig-cache/o/a9d69ecaf6b42552b293d4e51104fae5/cimport.zig
 
     //device_context.RSSetViewports(&view_ports);
 
     var offset: windows.UINT = 0;
     var stride: windows.UINT = @sizeOf(Vertex);
 
+    c_ctx.lpVtbl.*.IASetInputLayout.?(c_ctx, @ptrCast(self.input_layout));
+    c_ctx.lpVtbl.*.IASetVertexBuffers.?(c_ctx, 0, 1, @ptrCast(&self.vertex_buffer), &stride, &offset);
+    c_ctx.lpVtbl.*.IASetPrimitiveTopology.?(c_ctx, c.D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    c_ctx.lpVtbl.*.VSSetShader.?(c_ctx, @ptrCast(self.vertex_shader), null, 0);
+    c_ctx.lpVtbl.*.PSSetShader.?(c_ctx, @ptrCast(self.pixel_shader), null, 0);
+
+    c_ctx.lpVtbl.*.OMSetRenderTargets.?(c_ctx, 1, @ptrCast(&self.render_target_view), null);
+    c_ctx.lpVtbl.*.Draw.?(c_ctx, 3, offset);
+
     //device_context.ClearRenderTargetView(self.render_target_view, .{ 0.5, 0.5, 1.0, 1.0 });
 
-    device_context.IASetInputLayout(self.input_layout);
-    device_context.IASetVertexBuffers(0, self.vertex_buffer[0..1], &stride, &offset);
-    device_context.IASetPrimitiveTopology(d3dcommon.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    device_context.VSSetShader(self.vertex_shader, null);
-    device_context.PSSetShader(self.pixel_shader, null);
+    //device_context.IASetInputLayout(self.input_layout);
+    //device_context.IASetVertexBuffers(0, self.vertex_buffer[0..1], &stride, &offset);
+    //device_context.IASetPrimitiveTopology(d3dcommon.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    //device_context.VSSetShader(self.vertex_shader, null);
+    //device_context.PSSetShader(self.pixel_shader, null);
 
-    device_context.OMSetRenderTargets((&self.render_target_view)[0..1], null);
-    device_context.Draw(3, offset);
+    //device_context.OMSetRenderTargets((&self.render_target_view)[0..1], null);
+    //device_context.Draw(3, offset);
 }
