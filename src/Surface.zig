@@ -19,7 +19,6 @@ vertex_buffer: *d3d11.ID3D11Buffer,
 vertex_shader: *d3d11.ID3D11VertexShader,
 pixel_shader: *d3d11.ID3D11PixelShader,
 
-
 const Self = @This();
 
 // Idea is to have like one Surface api and have multiple backends d3d opengl vulkan
@@ -120,8 +119,19 @@ pub fn deinit(self: Self) void {
 }
 
 pub fn render(self: Self, device_context: *d3d11.ID3D11DeviceContext) !void {
-    var stride: windows.UINT = @sizeOf(Vertex);
+    const view_ports = [_]d3d11.D3D11_VIEWPORT{ .{
+        .Width = 400.0,
+        .Height = 400.0,
+        .MinDepth = 0.0,
+        .MaxDepth = 1.0,
+        .TopLeftY = 0.0,
+        .TopLeftX = 0.0,
+    } };
+
+    device_context.RSSetViewports(&view_ports);
+
     var offset: windows.UINT = 0;
+    var stride: windows.UINT = @sizeOf(Vertex);
 
     device_context.ClearRenderTargetView(self.render_target_view, .{ 0.5, 0.5, 1.0, 1.0 });
     device_context.OMSetRenderTargets((&self.render_target_view)[0..1], null);
@@ -132,5 +142,5 @@ pub fn render(self: Self, device_context: *d3d11.ID3D11DeviceContext) !void {
     device_context.VSSetShader(self.vertex_shader, null);
     device_context.PSSetShader(self.pixel_shader, null);
 
-    device_context.Draw(3, 0);
+    device_context.Draw(3, offset);
 }

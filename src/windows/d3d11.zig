@@ -9,6 +9,7 @@ const INT = windows.INT;
 const GUID = windows.GUID;
 const UINT = windows.UINT;
 const ULONG = windows.ULONG;
+const FLOAT = windows.FLOAT;
 const SIZE_T = windows.SIZE_T;
 const LPCSTR = windows.LPCSTR;
 const WINAPI = windows.WINAPI;
@@ -43,6 +44,15 @@ pub const ID3D11Resource = *opaque{};
 pub const ID3D11DepthStencilView = *opaque{};
 
 pub const D3D11_RENDER_TARGET_VIEW_DESC = opaque{};
+
+pub const D3D11_VIEWPORT = extern struct {
+    TopLeftX: FLOAT,
+    TopLeftY: FLOAT,
+    Width: FLOAT,
+    Height: FLOAT,
+    MinDepth: FLOAT,
+    MaxDepth: FLOAT,
+};
 
 pub const D3D11_INPUT_ELEMENT_DESC = extern struct {
     SemanticName: LPCSTR,
@@ -352,6 +362,13 @@ pub const ID3D11DeviceContext = extern struct {
         const om_set_render_targets: *const FnType = @ptrCast(self.vtable[33]);
 
         om_set_render_targets(self, @intCast(RenderTargetViews.len), RenderTargetViews.ptr, pDepthStencilView);
+    }
+
+    pub inline fn RSSetViewports(self: *ID3D11DeviceContext, Viewports: []const D3D11_VIEWPORT) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, [*]const D3D11_VIEWPORT) callconv(WINAPI) void;
+        const rs_set_viewports: *const FnType = @ptrCast(self.vtable[44]);
+
+        rs_set_viewports(self, @intCast(Viewports.len), Viewports.ptr);
     }
 
     pub inline fn ClearRenderTargetView(
