@@ -77,9 +77,6 @@ pub fn testing() !void {
     const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
     const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
 
-    //const surface = try Surface.init(device);
-    //defer surface.deinit();
-
     try minhook.MH_Initialize();
     defer minhook.MH_Uninitialize() catch {};
 
@@ -142,7 +139,7 @@ fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
     defer device_context.Release();
 
     if (surface == null) {
-        surface = try Surface.init(swap_chain, device);
+        surface = try Surface.init(swap_chain, device); // deinit is not called never
     }
 
     try surface.?.render(device_context);

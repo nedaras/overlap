@@ -18,7 +18,7 @@ pub const IDXGISwapChain = extern struct {
     vtable: [*]const *const anyopaque,
 
     pub inline fn Release(self: *IDXGISwapChain) void {
-        const FnType = fn (*anyopaque) callconv(WINAPI) ULONG;
+        const FnType = fn (*IDXGISwapChain) callconv(WINAPI) ULONG;
         const release: *const FnType = @ptrCast(self.vtable[2]);
 
         _ = release(self);
