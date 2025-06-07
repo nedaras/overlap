@@ -1,7 +1,6 @@
 const std = @import("std");
 const windows = @import("windows.zig");
-//const minhook = @import("minhook.zig");
-const zz = @import("zigzag");
+const minhook = @import("minhook.zig");
 const D3D11Backend = @import("gui/backends/D3D11Backend.zig");
 const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
@@ -11,22 +10,25 @@ const atomic = std.atomic;
 const mem = std.mem;
 const Thread = std.Thread;
 const assert = std.debug.assert;
+const error_tracing = std.posix.unexpected_error_tracing;
 
 pub const Gui = @import("Gui.zig");
 
 const Desc = struct {
-    frame_cb: *const fn (gui: Gui) void,
+    frame_cb: *const fn (gui: Gui) error{Testing}!void,
     cleanup_cb: ?*const fn () void = null,
 };
 
-const ExitError = D3D11Backend.Error;
+const ExitError = D3D11Backend.Error || error{Testing};
 
 const state = struct {
-    var frame_cb: ?*const fn (gui: Gui) void = null;
+    var frame_cb: ?*const fn (gui: Gui) error{Testing}!void = null;
     var cleanup_cb: ?*const fn () void = null;
 
     var reset_event = Thread.ResetEvent{};
+
     var exit_err: ?ExitError = undefined;
+    var exit_trace: if (error_tracing) ?std.builtin.StackTrace else void = if (error_tracing) null else {};
 
     var d3d11_backend: ?D3D11Backend = null;
 };
@@ -84,52 +86,48 @@ pub fn run(desc: Desc) !void {
         else => |err| return d3d11.unexpectedError(err),
     }
 
-    defer swap_chain.Release();
-    defer device.Release();
-    defer device_context.Release();
 
-    const present: *SwapChainPresent = @constCast(@ptrCast(swap_chain.vtable[8]));
-    const resize_buffers: *SwapChainResizeBuffers = @constCast(@ptrCast(swap_chain.vtable[13]));
+    {
+        defer swap_chain.Release();
+        defer device.Release();
+        defer device_context.Release();
 
-    // just swap vtables
+        const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
+        const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
 
-    var pca = try zz.PageChunkAllocator.init();
-    defer pca.deinit();
+        try minhook.MH_Initialize();
+        defer minhook.MH_Uninitialize() catch {};
 
-    const ca = pca.allocator();
+        try minhook.MH_CreateHook(SwapChainPresent, present, &hkPresent, &o_present);
+        defer minhook.MH_RemoveHook(SwapChainPresent, present) catch {};
 
-    const hook_a = try zz.Hook(SwapChainPresent).init(ca, present, &hkPresent);
-    defer _ = hook_a.deinit();
+        try minhook.MH_CreateHook(SwapChainResizeBuffers, resize_buffers, &hkResizeBuffers, &o_resize_buffers);
+        defer minhook.MH_RemoveHook(SwapChainResizeBuffers, resize_buffers) catch {};
 
-    const hook_b = try zz.Hook(SwapChainResizeBuffers).init(ca, resize_buffers, &hkResizeBuffers);
-    defer _ = hook_b.deinit();
+        state.frame_cb = desc.frame_cb;
+        state.cleanup_cb = desc.cleanup_cb;
 
-    o_present = hook_a.delegate;
-    o_resize_buffers = hook_b.delegate;
+        try minhook.MH_EnableHook(SwapChainPresent, present);
+        defer minhook.MH_DisableHook(SwapChainPresent, present) catch {};
 
-    //try minhook.MH_Initialize();
-    //defer minhook.MH_Uninitialize() catch {};
+        try minhook.MH_EnableHook(SwapChainResizeBuffers, resize_buffers);
+        defer minhook.MH_DisableHook(SwapChainResizeBuffers, resize_buffers) catch {};
 
-    //try minhook.MH_CreateHook(SwapChainPresent, present, &hkPresent, &o_present);
-    //defer minhook.MH_RemoveHook(SwapChainPresent, present) catch {};
+        state.reset_event.wait();
+    }
 
-    //try minhook.MH_CreateHook(SwapChainResizeBuffers, resize_buffers, &hkResizeBuffers, &o_resize_buffers);
-    //defer minhook.MH_RemoveHook(SwapChainResizeBuffers, resize_buffers) catch {};
-
-    state.frame_cb = desc.frame_cb;
-    state.cleanup_cb = desc.cleanup_cb;
-
-    //try minhook.MH_EnableHook(SwapChainPresent, present);
-    //defer minhook.MH_DisableHook(SwapChainPresent, present) catch {};
-
-    //try minhook.MH_EnableHook(SwapChainResizeBuffers, resize_buffers);
-    //defer minhook.MH_DisableHook(SwapChainResizeBuffers, resize_buffers) catch {};
-
-    // todo: Add Remove hook from minhook
-
-    state.reset_event.wait();
 
     if (state.exit_err) |err| {
+        std.debug.print("error: {s}\n", .{@errorName(err)});
+        if (error_tracing) {
+            if (state.exit_trace) |trace| {
+                std.debug.dumpStackTrace(trace);
+
+                // cant err cuz we used debug_info to save that trace
+                const debug_info = std.debug.getSelfDebugInfo() catch unreachable;
+                debug_info.allocator.free(trace.instruction_addresses);
+            }
+        }
         return err;
     }
 }
@@ -152,8 +150,8 @@ fn cleanup() void {
 const SwapChainPresent = @TypeOf(hkPresent);
 const SwapChainResizeBuffers = @TypeOf(hkResizeBuffers);
 
-var o_present: *const SwapChainPresent = undefined;
-var o_resize_buffers: *const SwapChainResizeBuffers = undefined;
+var o_present: *SwapChainPresent = undefined;
+var o_resize_buffers: *SwapChainResizeBuffers = undefined;
 
 fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
     // we could only call frame if swap cahin ptrs matches
@@ -168,6 +166,17 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
                 cleanup();
                 state.exit_err = err;
 
+                if (error_tracing) {
+                    assert(state.exit_trace == null);
+                    const debug_info = std.debug.getSelfDebugInfo() catch break: blk;
+                    if (@errorReturnTrace()) |trace| {
+                        state.exit_trace = std.builtin.StackTrace{
+                            .instruction_addresses = debug_info.allocator.dupe(usize, trace.instruction_addresses) catch break: blk,
+                            .index = trace.index,
+                        };
+                    }
+                }
+
                 break :blk;
             };
         }
@@ -175,7 +184,25 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
         const backend = state.d3d11_backend.?.backend();
         defer backend.frame();
 
-        state.frame_cb.?(Gui{ .backend = backend });
+        state.frame_cb.?(Gui{ .backend = backend }) catch |err| {
+            defer state.reset_event.set();
+
+            cleanup();
+            state.exit_err = err;
+
+            if (error_tracing) {
+                assert(state.exit_trace == null);
+                const debug_info = std.debug.getSelfDebugInfo() catch break: blk;
+                if (@errorReturnTrace()) |trace| {
+                    state.exit_trace = std.builtin.StackTrace{
+                        .instruction_addresses = debug_info.allocator.dupe(usize, trace.instruction_addresses) catch break: blk,
+                        .index = trace.index,
+                    };
+                }
+            }
+
+            break :blk;
+        };
     }
 
     return o_present(pSwapChain, SyncInterval, Flags);
@@ -193,6 +220,17 @@ fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, 
 
         cleanup();
         state.exit_err = err;
+
+        if (error_tracing) {
+            assert(state.exit_trace == null);
+            const debug_info = std.debug.getSelfDebugInfo() catch break: blk null;
+            if (@errorReturnTrace()) |trace| {
+                state.exit_trace = std.builtin.StackTrace{
+                    .instruction_addresses = debug_info.allocator.dupe(usize, trace.instruction_addresses) catch break: blk null,
+                    .index = trace.index,
+                };
+            }
+        }
 
         break :blk null;
     };
