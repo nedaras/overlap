@@ -6,6 +6,7 @@ const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
 const d3dcompiler = windows.d3dcompiler;
+const atomic = std.atomic;
 const mem = std.mem;
 const Thread = std.Thread;
 const assert = std.debug.assert;
@@ -17,20 +18,16 @@ const Desc = struct {
     cleanup_cb: ?*const fn () void = null,
 };
 
+const FrameError = @typeInfo(@typeInfo(@TypeOf(frame)).@"fn".return_type.?).error_union.error_set;
+
 const state = struct {
     var frame_cb: ?*const fn (gui: Gui) void = null;
     var cleanup_cb: ?*const fn () void = null;
 
-    var exiting = false;
+    var reset_event = Thread.ResetEvent{};
+    var exit_err: ?FrameError = undefined;
 
     var d3d11_backend: ?D3D11Backend = null;
-};
-
-const shared_state = struct {
-    var mutex = Thread.Mutex.Recursive.init;
-
-    const FrameError = @typeInfo(@typeInfo(@TypeOf(frame)).@"fn".return_type.?).error_union.error_set;
-    var frame_err: ?FrameError = undefined;
 };
 
 // Idea is simple... Hook everything we can
@@ -110,18 +107,16 @@ pub fn run(desc: Desc) !void {
 
     // todo: Add Remove hook from minhook
 
-    // mb check while exiting
-    // we dont need mutex just like @atomic stuff
-    while (true) {
-        Thread.yield() catch unreachable;
+    state.reset_event.wait();
 
-        shared_state.mutex.lock();
-        defer shared_state.mutex.unlock();
-
-        if (shared_state.frame_err) |err| {
-            return err;
-        }
+    if (state.exit_err) |err| {
+        return err;
     }
+}
+
+pub fn unhook() void {
+    assert(state.frame_cb != null);
+    state.reset_event.set();
 }
 
 fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
@@ -152,8 +147,9 @@ var o_present: *SwapChainPresent = undefined;
 var o_resize_buffers: *SwapChainResizeBuffers = undefined;
 
 fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
-    if (!state.exiting) frame(pSwapChain) catch |err| {
-        state.exiting = true;
+    const is_set = state.reset_event.impl.state.load(.monotonic) == 2; // Bit faster
+    if (!is_set) frame(pSwapChain) catch |err| {
+        defer state.reset_event.set();
 
         // stack trace crashes here idk why prob cuz trampoline  hooking by minhook
         //if (@errorReturnTrace()) |trace| {
@@ -161,11 +157,7 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
         //}
 
         cleanup();
-
-        shared_state.mutex.lock();
-        defer shared_state.mutex.unlock();
-
-        shared_state.frame_err = err;
+        state.exit_err = err;
     };
 
     return o_present(pSwapChain, SyncInterval, Flags);

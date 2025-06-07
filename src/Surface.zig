@@ -50,7 +50,6 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain, device: *d3d11.ID3D11Device) !Self
         .S_OK => {},
         else => |err| return d3d11.unexpectedError(err),
     }
-    errdefer result.vertex_shader.Release();
     defer vertex_shader_blob.Release();
 
     const hr_b = d3dcompiler.D3DCompile(ps.ptr, ps.len, null, null, null, "PS", "ps_5_0", 0, 0, &pixel_shader_blob, null);
@@ -61,6 +60,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain, device: *d3d11.ID3D11Device) !Self
     defer pixel_shader_blob.Release();
 
     try device.CreateVertexShader(vertex_shader_blob.slice(), null, &result.vertex_shader);
+    errdefer result.vertex_shader.Release();
 
     try device.CreatePixelShader(pixel_shader_blob.slice(), null, &result.pixel_shader);
     errdefer result.pixel_shader.Release();
