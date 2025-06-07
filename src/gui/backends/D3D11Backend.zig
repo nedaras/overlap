@@ -7,8 +7,6 @@ const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
 const d3dcompiler = windows.d3dcompiler;
 
-swap_chain: *dxgi.IDXGISwapChain,
-device: *d3d11.ID3D11Device,
 device_context: *d3d11.ID3D11DeviceContext,
 
 render_target_view: *d3d11.ID3D11RenderTargetView,
@@ -42,18 +40,13 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     var vertex_shader_blob: *d3dcommon.ID3DBlob = undefined;
     var pixel_shader_blob: *d3dcommon.ID3DBlob = undefined;
 
-    swap_chain.AddRef();
-    errdefer swap_chain.Release();
-
     try swap_chain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device));
-    errdefer device.Release();
+    defer device.Release();
 
     device.GetImmediateContext(&device_context);
     errdefer device_context.Release();
 
     var result = Self{
-        .swap_chain = swap_chain,
-        .device = device,
         .device_context = device_context,
         .render_target_view = undefined,
         .vertex_shader = undefined,
@@ -166,8 +159,6 @@ const D3D11Backend = struct {
         self.render_target_view.Release();
 
         self.device_context.Release();
-        self.device.Release();
-        self.swap_chain.Release();
     }
 
     fn frame(context: *const anyopaque) void {

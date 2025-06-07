@@ -139,8 +139,8 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
     // we could only call frame if swap cahin ptrs matches
 
     // Need to think if .monotonic is good here
-    const is_set = state.reset_event.impl.state.load(.monotonic) == 2; // Bit faster
-    if (!is_set) blk: {
+    const exiting = state.reset_event.impl.state.load(.monotonic) == 2; // Bit faster
+    if (!exiting) blk: {
         if (state.d3d11_backend == null) {
             state.d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| {
                 defer state.reset_event.set();
@@ -162,14 +162,19 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
 }
 
 fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, Width: windows.UINT, Height: windows.UINT, NewFormat: dxgi.DXGI_FORMAT, SwapChainFlags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
-    // todo: fix this when it starts causing problems.
-    // !!!!!!! fix this
+    if (state.reset_event.isSet() or state.d3d11_backend == null) {
+        return o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+    }
 
     state.d3d11_backend.?.deinit();
     const hr = o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
-    state.d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| {
-        std.debug.print("cr err: {}\n", .{err});
-        unreachable;
+    state.d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| blk: {
+        defer state.reset_event.set();
+
+        cleanup();
+        state.exit_err = err;
+
+        break :blk null;
     };
 
     return hr;
