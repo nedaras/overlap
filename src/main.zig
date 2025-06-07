@@ -6,7 +6,7 @@ var trc: std.builtin.StackTrace = .{
     .index = undefined,
 };
 
-fn frame(gui: hook.Gui) !void {
+fn frame(gui: hook.Gui) error{Testing}!void {
     _ = gui;
     try ohNoo();
 }

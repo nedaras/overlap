@@ -86,11 +86,11 @@ pub fn run(desc: Desc) !void {
         else => |err| return d3d11.unexpectedError(err),
     }
 
+    defer swap_chain.Release();
+    defer device.Release();
+    defer device_context.Release();
 
     {
-        defer swap_chain.Release();
-        defer device.Release();
-        defer device_context.Release();
 
         const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
         const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
@@ -118,23 +118,35 @@ pub fn run(desc: Desc) !void {
 
 
     if (state.exit_err) |err| {
-        std.debug.print("error: {s}\n", .{@errorName(err)});
+        std.debug.print("$1error: {s}\n", .{@errorName(err)});
         if (error_tracing) {
             if (state.exit_trace) |trace| {
                 std.debug.dumpStackTrace(trace);
 
                 // cant err cuz we used debug_info to save that trace
                 const debug_info = std.debug.getSelfDebugInfo() catch unreachable;
-                debug_info.allocator.free(trace.instruction_addresses);
+                const debug_allocator = debug_info.allocator;
+
+                debug_allocator.free(trace.instruction_addresses);
             }
         }
-        return err;
     }
 }
 
 pub fn unhook() void {
     assert(state.frame_cb != null);
     state.reset_event.set();
+}
+
+fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
+    if (state.d3d11_backend == null) {
+        state.d3d11_backend = try D3D11Backend.init(swap_chain);
+    }
+
+    const backend = state.d3d11_backend.?.backend();
+    defer backend.frame();
+
+    try state.frame_cb.?(Gui{ .backend = backend });
 }
 
 fn cleanup() void {
@@ -158,52 +170,27 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
 
     // Need to think if .monotonic is good here
     const exiting = state.reset_event.impl.state.load(.monotonic) == 2; // Bit faster
-    if (!exiting) blk: {
-        if (state.d3d11_backend == null) {
-            state.d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| {
-                defer state.reset_event.set();
+    if (!exiting) frame(pSwapChain) catch |err| {
+        defer state.reset_event.set();
 
-                cleanup();
-                state.exit_err = err;
+        if (error_tracing) blk: {
+            assert(state.exit_trace == null);
 
-                if (error_tracing) {
-                    assert(state.exit_trace == null);
-                    const debug_info = std.debug.getSelfDebugInfo() catch break: blk;
-                    if (@errorReturnTrace()) |trace| {
-                        state.exit_trace = std.builtin.StackTrace{
-                            .instruction_addresses = debug_info.allocator.dupe(usize, trace.instruction_addresses) catch break: blk,
-                            .index = trace.index,
-                        };
-                    }
-                }
+            const debug_info = std.debug.getSelfDebugInfo() catch break :blk;
+            const debug_allocator = debug_info.allocator;
 
-                break :blk;
-            };
+            if (@errorReturnTrace()) |trace| {
+                const instruction_addresses = debug_allocator.dupe(usize, trace.instruction_addresses) catch break: blk;
+                state.exit_trace = std.builtin.StackTrace{
+                    .instruction_addresses = instruction_addresses,
+                    .index = trace.index,
+                };
+            }
         }
 
-        const backend = state.d3d11_backend.?.backend();
-        defer backend.frame();
-
-        state.frame_cb.?(Gui{ .backend = backend }) catch |err| {
-            defer state.reset_event.set();
-
-            cleanup();
-            state.exit_err = err;
-
-            if (error_tracing) {
-                assert(state.exit_trace == null);
-                const debug_info = std.debug.getSelfDebugInfo() catch break: blk;
-                if (@errorReturnTrace()) |trace| {
-                    state.exit_trace = std.builtin.StackTrace{
-                        .instruction_addresses = debug_info.allocator.dupe(usize, trace.instruction_addresses) catch break: blk,
-                        .index = trace.index,
-                    };
-                }
-            }
-
-            break :blk;
-        };
-    }
+        assert(state.exit_err == null);
+        state.exit_err = err;
+    };
 
     return o_present(pSwapChain, SyncInterval, Flags);
 }
@@ -215,25 +202,7 @@ fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, 
 
     state.d3d11_backend.?.deinit();
     const hr = o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
-    state.d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| blk: {
-        defer state.reset_event.set();
-
-        cleanup();
-        state.exit_err = err;
-
-        if (error_tracing) {
-            assert(state.exit_trace == null);
-            const debug_info = std.debug.getSelfDebugInfo() catch break: blk null;
-            if (@errorReturnTrace()) |trace| {
-                state.exit_trace = std.builtin.StackTrace{
-                    .instruction_addresses = debug_info.allocator.dupe(usize, trace.instruction_addresses) catch break: blk null,
-                    .index = trace.index,
-                };
-            }
-        }
-
-        break :blk null;
-    };
+    state.d3d11_backend = D3D11Backend.init(pSwapChain) catch unreachable;
 
     return hr;
 }
