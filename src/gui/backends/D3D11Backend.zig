@@ -24,11 +24,11 @@ const Vertex = extern struct {
     color: [3]f32,
 };
 
-pub const InitError = error{
+pub const Error = error{
     Unexpected,
 };
 
-pub fn init(swap_chain: *dxgi.IDXGISwapChain) InitError!Self {
+pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     var device: *d3d11.ID3D11Device = undefined;
 
     var vertex_shader_blob: *d3dcommon.ID3DBlob = undefined;
@@ -140,7 +140,7 @@ pub inline fn backend(self: *const Self) Backend {
 }
 
 const D3D11Backend = struct {
-   pub const vtable  = Backend.VTable{
+    pub const vtable = Backend.VTable{
         .deinit = &D3D11Backend.deinit,
         .frame = &D3D11Backend.frame,
     };
