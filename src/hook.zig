@@ -163,6 +163,13 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
 
 fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, Width: windows.UINT, Height: windows.UINT, NewFormat: dxgi.DXGI_FORMAT, SwapChainFlags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
     // todo: fix this when it starts causing problems.
+    // !!!!!!! fix this
+
+    state.d3d11_backend.?.removeObjects();
     const hr = o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+    state.d3d11_backend.?.createObjects() catch |err| {
+        std.debug.print("cr err: {}\n", .{err});
+    };
+
     return hr;
 }

@@ -17,6 +17,13 @@ const WINAPI = windows.WINAPI;
 pub const IDXGISwapChain = extern struct {
     vtable: [*]const *const anyopaque,
 
+    pub inline fn AddRef(self: *IDXGISwapChain) void {
+        const FnType = fn (*IDXGISwapChain) callconv(WINAPI) ULONG;
+        const add_ref: *const FnType = @ptrCast(self.vtable[1]);
+
+        _ = add_ref(self);
+    }
+
     pub inline fn Release(self: *IDXGISwapChain) void {
         const FnType = fn (*IDXGISwapChain) callconv(WINAPI) ULONG;
         const release: *const FnType = @ptrCast(self.vtable[2]);

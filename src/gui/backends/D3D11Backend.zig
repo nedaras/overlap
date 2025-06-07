@@ -31,11 +31,11 @@ pub const Error = error{
 };
 
 pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
-    // todo: swap_chain.AddRef()
-    // errdefer swap_chain.Release()
-
     var device: *d3d11.ID3D11Device = undefined;
     var device_context: *d3d11.ID3D11DeviceContext = undefined;
+
+    swap_chain.AddRef();
+    errdefer swap_chain.Release();
 
     try swap_chain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device));
     errdefer device.Release();
@@ -199,10 +199,9 @@ const D3D11Backend = struct {
 
         removeObjects(self);
 
-        self.device.Release();
         self.device_context.Release();
-
-        // only when we AddRef self.swap_chain.Release();
+        self.device.Release();
+        self.swap_chain.Release();
     }
 
     fn frame(context: *const anyopaque) void {
