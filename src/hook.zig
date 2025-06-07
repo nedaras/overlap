@@ -14,27 +14,44 @@ const error_tracing = std.posix.unexpected_error_tracing;
 
 pub const Gui = @import("Gui.zig");
 
+pub fn Desc2(comptime T: type) type {
+    return struct {
+        const Error = T;
+
+        frame_cb: *const fn (gui: Gui) Error!void,
+        cleanup_cb: ?*const fn () void = null,
+    };
+}
+
 const Desc = struct {
-    frame_cb: *const fn (gui: Gui) error{Testing}!void,
+    frame_cb: *const fn (gui: Gui) error{testing}!void,
     cleanup_cb: ?*const fn () void = null,
 };
 
-const ExitError = D3D11Backend.Error || error{Testing};
-
 const state = struct {
-    var frame_cb: ?*const fn (gui: Gui) error{Testing}!void = null;
+    var frame_cb: ?*const fn (gui: Gui) anyerror!void = null;
     var cleanup_cb: ?*const fn () void = null;
 
     var reset_event = Thread.ResetEvent{};
 
-    var exit_err: ?ExitError = undefined;
+    var exit_err: ?anyerror = null;
     var exit_trace: if (error_tracing) ?std.builtin.StackTrace else void = if (error_tracing) null else {};
 
     var d3d11_backend: ?D3D11Backend = null;
 };
 
+fn extractError(comptime FnType: type) type {
+    return switch (@typeInfo(FnType)) {
+        .@"fn" => |f| return switch (@typeInfo(f.return_type.?)) {
+            .error_union => |err_union| err_union.error_set,
+            else => @panic("Implement non err set return type"),
+        },
+        else => @compileError("Expected fn type, found '" ++ @typeName(FnType) ++ "'"),
+    };
+}
+
 // Idea is simple... Hook everything we can
-pub fn run(desc: Desc) !void {
+pub fn run(comptime FnType: type, desc: Desc2(extractError(FnType))) !void {
     assert(state.frame_cb == null);
 
     const d3d11_lib = try windows.GetModuleHandle("d3d11.dll");
@@ -91,7 +108,6 @@ pub fn run(desc: Desc) !void {
     defer device_context.Release();
 
     {
-
         const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
         const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
 
@@ -116,9 +132,10 @@ pub fn run(desc: Desc) !void {
         state.reset_event.wait();
     }
 
-
     if (state.exit_err) |err| {
-        std.debug.print("$1error: {s}\n", .{@errorName(err)});
+        const Error = D3D11Backend.Error || extractError(FnType);
+
+        std.debug.print("$1error: {s}\n", .{@errorName(@as(Error, @errorCast(err)))});
         if (error_tracing) {
             if (state.exit_trace) |trace| {
                 std.debug.dumpStackTrace(trace);
@@ -131,7 +148,7 @@ pub fn run(desc: Desc) !void {
             }
         }
 
-        return err;
+        return @as(Error, @errorCast(err));
     }
 }
 
@@ -140,7 +157,7 @@ pub fn unhook() void {
     state.reset_event.set();
 }
 
-fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
+fn frame(swap_chain: *dxgi.IDXGISwapChain) anyerror!void {
     if (state.d3d11_backend == null) {
         state.d3d11_backend = try D3D11Backend.init(swap_chain);
     }
@@ -158,6 +175,7 @@ fn cleanup() void {
 
     if (state.d3d11_backend) |*backend| {
         backend.deinit();
+        state.d3d11_backend = null;
     }
 }
 
@@ -183,7 +201,7 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
             const debug_allocator = debug_info.allocator;
 
             if (@errorReturnTrace()) |trace| {
-                const instruction_addresses = debug_allocator.dupe(usize, trace.instruction_addresses) catch break: blk;
+                const instruction_addresses = debug_allocator.dupe(usize, trace.instruction_addresses) catch break :blk;
                 state.exit_trace = std.builtin.StackTrace{
                     .instruction_addresses = instruction_addresses,
                     .index = trace.index,
@@ -199,13 +217,40 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
 }
 
 fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, Width: windows.UINT, Height: windows.UINT, NewFormat: dxgi.DXGI_FORMAT, SwapChainFlags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
-    if (state.reset_event.isSet() or state.d3d11_backend == null) {
+    if (state.reset_event.isSet()) {
         return o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
     }
 
     state.d3d11_backend.?.deinit();
+
+    // should we check if this hr is even correct like if it issint we just idk unhhok
     const hr = o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
-    state.d3d11_backend = D3D11Backend.init(pSwapChain) catch unreachable;
+
+    state.d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| ret: {
+        defer state.reset_event.set();
+
+        cleanup();
+
+        if (error_tracing) blk: {
+            assert(state.exit_trace == null);
+
+            const debug_info = std.debug.getSelfDebugInfo() catch break :blk;
+            const debug_allocator = debug_info.allocator;
+
+            if (@errorReturnTrace()) |trace| {
+                const instruction_addresses = debug_allocator.dupe(usize, trace.instruction_addresses) catch break :blk;
+                state.exit_trace = std.builtin.StackTrace{
+                    .instruction_addresses = instruction_addresses,
+                    .index = trace.index,
+                };
+            }
+        }
+
+        assert(state.exit_err == null);
+        state.exit_err = err;
+
+        break :ret null;
+    };
 
     return hr;
 }

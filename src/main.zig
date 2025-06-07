@@ -1,7 +1,7 @@
 const std = @import("std");
 const hook = @import("hook.zig");
 
-fn frame(gui: hook.Gui) error{Testing}!void {
+fn frame(gui: hook.Gui) !void {
     _ = gui;
     try ohNoo();
 }
@@ -11,7 +11,7 @@ fn ohNoo() !void {
 }
 
 pub fn main() !void {
-    try hook.run(.{
+    try hook.run(@TypeOf(frame), .{
         .frame_cb = &frame,
     });
 }

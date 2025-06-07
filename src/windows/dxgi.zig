@@ -15,7 +15,7 @@ const REFCIID = *const windows.GUID;
 const WINAPI = windows.WINAPI;
 
 pub const IDXGISwapChain = extern struct {
-    vtable: *const [18] *const anyopaque,
+    vtable: *const [18]*const anyopaque,
 
     pub inline fn AddRef(self: *IDXGISwapChain) void {
         const FnType = fn (*IDXGISwapChain) callconv(WINAPI) ULONG;
