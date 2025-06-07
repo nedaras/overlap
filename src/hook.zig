@@ -35,7 +35,7 @@ const state = struct {
     var reset_event = Thread.ResetEvent{};
 
     var exit_err: ?anyerror = null;
-    var exit_trace: if (error_tracing) ?std.builtin.StackTrace else void = if (error_tracing) null else {};
+    var exit_err_trace: if (error_tracing) ?std.builtin.StackTrace else void = if (error_tracing) null else {};
 
     var d3d11_backend: ?D3D11Backend = null;
 };
@@ -111,6 +111,7 @@ pub fn run(comptime FnType: type, desc: Desc2(extractError(FnType))) !void {
         const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
         const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
 
+        // I want to pass my allocator here
         try minhook.MH_Initialize();
         defer minhook.MH_Uninitialize() catch {};
 
@@ -132,19 +133,21 @@ pub fn run(comptime FnType: type, desc: Desc2(extractError(FnType))) !void {
         state.reset_event.wait();
     }
 
+    const Error = D3D11Backend.Error || extractError(FnType);
     if (state.exit_err) |err| {
-        const Error = D3D11Backend.Error || extractError(FnType);
-
-        std.debug.print("$1error: {s}\n", .{@errorName(@as(Error, @errorCast(err)))});
         if (error_tracing) {
-            if (state.exit_trace) |trace| {
-                std.debug.dumpStackTrace(trace);
-
+            if (state.exit_err_trace) |exit_err_trace| {
                 // cant err cuz we used debug_info to save that trace
+                // cross fingers that nothing bad happens here
                 const debug_info = std.debug.getSelfDebugInfo() catch unreachable;
                 const debug_allocator = debug_info.allocator;
 
-                debug_allocator.free(trace.instruction_addresses);
+                const err_trace = @errorReturnTrace().?;
+
+                err_trace.index = exit_err_trace.index;
+                @memcpy(err_trace.instruction_addresses, exit_err_trace.instruction_addresses);
+
+                debug_allocator.free(exit_err_trace.instruction_addresses);
             }
         }
 
@@ -195,14 +198,14 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
         cleanup();
 
         if (error_tracing) blk: {
-            assert(state.exit_trace == null);
+            assert(state.exit_err_trace == null);
 
             const debug_info = std.debug.getSelfDebugInfo() catch break :blk;
             const debug_allocator = debug_info.allocator;
 
             if (@errorReturnTrace()) |trace| {
                 const instruction_addresses = debug_allocator.dupe(usize, trace.instruction_addresses) catch break :blk;
-                state.exit_trace = std.builtin.StackTrace{
+                state.exit_err_trace = std.builtin.StackTrace{
                     .instruction_addresses = instruction_addresses,
                     .index = trace.index,
                 };
@@ -232,14 +235,14 @@ fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, 
         cleanup();
 
         if (error_tracing) blk: {
-            assert(state.exit_trace == null);
+            assert(state.exit_err_trace == null);
 
             const debug_info = std.debug.getSelfDebugInfo() catch break :blk;
             const debug_allocator = debug_info.allocator;
 
             if (@errorReturnTrace()) |trace| {
                 const instruction_addresses = debug_allocator.dupe(usize, trace.instruction_addresses) catch break :blk;
-                state.exit_trace = std.builtin.StackTrace{
+                state.exit_err_trace = std.builtin.StackTrace{
                     .instruction_addresses = instruction_addresses,
                     .index = trace.index,
                 };
