@@ -8,6 +8,10 @@
             .url = "https://github.com/TsudaKageyu/minhook/archive/refs/tags/v1.3.4.tar.gz",
             .hash = "N-V-__8AADKXBAD5SeIOOMeNn8G9VWn9tyf4G7AObfQZ_BLj",
         },
+        .zigzag = .{
+            .url = "git+https://github.com/uniboi/zigzag#e564c93fc0ff32d85790e3fa2d1a9458b8492da2",
+            .hash = "zigzag-0.0.1-wqJDFpJ5AABCyJazjaDkCe3au9WI1gBAQeDe5lu7NdUz",
+        },
     },
     .paths = .{
         "build.zig",

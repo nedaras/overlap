@@ -46,6 +46,15 @@ pub fn MH_DisableHook(comptime T: type, pTarget: *const T) MH_DisableHookError!v
     };
 }
 
+pub const MH_RemoveHookError = error{Unexpected};
+
+pub fn MH_RemoveHook(comptime T: type, pTarget: *const T) MH_RemoveHookError!void {
+    return switch (minhook.MH_RemoveHook(pTarget)) {
+        .OK => {},
+        else => |err| unexpectedError(err),
+    };
+}
+
 pub const UnexpectedError = error{
     Unexpected,
 };

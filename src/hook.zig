@@ -1,6 +1,7 @@
 const std = @import("std");
 const windows = @import("windows.zig");
-const minhook = @import("minhook.zig");
+//const minhook = @import("minhook.zig");
+const zz = @import("zigzag");
 const D3D11Backend = @import("gui/backends/D3D11Backend.zig");
 const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
@@ -87,23 +88,42 @@ pub fn run(desc: Desc) !void {
     defer device.Release();
     defer device_context.Release();
 
-    const present: *const SwapChainPresent = @ptrCast(swap_chain.vtable[8]);
-    const resize_buffers: *const SwapChainResizeBuffers = @ptrCast(swap_chain.vtable[13]);
+    const present: *SwapChainPresent = @constCast(@ptrCast(swap_chain.vtable[8]));
+    const resize_buffers: *SwapChainResizeBuffers = @constCast(@ptrCast(swap_chain.vtable[13]));
 
-    try minhook.MH_Initialize();
-    defer minhook.MH_Uninitialize() catch {};
+    // just swap vtables
 
-    try minhook.MH_CreateHook(SwapChainPresent, present, &hkPresent, &o_present);
-    try minhook.MH_CreateHook(SwapChainResizeBuffers, resize_buffers, &hkResizeBuffers, &o_resize_buffers);
+    var pca = try zz.PageChunkAllocator.init();
+    defer pca.deinit();
+
+    const ca = pca.allocator();
+
+    const hook_a = try zz.Hook(SwapChainPresent).init(ca, present, &hkPresent);
+    defer _ = hook_a.deinit();
+
+    const hook_b = try zz.Hook(SwapChainResizeBuffers).init(ca, resize_buffers, &hkResizeBuffers);
+    defer _ = hook_b.deinit();
+
+    o_present = hook_a.delegate;
+    o_resize_buffers = hook_b.delegate;
+
+    //try minhook.MH_Initialize();
+    //defer minhook.MH_Uninitialize() catch {};
+
+    //try minhook.MH_CreateHook(SwapChainPresent, present, &hkPresent, &o_present);
+    //defer minhook.MH_RemoveHook(SwapChainPresent, present) catch {};
+
+    //try minhook.MH_CreateHook(SwapChainResizeBuffers, resize_buffers, &hkResizeBuffers, &o_resize_buffers);
+    //defer minhook.MH_RemoveHook(SwapChainResizeBuffers, resize_buffers) catch {};
 
     state.frame_cb = desc.frame_cb;
     state.cleanup_cb = desc.cleanup_cb;
 
-    try minhook.MH_EnableHook(SwapChainPresent, present);
-    defer minhook.MH_DisableHook(SwapChainPresent, present) catch {};
+    //try minhook.MH_EnableHook(SwapChainPresent, present);
+    //defer minhook.MH_DisableHook(SwapChainPresent, present) catch {};
 
-    try minhook.MH_EnableHook(SwapChainResizeBuffers, resize_buffers);
-    defer minhook.MH_DisableHook(SwapChainResizeBuffers, resize_buffers) catch {};
+    //try minhook.MH_EnableHook(SwapChainResizeBuffers, resize_buffers);
+    //defer minhook.MH_DisableHook(SwapChainResizeBuffers, resize_buffers) catch {};
 
     // todo: Add Remove hook from minhook
 
@@ -132,8 +152,8 @@ fn cleanup() void {
 const SwapChainPresent = @TypeOf(hkPresent);
 const SwapChainResizeBuffers = @TypeOf(hkResizeBuffers);
 
-var o_present: *SwapChainPresent = undefined;
-var o_resize_buffers: *SwapChainResizeBuffers = undefined;
+var o_present: *const SwapChainPresent = undefined;
+var o_resize_buffers: *const SwapChainResizeBuffers = undefined;
 
 fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
     // we could only call frame if swap cahin ptrs matches

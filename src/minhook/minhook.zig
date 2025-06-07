@@ -52,3 +52,5 @@ pub extern fn MH_CreateHook(pTarget: LPCVOID, pDetour: LPCVOID, ppOriginal: *LPV
 pub extern fn MH_EnableHook(pTarget: LPCVOID) callconv(WINAPI) MH_STATUS;
 
 pub extern fn MH_DisableHook(pTarget: LPCVOID) callconv(WINAPI) MH_STATUS;
+
+pub extern fn MH_RemoveHook(pTarget: LPCVOID) callconv(WINAPI) MH_STATUS;
