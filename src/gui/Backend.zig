@@ -1,6 +1,6 @@
 const std = @import("std");
 
-ptr: *const anyopaque,
+ptr: *anyopaque,
 vtable: *const VTable,
 
 pub const VTable = struct {

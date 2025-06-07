@@ -181,7 +181,7 @@ pub inline fn frame(self: *const Self) void {
     D3D11Backend.frame(self);
 }
 
-pub inline fn backend(self: *const Self) Backend {
+pub fn backend(self: *Self) Backend {
     return .{
         .ptr = self,
         .vtable = &D3D11Backend.vtable,
