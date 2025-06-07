@@ -14,7 +14,7 @@ const error_tracing = std.posix.unexpected_error_tracing;
 
 pub const Gui = @import("Gui.zig");
 
-pub fn Desc2(comptime T: type) type {
+pub fn Desc(comptime T: type) type {
     return struct {
         const Error = T;
 
@@ -23,17 +23,14 @@ pub fn Desc2(comptime T: type) type {
     };
 }
 
-const Desc = struct {
-    frame_cb: *const fn (gui: Gui) error{testing}!void,
-    cleanup_cb: ?*const fn () void = null,
-};
-
 const state = struct {
     var frame_cb: ?*const fn (gui: Gui) anyerror!void = null;
     var cleanup_cb: ?*const fn () void = null;
 
     var reset_event = Thread.ResetEvent{};
 
+    // Trace is being saved cuz dumping stack trace inside hooked function just craches
+    // Even if it would not crash saving trace would be nice so we could combinde our trace with hooked functions one
     var exit_err: ?anyerror = null;
     var exit_err_trace: if (error_tracing) ?std.builtin.StackTrace else void = if (error_tracing) null else {};
 
@@ -51,7 +48,7 @@ fn extractError(comptime FnType: type) type {
 }
 
 // Idea is simple... Hook everything we can
-pub fn run(comptime FnType: type, desc: Desc2(extractError(FnType))) !void {
+pub fn run(comptime FnType: type, desc: Desc(extractError(FnType))) !void {
     assert(state.frame_cb == null);
 
     const d3d11_lib = try windows.GetModuleHandle("d3d11.dll");

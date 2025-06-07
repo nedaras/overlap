@@ -408,11 +408,13 @@ pub const UnexpectedError = error{
 
 // tood: only print this error.Unexpected on Debug/ReleaseSafe
 pub fn unexpectedError(d3d11_err: D3D11_ERROR) UnexpectedError {
-    const tag_name = std.enums.tagName(D3D11_ERROR, d3d11_err) orelse "";
-    std.debug.print("error.Unexpected: DXGI_ERROR({d}): {s}\n", .{
-        @intFromEnum(d3d11_err),
-        tag_name,
-    });
-    std.debug.dumpCurrentStackTrace(@returnAddress());
+    if (std.posix.unexpected_error_tracing) {
+        const tag_name = std.enums.tagName(D3D11_ERROR, d3d11_err) orelse "";
+        std.debug.print("error.Unexpected: DXGI_ERROR({d}): {s}\n", .{
+            @intFromEnum(d3d11_err),
+            tag_name,
+        });
+        std.debug.dumpCurrentStackTrace(@returnAddress());
+    }
     return error.Unexpected;
 }

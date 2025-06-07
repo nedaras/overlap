@@ -123,11 +123,13 @@ pub const UnexpectedError = error{
 
 // tood: only print this error.Unexpected on Debug/ReleaseSafe
 pub fn unexpectedError(dxgi_err: DXGI_ERROR) UnexpectedError {
-    const tag_name = std.enums.tagName(DXGI_ERROR, dxgi_err) orelse "";
-    std.debug.print("error.Unexpected: DXGI_ERROR({d}): {s}\n", .{
-        @intFromEnum(dxgi_err),
-        tag_name,
-    });
-    std.debug.dumpCurrentStackTrace(@returnAddress());
+    if (std.posix.unexpected_error_tracing) {
+        const tag_name = std.enums.tagName(DXGI_ERROR, dxgi_err) orelse "";
+        std.debug.print("error.Unexpected: DXGI_ERROR({d}): {s}\n", .{
+            @intFromEnum(dxgi_err),
+            tag_name,
+        });
+        std.debug.dumpCurrentStackTrace(@returnAddress());
+    }
     return error.Unexpected;
 }
