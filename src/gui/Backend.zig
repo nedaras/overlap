@@ -1,10 +1,10 @@
 const std = @import("std");
 
-ptr: *anyopaque,
+ptr: *const anyopaque,
 vtable: *const VTable,
 
 pub const VTable = struct {
-    deinit: *const fn (*anyopaque) void,
+    deinit: *const fn (*const anyopaque) void,
     frame: *const fn (*const anyopaque) void,
 };
 

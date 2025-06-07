@@ -165,10 +165,11 @@ fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, 
     // todo: fix this when it starts causing problems.
     // !!!!!!! fix this
 
-    state.d3d11_backend.?.removeObjects();
+    state.d3d11_backend.?.deinit();
     const hr = o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
-    state.d3d11_backend.?.createObjects() catch |err| {
+    state.d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| {
         std.debug.print("cr err: {}\n", .{err});
+        unreachable;
     };
 
     return hr;

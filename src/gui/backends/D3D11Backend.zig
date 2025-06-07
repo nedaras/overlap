@@ -11,13 +11,13 @@ swap_chain: *dxgi.IDXGISwapChain,
 device: *d3d11.ID3D11Device,
 device_context: *d3d11.ID3D11DeviceContext,
 
-render_target_view: ?*d3d11.ID3D11RenderTargetView = null,
+render_target_view: *d3d11.ID3D11RenderTargetView,
 
-input_layout: ?*d3d11.ID3D11InputLayout = null,
-vertex_buffer: ?*d3d11.ID3D11Buffer = null,
+vertex_shader: *d3d11.ID3D11VertexShader,
+pixel_shader: *d3d11.ID3D11PixelShader,
 
-vertex_shader: ?*d3d11.ID3D11VertexShader = null,
-pixel_shader: ?*d3d11.ID3D11PixelShader = null,
+input_layout: *d3d11.ID3D11InputLayout,
+vertex_buffer: *d3d11.ID3D11Buffer,
 
 const Self = @This();
 
@@ -31,8 +31,16 @@ pub const Error = error{
 };
 
 pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
+    const vs = @embedFile("../shaders/vs.hlsl");
+    const ps = @embedFile("../shaders/ps.hlsl");
+
     var device: *d3d11.ID3D11Device = undefined;
     var device_context: *d3d11.ID3D11DeviceContext = undefined;
+
+    var back_buffer: *d3d11.ID3D11Texture2D = undefined;
+
+    var vertex_shader_blob: *d3dcommon.ID3DBlob = undefined;
+    var pixel_shader_blob: *d3dcommon.ID3DBlob = undefined;
 
     swap_chain.AddRef();
     errdefer swap_chain.Release();
@@ -47,35 +55,18 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
         .swap_chain = swap_chain,
         .device = device,
         .device_context = device_context,
+        .render_target_view = undefined,
+        .vertex_shader = undefined,
+        .pixel_shader = undefined,
+        .input_layout = undefined,
+        .vertex_buffer = undefined,
     };
 
-    try createObjects(&result);
-
-    return result;
-}
-
-pub fn createObjects(self: *Self) Error!void {
-    var vertex_shader_blob: *d3dcommon.ID3DBlob = undefined;
-    var pixel_shader_blob: *d3dcommon.ID3DBlob = undefined;
-
-    var render_target_view: *d3d11.ID3D11RenderTargetView = undefined;
-
-    var vertex_shader: *d3d11.ID3D11VertexShader = undefined;
-    var pixel_shader: *d3d11.ID3D11PixelShader = undefined;
-
-    var input_layout: *d3d11.ID3D11InputLayout = undefined;
-    var vertex_buffer: *d3d11.ID3D11Buffer = undefined;
-
-    const vs = @embedFile("../shaders/vs.hlsl");
-    const ps = @embedFile("../shaders/ps.hlsl");
-
-    var back_buffer: *d3d11.ID3D11Texture2D = undefined;
-
-    try self.swap_chain.GetBuffer(0, d3d11.ID3D11Texture2D.UUID, @ptrCast(&back_buffer));
+    try swap_chain.GetBuffer(0, d3d11.ID3D11Texture2D.UUID, @ptrCast(&back_buffer));
     defer back_buffer.Release();
 
-    try self.device.CreateRenderTargetView(@ptrCast(back_buffer), null, &render_target_view);
-    errdefer render_target_view.Release();
+    try device.CreateRenderTargetView(@ptrCast(back_buffer), null, &result.render_target_view);
+    errdefer result.render_target_view.Release();
 
     const hr_a = d3dcompiler.D3DCompile(vs.ptr, vs.len, null, null, null, "VS", "vs_5_0", 0, 0, &vertex_shader_blob, null);
     switch (d3d11.D3D11_ERROR_CODE(hr_a)) {
@@ -91,11 +82,11 @@ pub fn createObjects(self: *Self) Error!void {
     }
     defer pixel_shader_blob.Release();
 
-    try self.device.CreateVertexShader(vertex_shader_blob.slice(), null, &vertex_shader);
-    errdefer vertex_shader.Release();
+    try device.CreateVertexShader(vertex_shader_blob.slice(), null, &result.vertex_shader);
+    errdefer result.vertex_shader.Release();
 
-    try self.device.CreatePixelShader(pixel_shader_blob.slice(), null, &pixel_shader);
-    errdefer pixel_shader.Release();
+    try device.CreatePixelShader(pixel_shader_blob.slice(), null, &result.pixel_shader);
+    errdefer result.pixel_shader.Release();
 
     const input_elements = &[_]d3d11.D3D11_INPUT_ELEMENT_DESC{
         .{
@@ -118,8 +109,8 @@ pub fn createObjects(self: *Self) Error!void {
         },
     };
 
-    try self.device.CreateInputLayout(input_elements, vertex_shader_blob.slice(), &input_layout);
-    errdefer input_layout.Release();
+    try device.CreateInputLayout(input_elements, vertex_shader_blob.slice(), &result.input_layout);
+    errdefer result.input_layout.Release();
 
     const verticies = &[_]Vertex{
         .{ .pos = .{ 0.0, 0.5 }, .color = .{ 1.0, 0.0, 0.0 } }, // Top (red)
@@ -136,44 +127,13 @@ pub fn createObjects(self: *Self) Error!void {
     var vertex_buffer_initial = mem.zeroes(d3d11.D3D11_SUBRESOURCE_DATA);
     vertex_buffer_initial.pSysMem = verticies;
 
-    try self.device.CreateBuffer(&vertex_buffer_desc, &vertex_buffer_initial, &vertex_buffer);
-    errdefer vertex_buffer.Release();
+    try device.CreateBuffer(&vertex_buffer_desc, &vertex_buffer_initial, &result.vertex_buffer);
+    errdefer result.vertex_buffer.Release();
 
-    self.render_target_view = render_target_view;
-    self.vertex_shader = vertex_shader;
-    self.pixel_shader = pixel_shader;
-    self.input_layout = input_layout;
-    self.vertex_buffer = vertex_buffer;
+    return result;
 }
 
-pub fn removeObjects(self: *Self) void {
-    if (self.input_layout) |input_layout| {
-        input_layout.Release();
-        self.input_layout = null;
-    }
-
-    if (self.vertex_buffer) |vertex_buffer| {
-        vertex_buffer.Release();
-        self.vertex_buffer = null;
-    }
-
-    if (self.vertex_shader) |vertex_shader| {
-        vertex_shader.Release();
-        self.vertex_shader = null;
-    }
-
-    if (self.pixel_shader) |pixel_shader| {
-        pixel_shader.Release();
-        self.pixel_shader = null;
-    }
-
-    if (self.render_target_view) |render_target_view| {
-        render_target_view.Release();
-        self.render_target_view = null;
-    }
-}
-
-pub inline fn deinit(self: *Self) void {
+pub inline fn deinit(self: *const Self) void {
     D3D11Backend.deinit(self);
 }
 
@@ -194,10 +154,16 @@ const D3D11Backend = struct {
         .frame = &D3D11Backend.frame,
     };
 
-    fn deinit(context: *anyopaque) void {
-        const self: *Self = @ptrCast(@alignCast(context));
+    fn deinit(context: *const anyopaque) void {
+        const self: *const Self = @ptrCast(@alignCast(context));
 
-        removeObjects(self);
+        self.input_layout.Release();
+        self.vertex_buffer.Release();
+
+        self.vertex_shader.Release();
+        self.pixel_shader.Release();
+
+        self.render_target_view.Release();
 
         self.device_context.Release();
         self.device.Release();
@@ -210,13 +176,13 @@ const D3D11Backend = struct {
         var offset: windows.UINT = 0;
         var stride: windows.UINT = @sizeOf(Vertex);
 
-        self.device_context.IASetInputLayout(self.input_layout.?);
-        self.device_context.IASetVertexBuffers(0, (&self.vertex_buffer.?)[0..1], &stride, &offset);
+        self.device_context.IASetInputLayout(self.input_layout);
+        self.device_context.IASetVertexBuffers(0, (&self.vertex_buffer)[0..1], &stride, &offset);
         self.device_context.IASetPrimitiveTopology(d3dcommon.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        self.device_context.VSSetShader(self.vertex_shader.?, null);
-        self.device_context.PSSetShader(self.pixel_shader.?, null);
+        self.device_context.VSSetShader(self.vertex_shader, null);
+        self.device_context.PSSetShader(self.pixel_shader, null);
 
-        self.device_context.OMSetRenderTargets((&self.render_target_view.?)[0..1], null);
+        self.device_context.OMSetRenderTargets((&self.render_target_view)[0..1], null);
         self.device_context.Draw(3, offset);
     }
 };
