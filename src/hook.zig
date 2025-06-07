@@ -130,6 +130,8 @@ pub fn run(desc: Desc) !void {
                 debug_allocator.free(trace.instruction_addresses);
             }
         }
+
+        return err;
     }
 }
 
@@ -166,12 +168,13 @@ var o_present: *SwapChainPresent = undefined;
 var o_resize_buffers: *SwapChainResizeBuffers = undefined;
 
 fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
-    // we could only call frame if swap cahin ptrs matches
-
-    // Need to think if .monotonic is good here
+    // potential err is if for some reason there is mulitple active swap chains
+    // we prob could check if swap_chain pointers matches or smth
     const exiting = state.reset_event.impl.state.load(.monotonic) == 2; // Bit faster
     if (!exiting) frame(pSwapChain) catch |err| {
         defer state.reset_event.set();
+
+        cleanup();
 
         if (error_tracing) blk: {
             assert(state.exit_trace == null);
