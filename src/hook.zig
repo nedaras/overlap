@@ -124,7 +124,7 @@ fn cleanup() void {
         cleanup_cb();
     }
 
-    if (state.d3d11_backend) |backend| {
+    if (state.d3d11_backend) |*backend| {
         backend.deinit();
     }
 }

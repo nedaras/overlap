@@ -4,7 +4,7 @@ ptr: *const anyopaque,
 vtable: *const VTable,
 
 pub const VTable = struct {
-    deinit: *const fn (*const anyopaque) void,
+    deinit: *const fn (*anyopaque) void,
     frame: *const fn (*const anyopaque) void,
 };
 
