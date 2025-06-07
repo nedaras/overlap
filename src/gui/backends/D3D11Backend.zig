@@ -24,7 +24,11 @@ const Vertex = extern struct {
     color: [3]f32,
 };
 
-pub fn init(swap_chain: *dxgi.IDXGISwapChain) !Self {
+pub const InitError = error{
+    Unexpected,
+};
+
+pub fn init(swap_chain: *dxgi.IDXGISwapChain) InitError!Self {
     var device: *d3d11.ID3D11Device = undefined;
 
     var vertex_shader_blob: *d3dcommon.ID3DBlob = undefined;

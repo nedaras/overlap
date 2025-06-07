@@ -18,14 +18,14 @@ const Desc = struct {
     cleanup_cb: ?*const fn () void = null,
 };
 
-const FrameError = @typeInfo(@typeInfo(@TypeOf(frame)).@"fn".return_type.?).error_union.error_set;
+const ExitError = D3D11Backend.InitError;
 
 const state = struct {
     var frame_cb: ?*const fn (gui: Gui) void = null;
     var cleanup_cb: ?*const fn () void = null;
 
     var reset_event = Thread.ResetEvent{};
-    var exit_err: ?FrameError = undefined;
+    var exit_err: ?ExitError = undefined;
 
     var d3d11_backend: ?D3D11Backend = null;
 };
@@ -119,17 +119,6 @@ pub fn unhook() void {
     state.reset_event.set();
 }
 
-fn frame(swap_chain: *dxgi.IDXGISwapChain) !void {
-    if (state.d3d11_backend == null) {
-        state.d3d11_backend = try D3D11Backend.init(swap_chain);
-    }
-
-    const backend = state.d3d11_backend.?.backend();
-    defer backend.frame();
-
-    state.frame_cb.?(Gui{ .backend = backend });
-}
-
 fn cleanup() void {
     if (state.cleanup_cb) |cleanup_cb| {
         cleanup_cb();
@@ -147,22 +136,49 @@ var o_present: *SwapChainPresent = undefined;
 var o_resize_buffers: *SwapChainResizeBuffers = undefined;
 
 fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
-    const is_set = state.reset_event.impl.state.load(.monotonic) == 2; // Bit faster
-    if (!is_set) frame(pSwapChain) catch |err| {
-        defer state.reset_event.set();
+    // Need to think if .monotonic is good here
+    //const is_set = state.reset_event.impl.state.load(.monotonic) == 2; // Bit faster
+    if (!state.reset_event.isSet()) blk: {
+        if (state.d3d11_backend == null) {
+            state.d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| {
+                defer state.reset_event.set();
 
-        // stack trace crashes here idk why prob cuz trampoline  hooking by minhook
-        //if (@errorReturnTrace()) |trace| {
-        // trace here just makes no sence
-        //}
+                cleanup();
+                state.exit_err = err;
 
-        cleanup();
-        state.exit_err = err;
-    };
+                break :blk;
+            };
+        }
+
+        const backend = state.d3d11_backend.?.backend();
+        defer backend.frame();
+
+        state.frame_cb.?(Gui{ .backend = backend });
+    }
 
     return o_present(pSwapChain, SyncInterval, Flags);
 }
 
 fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, Width: windows.UINT, Height: windows.UINT, NewFormat: dxgi.DXGI_FORMAT, SwapChainFlags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
-    return o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+    if (state.reset_event.isSet()) {
+        return o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+    }
+
+    if (state.d3d11_backend) |backend| {
+        backend.deinit();
+        state.d3d11_backend = null;
+    }
+
+    const hr = o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+
+    state.d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| blk: {
+        defer state.reset_event.set();
+
+        cleanup();
+        state.exit_err = err;
+
+        break :blk null;
+    };
+
+    return hr;
 }
