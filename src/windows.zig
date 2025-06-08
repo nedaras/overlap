@@ -44,8 +44,8 @@ pub const IUnknown = extern struct {
         return self.vtable.AddRef(self);
     }
 
-    pub inline fn Release(self: *IUnknown) ULONG {
-        return self.vtable.Release(self);
+    pub inline fn Release(self: *IUnknown) void {
+        _ = self.vtable.Release(self);
     }
 };
 

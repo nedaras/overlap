@@ -30,6 +30,7 @@ pub const D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST = d3dcommon.D3D_PRIMITIVE_TOPOLO
 
 pub const D3D11_SDK_VERSION = 7;
 pub const D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE = 16;
+pub const D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT = 8;
 
 pub const D3D11_BIND_VERTEX_BUFFER = 1;
 
@@ -320,10 +321,10 @@ pub const ID3D11DeviceContext = extern struct {
 
     pub inline fn OMSetRenderTargets(
         self: *ID3D11DeviceContext,
-        RenderTargetViews: []const *ID3D11RenderTargetView,
+        RenderTargetViews: []const ?*ID3D11RenderTargetView,
         pDepthStencilView: ?*ID3D11DepthStencilView,
     ) void {
-        const FnType = fn (*ID3D11DeviceContext, UINT, [*]const *ID3D11RenderTargetView, ?*ID3D11DepthStencilView) callconv(WINAPI) void;
+        const FnType = fn (*ID3D11DeviceContext, UINT, [*]const ?*ID3D11RenderTargetView, ?*ID3D11DepthStencilView) callconv(WINAPI) void;
         const om_set_render_targets: *const FnType = @ptrCast(self.vtable[33]);
 
         om_set_render_targets(self, @intCast(RenderTargetViews.len), RenderTargetViews.ptr, pDepthStencilView);
@@ -456,6 +457,17 @@ pub const ID3D11DeviceContext = extern struct {
         const ia_get_primitive_topology: *const FnType = @ptrCast(self.vtable[83]);
 
         ia_get_primitive_topology(self, pTopology);
+    }
+
+    pub inline fn OMGetRenderTargets(
+        self: *ID3D11DeviceContext,
+        RenderTargetViews: []?*ID3D11RenderTargetView,
+        ppDepthStencilView: ?*?*ID3D11DepthStencilView,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, [*]?*ID3D11RenderTargetView, ?*?*ID3D11DepthStencilView) callconv(WINAPI) void;
+        const om_get_render_targets: *const FnType = @ptrCast(self.vtable[89]);
+
+        om_get_render_targets(self, @intCast(RenderTargetViews.len), RenderTargetViews.ptr, ppDepthStencilView);
     }
 
     pub inline fn OMGetBlendState(

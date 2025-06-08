@@ -35,6 +35,8 @@ const DeviceContextState = struct {
     blend_factor: [4]windows.FLOAT = .{ 0.0, 0.0, 0.0, 0.0 },
     sample_mask: windows.UINT = 0,
     stencil_ref: windows.UINT = 0,
+    render_target_view: ?*d3d11.ID3D11RenderTargetView = null,
+    depth_stencil_view: ?*d3d11.ID3D11DepthStencilView = null, // todo: make it views there can be up to some d3d11 macro 8 i think
     depth_stencil_state: ?*d3d11.ID3D11DepthStencilState = null,
     shader_resource_view: ?*d3d11.ID3D11ShaderResourceView = null,
     sampler_state: ?*d3d11.ID3D11SamplerState = null,
@@ -93,7 +95,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     defer back_buffer.Release();
 
     try device.CreateRenderTargetView(@ptrCast(back_buffer), null, &result.render_target_view);
-    errdefer _ = result.render_target_view.Release();
+    errdefer result.render_target_view.Release();
 
     const hr_a = d3dcompiler.D3DCompile(vs.ptr, vs.len, null, null, null, "VS", "vs_5_0", 0, 0, &vertex_shader_blob, null);
     switch (d3d11.D3D11_ERROR_CODE(hr_a)) {
@@ -110,10 +112,10 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     defer pixel_shader_blob.Release();
 
     try device.CreateVertexShader(vertex_shader_blob.slice(), null, &result.vertex_shader);
-    errdefer _ = result.vertex_shader.Release();
+    errdefer result.vertex_shader.Release();
 
     try device.CreatePixelShader(pixel_shader_blob.slice(), null, &result.pixel_shader);
-    errdefer _ = result.pixel_shader.Release();
+    errdefer result.pixel_shader.Release();
 
     const input_elements = &[_]d3d11.D3D11_INPUT_ELEMENT_DESC{
         .{
@@ -137,7 +139,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     };
 
     try device.CreateInputLayout(input_elements, vertex_shader_blob.slice(), &result.input_layout);
-    errdefer _ = result.input_layout.Release();
+    errdefer result.input_layout.Release();
 
     const verticies = &[_]Vertex{
         .{ .pos = .{ 0.0, 0.5 }, .color = .{ 1.0, 0.0, 0.0 } }, // Top (red)
@@ -155,7 +157,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     vertex_buffer_initial.pSysMem = verticies;
 
     try device.CreateBuffer(&vertex_buffer_desc, &vertex_buffer_initial, &result.vertex_buffer);
-    errdefer _ = result.vertex_buffer.Release();
+    errdefer result.vertex_buffer.Release();
 
     return result;
 }
@@ -184,13 +186,13 @@ const D3D11Backend = struct {
     fn deinit(context: *const anyopaque) void {
         const self: *const Self = @ptrCast(@alignCast(context));
 
-        _ = self.input_layout.Release();
-        _ = self.vertex_buffer.Release();
+        self.input_layout.Release();
+        self.vertex_buffer.Release();
 
-        _ = self.vertex_shader.Release();
-        _ = self.pixel_shader.Release();
+        self.vertex_shader.Release();
+        self.pixel_shader.Release();
 
-        _ = self.render_target_view.Release();
+        self.render_target_view.Release();
 
         self.device_context.Release();
     }
@@ -228,6 +230,7 @@ fn storeState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) v
     context.RSGetViewports(&state.viewports_len, &state.viewports);
     context.RSGetState(&state.rasterizer_state);
     context.OMGetBlendState(&state.blend_state, &state.blend_factor, &state.sample_mask);
+    context.OMGetRenderTargets((&state.render_target_view)[0..1], &state.depth_stencil_view);
     context.OMGetDepthStencilState(&state.depth_stencil_state, &state.stencil_ref);
     context.PSGetShaderResources(0, (&state.shader_resource_view)[0..1]);
     context.PSGetSamplers(0, (&state.sampler_state)[0..1]);
@@ -242,11 +245,11 @@ fn storeState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) v
 }
 
 fn loadState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) void {
-
     // RSSetScissorRects
     context.RSSetViewports(state.viewports[0..state.viewports_len]);
     // RSSetScissorRects
     // OMSetBlendState
+    context.OMSetRenderTargets((&state.render_target_view)[0..1], state.depth_stencil_view);
     // OMSetDepthStencilState
     // PSSetShaderResources
     // PSSetSamplers()
@@ -266,34 +269,33 @@ fn releaseState(state: *DeviceContextState) void {
     const release = struct {
         fn inner(mb_ctx: ?*anyopaque) void {
             if (mb_ctx) |ctx| {
-                std.debug.print("not null\n", .{});
                 const iunknown: *windows.IUnknown = @ptrCast(@alignCast(ctx));
-                assert(iunknown.Release() == 0);
-            } else {
-                std.debug.print("null\n", .{});
+                iunknown.Release();
             }
         }
     }.inner;
 
     release(state.rasterizer_state);
     release(state.blend_state);
+    release(state.render_target_view);
+    release(state.depth_stencil_view);
     release(state.depth_stencil_state);
     release(state.shader_resource_view);
     release(state.sampler_state);
 
     release(state.pixel_shader);
     for (0..state.pixel_shader_ins_len) |i| {
-        assert(state.pixel_shader_ins[i].Release() == 0);
+        state.pixel_shader_ins[i].Release();
     }
 
     release(state.vertex_shader);
     for (0..state.vertex_shader_ins_len) |i| {
-        assert(state.vertex_shader_ins[i].Release() == 0);
+        state.vertex_shader_ins[i].Release();
     }
 
     release(state.geometry_shader);
     for (0..state.geometry_shader_ins_len) |i| {
-        assert(state.geometry_shader_ins[i].Release() == 0);
+        state.geometry_shader_ins[i].Release();
     }
 
     release(state.index_buf);
