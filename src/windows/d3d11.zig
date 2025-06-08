@@ -1,7 +1,8 @@
 const std = @import("std");
+const windows = @import("../windows.zig");
 const dxgi = @import("dxgi.zig");
 const d3dcommon = @import("d3dcommon.zig");
-const windows = std.os.windows;
+const assert = std.debug.assert;
 
 pub const D3D11_ERROR = @import("d3d11_err.zig").D3D11_ERROR;
 
@@ -16,15 +17,19 @@ const WINAPI = windows.WINAPI;
 const LPCVOID = windows.LPCVOID;
 const HRESULT = windows.HRESULT;
 const HMODULE = windows.HMODULE;
+const IUnknown = windows.IUnknown;
 const DXGI_FORMAT = dxgi.DXGI_FORMAT;
 const IDXGIAdapter = dxgi.IDXGIAdapter;
 const IDXGISwapChain = dxgi.IDXGISwapChain;
 const D3D_DRIVER_TYPE = d3dcommon.D3D_DRIVER_TYPE;
 const DXGI_SWAP_CHAIN_DESC = dxgi.DXGI_SWAP_CHAIN_DESC;
 const D3D_FEATURE_LEVEL = d3dcommon.D3D_FEATURE_LEVEL;
-const D3D_PRIMITIVE_TOPOLOGY = d3dcommon.D3D_PRIMITIVE_TOPOLOGY;
+
+pub const D3D11_PRIMITIVE_TOPOLOGY = d3dcommon.D3D_PRIMITIVE_TOPOLOGY;
+pub const D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST = d3dcommon.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
 pub const D3D11_SDK_VERSION = 7;
+pub const D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE = 16;
 
 pub const D3D11_BIND_VERTEX_BUFFER = 1;
 
@@ -38,12 +43,24 @@ pub const D3D11_USAGE_IMMUTABLE = 1;
 pub const D3D11_USAGE_DYNAMIC = 2;
 pub const D3D11_USAGE_STAGING = 3;
 
-pub const ID3D11ClassLinkage = *opaque {};
-pub const ID3D11ClassInstance = *opaque {};
-pub const ID3D11Resource = *opaque {};
-pub const ID3D11DepthStencilView = *opaque {};
+pub const ID3D11ClassLinkage = IUnknown;
+pub const ID3D11ClassInstance = IUnknown;
+pub const ID3D11Resource = IUnknown;
+pub const ID3D11DepthStencilView = IUnknown;
+pub const ID3D11RasterizerState = IUnknown;
+pub const ID3D11BlendState = IUnknown;
+pub const ID3D11DepthStencilState = IUnknown;
+pub const ID3D11ShaderResourceView = IUnknown;
+pub const ID3D11SamplerState = IUnknown;
+pub const ID3D11GeometryShader = IUnknown;
+pub const ID3D11RenderTargetView = IUnknown;
+pub const ID3D11Buffer = IUnknown;
+pub const ID3D11InputLayout = IUnknown;
+pub const ID3D11VertexShader = IUnknown;
+pub const ID3D11PixelShader = IUnknown;
 
 pub const D3D11_RENDER_TARGET_VIEW_DESC = opaque {};
+pub const D3D11_RECT = windows.RECT;
 
 pub const D3D11_VIEWPORT = extern struct {
     TopLeftX: FLOAT,
@@ -77,61 +94,6 @@ pub const D3D11_SUBRESOURCE_DATA = extern struct {
     pSysMem: LPCVOID,
     SysMemPitch: UINT,
     SysMemSlicePitch: UINT,
-};
-
-pub const ID3D11RenderTargetView = extern struct {
-    vtable: [*]const *const anyopaque,
-
-    pub inline fn Release(self: *ID3D11RenderTargetView) void {
-        const FnType = fn (*ID3D11RenderTargetView) callconv(WINAPI) ULONG;
-        const release: *const FnType = @ptrCast(self.vtable[2]);
-
-        _ = release(self);
-    }
-};
-
-pub const ID3D11Buffer = extern struct {
-    vtable: [*]const *const anyopaque,
-
-    pub inline fn Release(self: *ID3D11Buffer) void {
-        const FnType = fn (*ID3D11Buffer) callconv(WINAPI) ULONG;
-        const release: *const FnType = @ptrCast(self.vtable[2]);
-
-        _ = release(self);
-    }
-};
-
-pub const ID3D11InputLayout = extern struct {
-    vtable: [*]const *const anyopaque,
-
-    pub inline fn Release(self: *ID3D11InputLayout) void {
-        const FnType = fn (*ID3D11InputLayout) callconv(WINAPI) ULONG;
-        const release: *const FnType = @ptrCast(self.vtable[2]);
-
-        _ = release(self);
-    }
-};
-
-pub const ID3D11VertexShader = extern struct {
-    vtable: [*]const *const anyopaque,
-
-    pub inline fn Release(self: *ID3D11VertexShader) void {
-        const FnType = fn (*ID3D11VertexShader) callconv(WINAPI) ULONG;
-        const release: *const FnType = @ptrCast(self.vtable[2]);
-
-        _ = release(self);
-    }
-};
-
-pub const ID3D11PixelShader = extern struct {
-    vtable: [*]const *const anyopaque,
-
-    pub inline fn Release(self: *ID3D11PixelShader) void {
-        const FnType = fn (*ID3D11PixelShader) callconv(WINAPI) ULONG;
-        const release: *const FnType = @ptrCast(self.vtable[2]);
-
-        _ = release(self);
-    }
 };
 
 pub const ID3D11Texture2D = extern struct {
@@ -289,10 +251,10 @@ pub const ID3D11DeviceContext = extern struct {
 
     pub inline fn PSSetShader(
         self: *ID3D11DeviceContext,
-        pPixelShader: *ID3D11PixelShader,
-        ClassInstances: ?[]const *const ID3D11ClassInstance,
+        pPixelShader: ?*ID3D11PixelShader,
+        ClassInstances: ?[]const *ID3D11ClassInstance,
     ) void {
-        const FnType = fn (*ID3D11DeviceContext, *ID3D11PixelShader, ?[*]const *const ID3D11ClassInstance, UINT) callconv(WINAPI) void;
+        const FnType = fn (*ID3D11DeviceContext, ?*ID3D11PixelShader, ?[*]const *ID3D11ClassInstance, UINT) callconv(WINAPI) void;
         const ps_set_shader: *const FnType = @ptrCast(self.vtable[9]);
 
         const class_instance_ptr = if (ClassInstances) |ci| ci.ptr else null;
@@ -303,10 +265,10 @@ pub const ID3D11DeviceContext = extern struct {
 
     pub inline fn VSSetShader(
         self: *ID3D11DeviceContext,
-        pVertexShader: *ID3D11VertexShader,
-        ClassInstances: ?[]const *const ID3D11ClassInstance,
+        pVertexShader: ?*ID3D11VertexShader,
+        ClassInstances: ?[]const *ID3D11ClassInstance,
     ) void {
-        const FnType = fn (*ID3D11DeviceContext, *ID3D11VertexShader, ?[*]const *const ID3D11ClassInstance, UINT) callconv(WINAPI) void;
+        const FnType = fn (*ID3D11DeviceContext, ?*ID3D11VertexShader, ?[*]const *ID3D11ClassInstance, UINT) callconv(WINAPI) void;
         const vs_set_shader: *const FnType = @ptrCast(self.vtable[11]);
 
         const class_instance_ptr = if (ClassInstances) |ci| ci.ptr else null;
@@ -326,8 +288,8 @@ pub const ID3D11DeviceContext = extern struct {
         draw(self, VertexCount, StartVertexLocation);
     }
 
-    pub inline fn IASetInputLayout(self: *ID3D11DeviceContext, pInputLayout: *ID3D11InputLayout) void {
-        const FnType = fn (*ID3D11DeviceContext, *ID3D11InputLayout) callconv(WINAPI) void;
+    pub inline fn IASetInputLayout(self: *ID3D11DeviceContext, pInputLayout: ?*ID3D11InputLayout) void {
+        const FnType = fn (*ID3D11DeviceContext, ?*ID3D11InputLayout) callconv(WINAPI) void;
         const ia_set_input_layout: *const FnType = @ptrCast(self.vtable[17]);
 
         ia_set_input_layout(self, pInputLayout);
@@ -336,18 +298,21 @@ pub const ID3D11DeviceContext = extern struct {
     pub inline fn IASetVertexBuffers(
         self: *ID3D11DeviceContext,
         StartSlot: UINT,
-        VertexBuffers: []const *const ID3D11Buffer,
-        pStrides: *const UINT,
-        pOffsets: *const UINT,
+        VertexBuffers: []const ?*ID3D11Buffer,
+        Strides: []const UINT,
+        Offsets: []const UINT,
     ) void {
-        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]const *const ID3D11Buffer, *const UINT, *const UINT) callconv(WINAPI) void;
+        assert(VertexBuffers.len == Strides.len);
+        assert(VertexBuffers.len == Offsets.len);
+
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]const ?*ID3D11Buffer, [*]const UINT, [*]const UINT) callconv(WINAPI) void;
         const ia_set_input_vertex_buffers: *const FnType = @ptrCast(self.vtable[18]);
 
-        ia_set_input_vertex_buffers(self, StartSlot, @intCast(VertexBuffers.len), VertexBuffers.ptr, pStrides, pOffsets);
+        ia_set_input_vertex_buffers(self, StartSlot, @intCast(VertexBuffers.len), VertexBuffers.ptr, Strides.ptr, Offsets.ptr);
     }
 
-    pub inline fn IASetPrimitiveTopology(self: *ID3D11DeviceContext, Topology: D3D_PRIMITIVE_TOPOLOGY) void {
-        const FnType = fn (*ID3D11DeviceContext, D3D_PRIMITIVE_TOPOLOGY) callconv(WINAPI) void;
+    pub inline fn IASetPrimitiveTopology(self: *ID3D11DeviceContext, Topology: D3D11_PRIMITIVE_TOPOLOGY) void {
+        const FnType = fn (*ID3D11DeviceContext, D3D11_PRIMITIVE_TOPOLOGY) callconv(WINAPI) void;
         const ia_set_primitive_topology: *const FnType = @ptrCast(self.vtable[24]);
 
         ia_set_primitive_topology(self, Topology);
@@ -355,10 +320,10 @@ pub const ID3D11DeviceContext = extern struct {
 
     pub inline fn OMSetRenderTargets(
         self: *ID3D11DeviceContext,
-        RenderTargetViews: []const *const ID3D11RenderTargetView,
+        RenderTargetViews: []const *ID3D11RenderTargetView,
         pDepthStencilView: ?*ID3D11DepthStencilView,
     ) void {
-        const FnType = fn (*ID3D11DeviceContext, UINT, [*]const *const ID3D11RenderTargetView, ?*ID3D11DepthStencilView) callconv(WINAPI) void;
+        const FnType = fn (*ID3D11DeviceContext, UINT, [*]const *ID3D11RenderTargetView, ?*ID3D11DepthStencilView) callconv(WINAPI) void;
         const om_set_render_targets: *const FnType = @ptrCast(self.vtable[33]);
 
         om_set_render_targets(self, @intCast(RenderTargetViews.len), RenderTargetViews.ptr, pDepthStencilView);
@@ -380,6 +345,169 @@ pub const ID3D11DeviceContext = extern struct {
         const clear_render_target_view: *const FnType = @ptrCast(self.vtable[50]);
 
         clear_render_target_view(self, pRenderTargetView, &ColorRGBA);
+    }
+
+    pub inline fn VSGetConstantBuffers(
+        self: *ID3D11DeviceContext,
+        StartSlot: UINT,
+        ConstantBuffers: []?*ID3D11Buffer,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]?*ID3D11Buffer) callconv(WINAPI) void;
+        const vs_get_constant_buffers: *const FnType = @ptrCast(self.vtable[72]);
+
+        vs_get_constant_buffers(self, StartSlot, @intCast(ConstantBuffers.len), ConstantBuffers.ptr);
+    }
+
+    pub inline fn PSGetShaderResources(
+        self: *ID3D11DeviceContext,
+        StartSlot: UINT,
+        ShaderResourceViews: []?*ID3D11ShaderResourceView,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]?*ID3D11ShaderResourceView) callconv(WINAPI) void;
+        const ps_get_shader_resources: *const FnType = @ptrCast(self.vtable[73]);
+
+        ps_get_shader_resources(self, StartSlot, @intCast(ShaderResourceViews.len), ShaderResourceViews.ptr);
+    }
+
+    pub inline fn PSGetShader(
+        self: *ID3D11DeviceContext,
+        ppPixelShader: *?*ID3D11PixelShader,
+        ppClassInstances: [*]*ID3D11ClassInstance,
+        pNumClassInstances: *UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *?*ID3D11PixelShader, [*]*ID3D11ClassInstance, ?*UINT) callconv(WINAPI) void;
+        const ps_get_shader: *const FnType = @ptrCast(self.vtable[74]);
+
+        ps_get_shader(self, ppPixelShader, ppClassInstances, pNumClassInstances);
+    }
+
+    pub inline fn PSGetSamplers(
+        self: *ID3D11DeviceContext,
+        StartSlot: UINT,
+        Samplers: []?*ID3D11SamplerState,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]?*ID3D11SamplerState) callconv(WINAPI) void;
+        const ps_get_samplers: *const FnType = @ptrCast(self.vtable[75]);
+
+        ps_get_samplers(self, StartSlot, @intCast(Samplers.len), Samplers.ptr);
+    }
+
+    pub inline fn VSGetShader(
+        self: *ID3D11DeviceContext,
+        ppVertexShader: *?*ID3D11VertexShader,
+        ppClassInstances: [*]*ID3D11ClassInstance,
+        pNumClassInstances: *UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *?*ID3D11VertexShader, [*]*ID3D11ClassInstance, ?*UINT) callconv(WINAPI) void;
+        const vs_get_shader: *const FnType = @ptrCast(self.vtable[76]);
+
+        vs_get_shader(self, ppVertexShader, ppClassInstances, pNumClassInstances);
+    }
+
+    pub inline fn IAGetInputLayout(self: *ID3D11DeviceContext, ppInputLayout: *?*ID3D11InputLayout) void {
+        const FnType = fn (*ID3D11DeviceContext, *?*ID3D11InputLayout) callconv(WINAPI) void;
+        const ia_get_input_layout: *const FnType = @ptrCast(self.vtable[78]);
+
+        ia_get_input_layout(self, ppInputLayout);
+    }
+
+    pub inline fn IAGetVertexBuffers(
+        self: *ID3D11DeviceContext,
+        StartSlot: UINT,
+        VertexBuffers: []?*ID3D11Buffer,
+        Strides: []UINT,
+        Offsets: []UINT,
+    ) void {
+        assert(VertexBuffers.len == Strides.len);
+        assert(VertexBuffers.len == Offsets.len);
+
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]?*ID3D11Buffer, [*]UINT, [*]UINT) callconv(WINAPI) void;
+        const ia_get_vertex_buffers: *const FnType = @ptrCast(self.vtable[79]);
+
+        ia_get_vertex_buffers(self, StartSlot, @intCast(VertexBuffers.len), VertexBuffers.ptr, Strides.ptr, Offsets.ptr);
+    }
+
+    pub inline fn IAGetIndexBuffer(
+        self: *ID3D11DeviceContext,
+        pIndexBuffer: *?*ID3D11Buffer,
+        Format: *DXGI_FORMAT,
+        Offset: *UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *?*ID3D11Buffer, *DXGI_FORMAT, *UINT) callconv(WINAPI) void;
+        const ia_get_index_buffer: *const FnType = @ptrCast(self.vtable[80]);
+
+        ia_get_index_buffer(self, pIndexBuffer, Format, Offset);
+    }
+
+    pub inline fn GSGetShader(
+        self: *ID3D11DeviceContext,
+        ppGeometryShader: *?*ID3D11GeometryShader,
+        ppClassInstances: [*]*ID3D11ClassInstance,
+        pNumClassInstances: *UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *?*ID3D11GeometryShader, [*]*ID3D11ClassInstance, ?*UINT) callconv(WINAPI) void;
+        const gs_get_shader: *const FnType = @ptrCast(self.vtable[82]);
+
+        gs_get_shader(self, ppGeometryShader, ppClassInstances, pNumClassInstances);
+    }
+
+    pub inline fn IAGetPrimitiveTopology(self: *ID3D11DeviceContext, pTopology: *D3D11_PRIMITIVE_TOPOLOGY) void {
+        const FnType = fn (*ID3D11DeviceContext, *D3D11_PRIMITIVE_TOPOLOGY) callconv(WINAPI) void;
+        const ia_get_primitive_topology: *const FnType = @ptrCast(self.vtable[83]);
+
+        ia_get_primitive_topology(self, pTopology);
+    }
+
+    pub inline fn OMGetBlendState(
+        self: *ID3D11DeviceContext,
+        ppBlendState: *?*ID3D11BlendState,
+        BlendFactor: *[4]FLOAT,
+        pSampleMask: *UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *?*ID3D11BlendState, *[4]FLOAT, *UINT) callconv(WINAPI) void;
+        const om_get_blend_state: *const FnType = @ptrCast(self.vtable[91]);
+
+        om_get_blend_state(self, ppBlendState, BlendFactor, pSampleMask);
+    }
+
+    pub inline fn OMGetDepthStencilState(
+        self: *ID3D11DeviceContext,
+        ppDepthStencilState: *?*ID3D11DepthStencilState,
+        pStencilRef: *UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *?*ID3D11DepthStencilState, *UINT) callconv(WINAPI) void;
+        const om_get_depth_stencil_state: *const FnType = @ptrCast(self.vtable[92]);
+
+        om_get_depth_stencil_state(self, ppDepthStencilState, pStencilRef);
+    }
+
+    pub inline fn RSGetState(self: *ID3D11DeviceContext, ppRasterizerState: *?*ID3D11RasterizerState) void {
+        const FnType = fn (*ID3D11DeviceContext, *?*ID3D11RasterizerState) callconv(WINAPI) void;
+        const rs_get_state: *const FnType = @ptrCast(self.vtable[94]);
+
+        rs_get_state(self, ppRasterizerState);
+    }
+
+    pub inline fn RSGetViewports(
+        self: *ID3D11DeviceContext,
+        pNumViewports: *UINT,
+        pViewports: [*]D3D11_VIEWPORT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *UINT, ?[*]D3D11_VIEWPORT) callconv(WINAPI) void;
+        const rs_get_viewports: *const FnType = @ptrCast(self.vtable[95]);
+
+        rs_get_viewports(self, pNumViewports, pViewports);
+    }
+
+    pub inline fn RSGetScissorRects(
+        self: *ID3D11DeviceContext,
+        pNumRects: *UINT,
+        pRects: [*]D3D11_RECT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *UINT, ?[*]D3D11_RECT) callconv(WINAPI) void;
+        const rs_get_scissor_rects: *const FnType = @ptrCast(self.vtable[96]);
+
+        rs_get_scissor_rects(self, pNumRects, pRects);
     }
 };
 

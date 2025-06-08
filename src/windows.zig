@@ -11,10 +11,49 @@ pub const d3d11 = @import("windows/d3d11.zig");
 pub const d3dcommon = @import("windows/d3dcommon.zig");
 pub const d3dcompiler = @import("windows/d3dcompiler.zig");
 
+const ULONG = windows.ULONG;
+const WINAPI = windows.WINAPI;
+const HRESULT = windows.HRESULT;
+
+pub const REFIID = *const windows.GUID;
+
 pub const DLL_PROCESS_DETACH = 0;
 pub const DLL_PROCESS_ATTACH = 1;
 pub const DLL_THREAD_ATTACH = 2;
 pub const DLL_THREAD_DETACH = 3;
+
+pub const IUnknown = extern struct {
+    vtable: *const IUnknownVTable,
+
+    pub const QueryInterfaceError = error{
+        InterfaceNotFound,
+        Unexpected,
+    };
+
+    pub fn QueryInterface(self: *IUnknown, riid: REFIID, ppvObject: **anyopaque) !void {
+        const hr = self.vtable.QueryInterface(self, riid, ppvObject);
+        return switch (hr) {
+            windows.S_OK => void,
+            windows.E_NOINTERFACE => error.InterfaceNotFound,
+            windows.E_POINTER => unreachable,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+
+    pub inline fn AddRef(self: *IUnknown) ULONG {
+        return self.vtable.AddRef(self);
+    }
+
+    pub inline fn Release(self: *IUnknown) ULONG {
+        return self.vtable.Release(self);
+    }
+};
+
+const IUnknownVTable = extern struct {
+    QueryInterface: *const fn (self: *IUnknown, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT,
+    AddRef: *const fn (self: *IUnknown) callconv(WINAPI) ULONG,
+    Release: *const fn (self: *IUnknown) callconv(WINAPI) ULONG,
+};
 
 pub const DisableThreadLibraryCallsError = error{Unexpected};
 

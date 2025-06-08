@@ -1,5 +1,5 @@
 const std = @import("std");
-const windows = std.os.windows;
+const windows = @import("../windows.zig");
 
 pub const d3d11 = @import("d3d11.zig");
 pub const DXGI_ERROR = @import("dxgi_err.zig").DXGI_ERROR;
@@ -11,8 +11,8 @@ const BOOL = windows.BOOL;
 const UINT = windows.UINT;
 const ULONG = windows.ULONG;
 const HRESULT = windows.HRESULT;
-const REFCIID = *const windows.GUID;
 const WINAPI = windows.WINAPI;
+const REFIID = windows.REFIID;
 
 pub const IDXGISwapChain = extern struct {
     vtable: *const [18]*const anyopaque,
@@ -35,10 +35,10 @@ pub const IDXGISwapChain = extern struct {
 
     pub fn GetDevice(
         self: *IDXGISwapChain,
-        riid: REFCIID,
+        riid: REFIID,
         ppDevice: **anyopaque,
     ) GetDeviceError!void {
-        const FnType = fn (*IDXGISwapChain, REFCIID, **anyopaque) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IDXGISwapChain, REFIID, **anyopaque) callconv(WINAPI) HRESULT;
         const get_device: *const FnType = @ptrCast(self.vtable[7]);
 
         const hr = get_device(self, riid, ppDevice);
@@ -53,10 +53,10 @@ pub const IDXGISwapChain = extern struct {
     pub fn GetBuffer(
         self: *IDXGISwapChain,
         Buffer: UINT,
-        riid: REFCIID,
+        riid: REFIID,
         ppSurface: **anyopaque,
     ) GetBufferError!void {
-        const FnType = fn (*IDXGISwapChain, UINT, REFCIID, **anyopaque) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IDXGISwapChain, UINT, REFIID, **anyopaque) callconv(WINAPI) HRESULT;
         const get_buffer: *const FnType = @ptrCast(self.vtable[9]);
 
         const hr = get_buffer(self, Buffer, riid, ppSurface);
