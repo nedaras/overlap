@@ -198,11 +198,18 @@ const D3D11Backend = struct {
     }
 
     fn frame(context: *const anyopaque) void {
+        // todo: pass this stuff into frame it self
+        const shared = @import("../../gui/shared.zig");
+        defer shared.clear();
+
         const self: *const Self = @ptrCast(@alignCast(context));
 
         var backup_state = DeviceContextState{};
         storeState(self.device_context, &backup_state);
         defer loadState(self.device_context, &backup_state);
+
+        std.debug.print("{any}\n", .{shared.verticies()});
+        std.debug.print("{d}\n", .{shared.indecies()});
 
         var offset: windows.UINT = 0;
         var stride: windows.UINT = @sizeOf(Vertex);

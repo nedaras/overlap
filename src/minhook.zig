@@ -22,6 +22,13 @@ pub fn MH_Uninitialize() MH_UninitializeError!void {
 pub const MH_CreateHookError = error{Unexpected};
 
 pub fn MH_CreateHook(comptime T: type, pTarget: *const T, pDetour: *const T, ppOriginal: **T) MH_CreateHookError!void {
+    // todo: FIX
+    // found like a bug on Debug/Safe modes where there is runtime safety
+    // if a function is already hooked by bo some other process zig catches that there is bad alignment in hde64.c
+    // hs->imm.imm32 = *(uint32_t*)p;
+    // and this line makes zig panic
+    // though on Unsafe mods like Fast/Small it does not seem to cauz any problems
+    // so we can `@setRuntimeSafety(false);` to ignore it, but idk mb this is a bug in minhook
     return switch (minhook.MH_CreateHook(pTarget, pDetour, ppOriginal)) {
         .OK => {},
         else => |err| unexpectedError(err),
