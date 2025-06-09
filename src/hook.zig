@@ -1,6 +1,8 @@
 const std = @import("std");
 const windows = @import("windows.zig");
 const minhook = @import("minhook.zig");
+const shared = @import("gui/shared.zig");
+const Gui = @import("Gui.zig");
 const D3D11Backend = @import("gui/backends/D3D11Backend.zig");
 const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
@@ -12,19 +14,21 @@ const Thread = std.Thread;
 const assert = std.debug.assert;
 const error_tracing = std.posix.unexpected_error_tracing;
 
-pub const Gui = @import("Gui.zig");
-
 pub fn Desc(comptime T: type) type {
     return struct {
         const Error = T;
 
-        frame_cb: *const fn (gui: Gui) Error!void,
+        frame_cb: *const fn () Error!void,
         cleanup_cb: ?*const fn () void = null,
     };
 }
 
+pub const gui = &state.gui;
+
 const state = struct {
-    var frame_cb: ?*const fn (gui: Gui) anyerror!void = null;
+    var gui = Gui.init;
+
+    var frame_cb: ?*const fn () anyerror!void = null;
     var cleanup_cb: ?*const fn () void = null;
 
     var reset_event = Thread.ResetEvent{};
@@ -34,7 +38,9 @@ const state = struct {
     var exit_err: ?anyerror = null;
     var exit_err_trace: if (error_tracing) ?std.builtin.StackTrace else void = if (error_tracing) null else {};
 
-    var d3d11_backend: ?D3D11Backend = null;
+    var backend: ?union {
+        d3d11: D3D11Backend,
+    } = null;
 };
 
 fn extractError(comptime FnType: type) type {
@@ -158,14 +164,15 @@ pub fn unhook() void {
 }
 
 fn frame(swap_chain: *dxgi.IDXGISwapChain) anyerror!void {
-    if (state.d3d11_backend == null) {
-        state.d3d11_backend = try D3D11Backend.init(swap_chain);
+    if (state.backend == null) {
+        state.backend = .{ .d3d11 = try D3D11Backend.init(swap_chain) };
     }
 
-    const backend = state.d3d11_backend.?.backend();
-    defer backend.frame();
+    try state.frame_cb.?();
 
-    try state.frame_cb.?(Gui{ .backend = backend });
+    state.backend.?.d3d11.frame(gui.draw_verticies.constSlice(), gui.draw_indecies.constSlice());
+    gui.clear();
+
 }
 
 fn cleanup() void {
@@ -173,9 +180,9 @@ fn cleanup() void {
         cleanup_cb();
     }
 
-    if (state.d3d11_backend) |*backend| {
-        backend.deinit();
-        state.d3d11_backend = null;
+    if (state.backend) |backend| {
+        backend.d3d11.deinit();
+        state.backend = null;
     }
 }
 
@@ -221,12 +228,13 @@ fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, 
         return o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
     }
 
-    state.d3d11_backend.?.deinit();
+    // todo: gui deinit
+    state.backend.?.d3d11.deinit();
 
     // should we check if this hr is even correct like if it issint we just idk unhhok
     const hr = o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
-    state.d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| ret: {
+    const d3d11_backend = D3D11Backend.init(pSwapChain) catch |err| ret: {
         defer state.reset_event.set();
 
         cleanup();
@@ -251,6 +259,8 @@ fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, 
 
         break :ret null;
     };
+
+    state.backend = if (d3d11_backend) |backend| .{ .d3d11 = backend } else null;
 
     return hr;
 }

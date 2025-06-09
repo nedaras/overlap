@@ -1,7 +1,8 @@
 const std = @import("std");
 const windows = @import("../../windows.zig");
-const mem = std.mem;
+const shared = @import("../../gui/shared.zig");
 const Backend = @import("../Backend.zig");
+const mem = std.mem;
 const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
@@ -166,8 +167,8 @@ pub inline fn deinit(self: *const Self) void {
     D3D11Backend.deinit(self);
 }
 
-pub inline fn frame(self: *const Self) void {
-    D3D11Backend.frame(self);
+pub inline fn frame(self: *const Self, verticies: []const shared.DrawVertex, indecies: []const shared.DrawIndex) void {
+    D3D11Backend.frame(self, verticies, indecies);
 }
 
 pub fn backend(self: *Self) Backend {
@@ -197,19 +198,16 @@ const D3D11Backend = struct {
         self.device_context.Release();
     }
 
-    fn frame(context: *const anyopaque) void {
+    fn frame(context: *const anyopaque, verticies: []const shared.DrawVertex, indecies: []const shared.DrawIndex) void {
         // todo: pass this stuff into frame it self
-        const shared = @import("../../gui/shared.zig");
-        defer shared.clear();
-
         const self: *const Self = @ptrCast(@alignCast(context));
 
         var backup_state = DeviceContextState{};
         storeState(self.device_context, &backup_state);
         defer loadState(self.device_context, &backup_state);
 
-        std.debug.print("{any}\n", .{shared.verticies()});
-        std.debug.print("{d}\n", .{shared.indecies()});
+        std.debug.print("{any}\n", .{verticies});
+        std.debug.print("{d}\n", .{indecies});
 
         var offset: windows.UINT = 0;
         var stride: windows.UINT = @sizeOf(Vertex);

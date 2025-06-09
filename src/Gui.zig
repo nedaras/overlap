@@ -5,22 +5,24 @@ const Backend = @import("gui/Backend.zig");
 // We can have a potential probelm in the future
 // What if Directx and Opengl calls frame at the same time
 // we can have races to verticies/indecies creations ands destructions
-
+// in my opinion there should only be one backend hooked
 const x = 0;
 const y = 1;
 
-// idk i think Backend is useless here
-// we can store here our indecies verticies and draw cmds
-backend: Backend,
+const DrawVerticies = std.BoundedArray(shared.DrawVertex, 128);
+const DrawIndecies = std.BoundedArray(shared.DrawIndex, 256);
+
+draw_verticies: DrawVerticies,
+draw_indecies: DrawIndecies,
 
 const Gui = @This();
 
-pub fn deinit(self: Gui) void {
-    self.backend.deinit();
-}
+pub const init = Gui{
+        .draw_verticies = DrawVerticies.init(0) catch unreachable,
+        .draw_indecies = DrawIndecies.init(0) catch unreachable,
+};
 
-// i need to think
-pub fn addRectFilled(_: Gui, top: [2]f32, bot: [2]f32, col: u32) void {
+pub fn addRectFilled(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
     const verticies = [_]shared.DrawVertex{
         .{ .pos = .{ top[x], top[y] }, .col = col },
         .{ .pos = .{ bot[x], top[y] }, .col = col },
@@ -33,9 +35,31 @@ pub fn addRectFilled(_: Gui, top: [2]f32, bot: [2]f32, col: u32) void {
         0, 2, 3,
     };
 
-    shared.addDrawCommand(.{
+    self.addDrawCommand(.{
         .verticies = &verticies,
         .indecies = &indecies,
         .col = col,
     });
+}
+
+pub fn clear(self: *Gui) void {
+    self.draw_verticies.clear();
+    self.draw_indecies.clear();
+}
+
+const DrawCommand = struct {
+    verticies: []const shared.DrawVertex,
+    indecies: []const u16,
+    col: u32,
+};
+
+// todo: on debug we can check if indecie are like in bounds
+fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
+    const amt: u16 = @intCast(self.draw_verticies.len);
+
+    self.draw_verticies.appendSlice(draw_cmd.verticies) catch unreachable;
+
+    for (draw_cmd.indecies) |idx| {
+        self.draw_indecies.append(amt + idx) catch unreachable;
+    }
 }
