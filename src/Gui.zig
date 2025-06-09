@@ -24,10 +24,10 @@ pub const init = Gui{
 
 pub fn addRectFilled(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
     const verticies = [_]shared.DrawVertex{
-        .{ .pos = .{ top[x], top[y] }, .col = col },
-        .{ .pos = .{ bot[x], top[y] }, .col = col },
-        .{ .pos = .{ bot[x], bot[y] }, .col = col },
-        .{ .pos = .{ top[x], bot[y] }, .col = col },
+        .{ .pos = .{ top[x], top[y] }, .uv = .{ 0.0, 0.0 }, .col = col },
+        .{ .pos = .{ bot[x], top[y] }, .uv = .{ 1.0, 0.0 }, .col = col },
+        .{ .pos = .{ bot[x], bot[y] }, .uv = .{ 1.0, 1.0 }, .col = col },
+        .{ .pos = .{ top[x], bot[y] }, .uv = .{ 0.0, 1.0 }, .col = col },
     };
 
     const indecies = [_]u16{
