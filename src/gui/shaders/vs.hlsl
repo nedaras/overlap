@@ -17,13 +17,13 @@ struct VertexOutput
   float4 col : COLOR0;
 };
 
-float4 unpackUnorm4x8(uint col)
+float4 unpack_uint(uint col)
 {
     float4 result;
-    result.x = ((col >> 0)  & 0xFF) / 255.0;
-    result.y = ((col >> 8)  & 0xFF) / 255.0;
-    result.z = ((col >> 16) & 0xFF) / 255.0;
-    result.w = ((col >> 24) & 0xFF) / 255.0;
+    result.w = ((col >> 0)  & 0xFF) / 255.0;
+    result.z = ((col >> 8)  & 0xFF) / 255.0;
+    result.y = ((col >> 16) & 0xFF) / 255.0;
+    result.x = ((col >> 24) & 0xFF) / 255.0;
     return result;
 }
 
@@ -32,6 +32,6 @@ VertexOutput VS(VertexInput input)
   VertexOutput output;
   output.pos = mul(mvp, float4(input.pos, 0.0, 1.0));
   output.uv = input.uv;
-  output.col = unpackUnorm4x8(input.col);
+  output.col = unpack_uint(input.col);
   return output;
 }

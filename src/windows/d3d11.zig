@@ -8,7 +8,9 @@ pub const D3D11_ERROR = @import("d3d11_err.zig").D3D11_ERROR;
 
 const INT = windows.INT;
 const GUID = windows.GUID;
+const BOOL = windows.BOOL;
 const UINT = windows.UINT;
+const UINT8 = u8;
 const ULONG = windows.ULONG;
 const FLOAT = windows.FLOAT;
 const SIZE_T = windows.SIZE_T;
@@ -24,7 +26,6 @@ const IDXGISwapChain = dxgi.IDXGISwapChain;
 const D3D_DRIVER_TYPE = d3dcommon.D3D_DRIVER_TYPE;
 const DXGI_SWAP_CHAIN_DESC = dxgi.DXGI_SWAP_CHAIN_DESC;
 const D3D_FEATURE_LEVEL = d3dcommon.D3D_FEATURE_LEVEL;
-
 
 pub const D3D11_SDK_VERSION = 7;
 pub const D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE = 16;
@@ -57,6 +58,34 @@ pub const D3D11_USAGE_IMMUTABLE = 1;
 pub const D3D11_USAGE_DYNAMIC = 2;
 pub const D3D11_USAGE_STAGING = 3;
 
+pub const D3D11_BLEND = INT;
+pub const D3D11_BLEND_ZERO = 1;
+pub const D3D11_BLEND_ONE = 2;
+pub const D3D11_BLEND_SRC_COLOR = 3;
+pub const D3D11_BLEND_INV_SRC_COLOR = 4;
+pub const D3D11_BLEND_SRC_ALPHA = 5;
+pub const D3D11_BLEND_INV_SRC_ALPHA = 6;
+pub const D3D11_BLEND_DEST_ALPHA = 7;
+pub const D3D11_BLEND_INV_DEST_ALPHA = 8;
+pub const D3D11_BLEND_DEST_COLOR = 9;
+pub const D3D11_BLEND_INV_DEST_COLOR = 10;
+pub const D3D11_BLEND_SRC_ALPHA_SAT = 11;
+pub const D3D11_BLEND_BLEND_FACTOR = 14;
+pub const D3D11_BLEND_INV_BLEND_FACTOR = 15;
+pub const D3D11_BLEND_SRC1_COLOR = 16;
+pub const D3D11_BLEND_INV_SRC1_COLOR = 17;
+pub const D3D11_BLEND_SRC1_ALPHA = 18;
+pub const D3D11_BLEND_INV_SRC1_ALPHA = 1;
+
+pub const D3D11_BLEND_OP = INT;
+pub const D3D11_BLEND_OP_ADD = 1;
+pub const D3D11_BLEND_OP_SUBTRACT = 2;
+pub const D3D11_BLEND_OP_REV_SUBTRACT = 3;
+pub const D3D11_BLEND_OP_MIN = 4;
+pub const D3D11_BLEND_OP_MAX = 5;
+
+pub const D3D11_COLOR_WRITE_ENABLE_ALL = 15;
+
 pub const ID3D11ClassLinkage = IUnknown;
 pub const ID3D11ClassInstance = IUnknown;
 pub const ID3D11Resource = IUnknown;
@@ -75,6 +104,23 @@ pub const ID3D11PixelShader = IUnknown;
 
 pub const D3D11_RENDER_TARGET_VIEW_DESC = opaque {};
 pub const D3D11_RECT = windows.RECT;
+
+pub const D3D11_RENDER_TARGET_BLEND_DESC = extern struct {
+    BlendEnable: BOOL,
+    SrcBlend: D3D11_BLEND,
+    DestBlend: D3D11_BLEND,
+    BlendOp: D3D11_BLEND_OP,
+    SrcBlendAlpha: D3D11_BLEND,
+    DestBlendAlpha: D3D11_BLEND,
+    BlendOpAlpha: D3D11_BLEND_OP,
+    RenderTargetWriteMask: UINT8,
+};
+
+pub const D3D11_BLEND_DESC = extern struct {
+    AlphaToCoverageEnable: BOOL,
+    IndependentBlendEnable: BOOL,
+    RenderTarget: [8]D3D11_RENDER_TARGET_BLEND_DESC,
+};
 
 pub const D3D11_MAPPED_SUBRESOURCE = extern struct {
     pData: [*]u8,
@@ -256,6 +302,25 @@ pub const ID3D11Device = extern struct {
         };
     }
 
+    // 20
+
+    pub const CreateBlendStateError = error{Unexpected};
+
+    pub fn CreateBlendState(
+        self: *ID3D11Device,
+        pBlendStateDesc: *const D3D11_BLEND_DESC,
+        ppBlendState: **ID3D11BlendState,
+    ) CreateBlendStateError!void {
+        const FnType = fn (*ID3D11Device, *const D3D11_BLEND_DESC, **ID3D11BlendState) callconv(WINAPI) HRESULT;
+        const create_blend_state: *const FnType = @ptrCast(self.vtable[20]);
+
+        const hr = create_blend_state(self, pBlendStateDesc, ppBlendState);
+        return switch (D3D11_ERROR_CODE(hr)) {
+            .S_OK => {},
+            else => |err| unexpectedError(err),
+        };
+    }
+
     pub inline fn GetImmediateContext(self: *ID3D11Device, ppImmediateContext: **ID3D11DeviceContext) void {
         const FnType = fn (*ID3D11Device, **ID3D11DeviceContext) callconv(WINAPI) void;
         const get_immediate_context: *const FnType = @ptrCast(self.vtable[40]);
@@ -418,6 +483,18 @@ pub const ID3D11DeviceContext = extern struct {
         const om_set_render_targets: *const FnType = @ptrCast(self.vtable[33]);
 
         om_set_render_targets(self, @intCast(RenderTargetViews.len), RenderTargetViews.ptr, pDepthStencilView);
+    }
+
+    pub inline fn OMSetBlendState(
+        self: *ID3D11DeviceContext,
+        pBlendState: ?*ID3D11BlendState,
+        BlendFactor: *const [4]f32,
+        SampleMask: UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, ?*ID3D11BlendState, ?*const [4]f32, UINT) callconv(WINAPI) void;
+        const om_set_blend_state: *const FnType = @ptrCast(self.vtable[35]);
+
+        om_set_blend_state(self, pBlendState, BlendFactor, SampleMask);
     }
 
     pub inline fn RSSetViewports(self: *ID3D11DeviceContext, Viewports: []const D3D11_VIEWPORT) void {

@@ -16,6 +16,7 @@ render_target_view: *d3d11.ID3D11RenderTargetView,
 vertex_shader: *d3d11.ID3D11VertexShader,
 pixel_shader: *d3d11.ID3D11PixelShader,
 
+blend_state: *d3d11.ID3D11BlendState,
 input_layout: *d3d11.ID3D11InputLayout,
 
 constant_buffer: *d3d11.ID3D11Buffer,
@@ -86,6 +87,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
         .render_target_view = undefined,
         .vertex_shader = undefined,
         .pixel_shader = undefined,
+        .blend_state = undefined,
         .input_layout = undefined,
         .constant_buffer = undefined,
         .vertex_buffer = undefined,
@@ -111,6 +113,20 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
         else => |err| return d3d11.unexpectedError(err),
     }
     defer pixel_shader_blob.Release();
+
+    var blend_desc = std.mem.zeroes(d3d11.D3D11_BLEND_DESC);
+    blend_desc.AlphaToCoverageEnable = windows.FALSE;
+    blend_desc.RenderTarget[0].BlendEnable = windows.TRUE;
+    blend_desc.RenderTarget[0].SrcBlend = d3d11.D3D11_BLEND_SRC_ALPHA;
+    blend_desc.RenderTarget[0].DestBlend = d3d11.D3D11_BLEND_INV_SRC_ALPHA;
+    blend_desc.RenderTarget[0].BlendOp = d3d11.D3D11_BLEND_OP_ADD;
+    blend_desc.RenderTarget[0].SrcBlendAlpha = d3d11.D3D11_BLEND_ONE;
+    blend_desc.RenderTarget[0].DestBlendAlpha = d3d11.D3D11_BLEND_INV_SRC_ALPHA;
+    blend_desc.RenderTarget[0].BlendOpAlpha = d3d11.D3D11_BLEND_OP_ADD;
+    blend_desc.RenderTarget[0].RenderTargetWriteMask = d3d11.D3D11_COLOR_WRITE_ENABLE_ALL;
+
+    try device.CreateBlendState(&blend_desc, &result.blend_state);
+    errdefer result.blend_state.Release();
 
     try device.CreateVertexShader(vertex_shader_blob.slice(), null, &result.vertex_shader);
     errdefer result.vertex_shader.Release();
@@ -206,6 +222,7 @@ const D3D11Backend = struct {
     fn deinit(context: *const anyopaque) void {
         const self: *const Self = @ptrCast(@alignCast(context));
 
+        self.blend_state.Release();
         self.input_layout.Release();
 
         self.constant_buffer.Release();
@@ -228,6 +245,9 @@ const D3D11Backend = struct {
         defer loadState(self.device_context, &backup_state);
 
         {
+            // yee this thing does look simple but it aint idead:
+            // * use back buffer to get them w/h
+            // * try to get like processed window and get its rect
             const width = 1920.0;
             const height = 1080.0;
 
@@ -240,8 +260,8 @@ const D3D11Backend = struct {
 
             const L = 0.0;
             const R = width;
-            const T = height;
-            const B = 0.0;
+            const T = 0.0;
+            const B = height;
 
             constant_buffer.mvp = .{
                 .{ 2.0/(R-L),   0.0,         0.0, 0.0 },
@@ -270,6 +290,9 @@ const D3D11Backend = struct {
         var offset: windows.UINT = 0;
         var stride: windows.UINT = @sizeOf(shared.DrawVertex);
 
+        self.device_context.OMSetRenderTargets((&self.render_target_view)[0..1], null);
+        self.device_context.OMSetBlendState(self.blend_state, &.{ 0.0, 0.0, 0.0, 0.0 }, 0xFFFFFFFF);
+
         self.device_context.IASetInputLayout(self.input_layout);
         self.device_context.IASetVertexBuffers(0, (&self.vertex_buffer)[0..1], (&stride)[0..1], (&offset)[0..1]);
         self.device_context.IASetIndexBuffer(self.index_buffer, if (shared.DrawIndex == u16) dxgi.DXGI_FORMAT_R16_UINT else @compileError("sad"), 0);
@@ -278,7 +301,6 @@ const D3D11Backend = struct {
         self.device_context.VSSetShader(self.vertex_shader, null);
         self.device_context.PSSetShader(self.pixel_shader, null);
 
-        self.device_context.OMSetRenderTargets((&self.render_target_view)[0..1], null);
         self.device_context.DrawIndexed(@intCast(indecies.len), 0, 0);
     }
 };
@@ -313,7 +335,7 @@ fn loadState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) vo
     // RSSetScissorRects
     context.RSSetViewports(state.viewports[0..state.viewports_len]);
     // RSSetScissorRects
-    // OMSetBlendState
+    context.OMSetBlendState(state.blend_state, &state.blend_factor, state.sample_mask);
     context.OMSetRenderTargets((&state.render_target_view)[0..1], state.depth_stencil_view);
     // OMSetDepthStencilState
     // PSSetShaderResources

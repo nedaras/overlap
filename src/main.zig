@@ -3,7 +3,8 @@ const hook = @import("hook.zig");
 const gui = hook.gui;
 
 fn frame() !void {
-    gui.addRectFilled(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0xFFFFFFFF);
+    gui.addRectFilled(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
+    gui.addRectFilled(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, 0xFFFFFF7F);
 }
 
 pub fn main() !void {
