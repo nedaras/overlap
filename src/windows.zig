@@ -135,3 +135,16 @@ pub fn GetProcAddress(hModule: windows.HMODULE, lpProcName: [:0]const u8) GetPro
 pub inline fn GetForegroundWindow() ?windows.HWND {
     return user32.GetForegroundWindow();
 }
+
+pub const GetWindowRectError = error{Unexpected};
+
+pub fn GetWindowRect(hWnd: windows.HWND) GetWindowRectError!windows.RECT {
+    var rect: windows.RECT = undefined;
+    if (user32.GetWindowRect(hWnd, &rect) == windows.FALSE) {
+        return switch (windows.kernel32.GetLastError()) {
+            else => |err| windows.unexpectedError(err),
+        };
+    }
+
+    return rect;
+}

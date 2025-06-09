@@ -213,6 +213,17 @@ const D3D11Backend = struct {
         defer loadState(self.device_context, &backup_state);
 
         {
+            // todo: just pass render data or smth cuz this is sad
+            const window = windows.GetForegroundWindow() orelse @panic("sad");
+            const rect = windows.GetWindowRect(window) catch @panic("sad");
+
+            const width: f32 = @floatFromInt(rect.right - rect.left);
+            const height: f32 = @floatFromInt(rect.bottom - rect.top);
+
+            std.debug.print("{d}x{d}\n", .{width, height});
+        }
+
+        {
             var vertex_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
             var index_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
 
