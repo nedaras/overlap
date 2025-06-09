@@ -1,3 +1,8 @@
+cbuffer vertexBuffer : register(b0)
+{
+  float4x4 mvp;
+};
+
 struct VertexInput
 {
   float2 pos : POSITION;
@@ -25,7 +30,7 @@ float4 unpackUnorm4x8(uint col)
 VertexOutput VS(VertexInput input)
 {
   VertexOutput output;
-  output.pos = float4(input.pos, 0.0, 1.0);
+  output.pos = mul(mvp, float4(input.pos, 0.0, 1.0));
   output.uv = input.uv;
   output.col = unpackUnorm4x8(input.col);
   return output;

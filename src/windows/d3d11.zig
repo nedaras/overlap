@@ -45,6 +45,7 @@ pub const D3D11_CPU_ACCESS_READ = 0x20000;
 
 pub const D3D11_BIND_VERTEX_BUFFER = 1;
 pub const D3D11_BIND_INDEX_BUFFER = 2;
+pub const D3D11_BIND_CONSTANT_BUFFER = 4;
 
 pub const D3D11_INPUT_CLASSIFICATION = INT;
 pub const D3D11_INPUT_PER_VERTEX_DATA = 0;
@@ -271,6 +272,17 @@ pub const ID3D11DeviceContext = extern struct {
         const release: *const FnType = @ptrCast(self.vtable[2]);
 
         _ = release(self);
+    }
+
+    pub inline fn VSSetConstantBuffers(
+        self: *ID3D11DeviceContext,
+        StartSlot: UINT,
+        ConstantBuffers: []const ?*ID3D11Buffer,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, ?[*]const ?*ID3D11Buffer) callconv(WINAPI) void;
+        const vs_set_constant_buffers: *const FnType = @ptrCast(self.vtable[7]);
+
+        vs_set_constant_buffers(self, StartSlot, @intCast(ConstantBuffers.len), ConstantBuffers.ptr);
     }
 
     pub inline fn PSSetShader(

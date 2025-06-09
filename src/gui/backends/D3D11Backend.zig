@@ -17,6 +17,8 @@ vertex_shader: *d3d11.ID3D11VertexShader,
 pixel_shader: *d3d11.ID3D11PixelShader,
 
 input_layout: *d3d11.ID3D11InputLayout,
+
+constant_buffer: *d3d11.ID3D11Buffer,
 vertex_buffer: *d3d11.ID3D11Buffer,
 index_buffer: *d3d11.ID3D11Buffer,
 
@@ -85,6 +87,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
         .vertex_shader = undefined,
         .pixel_shader = undefined,
         .input_layout = undefined,
+        .constant_buffer = undefined,
         .vertex_buffer = undefined,
         .index_buffer = undefined,
     };
@@ -148,6 +151,16 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     try device.CreateInputLayout(input_elements, vertex_shader_blob.slice(), &result.input_layout);
     errdefer result.input_layout.Release();
 
+    var constant_buffer_desc = mem.zeroes(d3d11.D3D11_BUFFER_DESC);
+    constant_buffer_desc.Usage = d3d11.D3D11_USAGE_DYNAMIC;
+    constant_buffer_desc.CPUAccessFlags = d3d11.D3D11_CPU_ACCESS_WRITE;
+    constant_buffer_desc.ByteWidth = @sizeOf(shared.ConstantBuffer);
+    constant_buffer_desc.BindFlags = d3d11.D3D11_BIND_CONSTANT_BUFFER;
+
+    try device.CreateBuffer(&constant_buffer_desc, null, &result.constant_buffer);
+    errdefer result.constant_buffer.Release();
+
+    // tood: remove that 420
     var vertex_buffer_desc = mem.zeroes(d3d11.D3D11_BUFFER_DESC);
     vertex_buffer_desc.Usage = d3d11.D3D11_USAGE_DYNAMIC;
     vertex_buffer_desc.CPUAccessFlags = d3d11.D3D11_CPU_ACCESS_WRITE;
@@ -194,6 +207,8 @@ const D3D11Backend = struct {
         const self: *const Self = @ptrCast(@alignCast(context));
 
         self.input_layout.Release();
+
+        self.constant_buffer.Release();
         self.vertex_buffer.Release();
         self.index_buffer.Release();
 
@@ -213,20 +228,34 @@ const D3D11Backend = struct {
         defer loadState(self.device_context, &backup_state);
 
         {
-            // todo: just pass render data or smth cuz this is sad
-            const window = windows.GetForegroundWindow() orelse @panic("sad");
-            const rect = windows.GetWindowRect(window) catch @panic("sad");
+            const width = 1920.0;
+            const height = 1080.0;
 
-            const width: f32 = @floatFromInt(rect.right - rect.left);
-            const height: f32 = @floatFromInt(rect.bottom - rect.top);
+            var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
 
-            std.debug.print("{d}x{d}\n", .{width, height});
+            self.device_context.Map(@ptrCast(self.constant_buffer), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource) catch @panic("sad");
+            defer self.device_context.Unmap(@ptrCast(self.constant_buffer), 0);
+
+            const constant_buffer: *shared.ConstantBuffer = @ptrCast(@alignCast(mapped_resource.pData));
+
+            const L = 0.0;
+            const R = width;
+            const T = height;
+            const B = 0.0;
+
+            constant_buffer.mvp = .{
+                .{ 2.0/(R-L),   0.0,         0.0, 0.0 },
+                .{ 0.0,         2.0/(T-B),   0.0, 0.0 },
+                .{ 0.0,         0.0,         0.5, 0.0 },
+                .{ (R+L)/(L-R), (T+B)/(B-T), 0.5, 1.0  }
+            };
         }
 
         {
             var vertex_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
             var index_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
 
+            // todo: make this func return errors
             self.device_context.Map(@ptrCast(self.vertex_buffer), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &vertex_resource) catch @panic("sad");
             defer self.device_context.Unmap(@ptrCast(self.vertex_buffer), 0);
 
@@ -244,6 +273,7 @@ const D3D11Backend = struct {
         self.device_context.IASetInputLayout(self.input_layout);
         self.device_context.IASetVertexBuffers(0, (&self.vertex_buffer)[0..1], (&stride)[0..1], (&offset)[0..1]);
         self.device_context.IASetIndexBuffer(self.index_buffer, if (shared.DrawIndex == u16) dxgi.DXGI_FORMAT_R16_UINT else @compileError("sad"), 0);
+        self.device_context.VSSetConstantBuffers(0, (&self.constant_buffer)[0..1]);
         self.device_context.IASetPrimitiveTopology(d3d11.D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         self.device_context.VSSetShader(self.vertex_shader, null);
         self.device_context.PSSetShader(self.pixel_shader, null);
@@ -294,7 +324,7 @@ fn loadState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) vo
     context.IASetPrimitiveTopology(state.primative_topology);
     context.IASetIndexBuffer(state.index_buf, state.index_buf_format, state.index_buf_offset);
     context.IASetVertexBuffers(0, (&state.vertex_buf)[0..1], (&state.vertex_buf_stride)[0..1], (&state.vertex_buf_offset)[0..1]);
-    // VSSetConstantBuffers
+    context.VSSetConstantBuffers(0, (&state.constant_buf)[0..1]);
     context.IASetInputLayout(state.input_layout);
 
     defer releaseState(state);

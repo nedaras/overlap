@@ -7,3 +7,7 @@ pub const DrawVertex = extern struct {
     uv: [2]f32,
     col: u32
 };
+
+pub const ConstantBuffer = extern struct {
+    mvp: [4][4]f32,
+};
