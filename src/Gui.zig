@@ -38,7 +38,6 @@ pub fn addRectFilled(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
     self.addDrawCommand(.{
         .verticies = &verticies,
         .indecies = &indecies,
-        .col = col,
     });
 }
 
@@ -50,7 +49,6 @@ pub fn clear(self: *Gui) void {
 const DrawCommand = struct {
     verticies: []const shared.DrawVertex,
     indecies: []const u16,
-    col: u32,
 };
 
 // todo: on debug we can check if indecie are like in bounds
