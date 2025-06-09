@@ -25,14 +25,26 @@ const D3D_DRIVER_TYPE = d3dcommon.D3D_DRIVER_TYPE;
 const DXGI_SWAP_CHAIN_DESC = dxgi.DXGI_SWAP_CHAIN_DESC;
 const D3D_FEATURE_LEVEL = d3dcommon.D3D_FEATURE_LEVEL;
 
-pub const D3D11_PRIMITIVE_TOPOLOGY = d3dcommon.D3D_PRIMITIVE_TOPOLOGY;
-pub const D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST = d3dcommon.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
 pub const D3D11_SDK_VERSION = 7;
 pub const D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE = 16;
 pub const D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT = 8;
 
+pub const D3D11_PRIMITIVE_TOPOLOGY = d3dcommon.D3D_PRIMITIVE_TOPOLOGY;
+pub const D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST = d3dcommon.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+pub const D3D11_MAP = INT;
+pub const D3D11_MAP_READ = 1;
+pub const D3D11_MAP_WRITE = 2;
+pub const D3D11_MAP_READ_WRITE = 3;
+pub const D3D11_MAP_WRITE_DISCARD = 4;
+pub const D3D11_MAP_WRITE_NO_OVERWRITE = 5;
+
+pub const D3D11_CPU_ACCESS_WRITE = 0x10000;
+pub const D3D11_CPU_ACCESS_READ = 0x20000;
+
 pub const D3D11_BIND_VERTEX_BUFFER = 1;
+pub const D3D11_BIND_INDEX_BUFFER = 2;
 
 pub const D3D11_INPUT_CLASSIFICATION = INT;
 pub const D3D11_INPUT_PER_VERTEX_DATA = 0;
@@ -62,6 +74,17 @@ pub const ID3D11PixelShader = IUnknown;
 
 pub const D3D11_RENDER_TARGET_VIEW_DESC = opaque {};
 pub const D3D11_RECT = windows.RECT;
+
+pub const D3D11_MAPPED_SUBRESOURCE = extern struct {
+    pData: [*]u8,
+    RowPitch: UINT,
+    DepthPitch: UINT,
+
+    pub inline fn write(self: D3D11_MAPPED_SUBRESOURCE, comptime T: type, slice: []const T) void {
+        const ptr: [*]T = @ptrCast(@alignCast(self.pData));
+        @memcpy(ptr[0..slice.len], slice);
+    }
+};
 
 pub const D3D11_VIEWPORT = extern struct {
     TopLeftX: FLOAT,
@@ -278,6 +301,18 @@ pub const ID3D11DeviceContext = extern struct {
         vs_set_shader(self, pVertexShader, class_instance_ptr, @intCast(class_instances_len));
     }
 
+    pub inline fn DrawIndexed(
+        self: *ID3D11DeviceContext,
+        IndexCount: UINT,
+        StartIndexLocation: UINT,
+        BaseVertexLocation: UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, UINT) callconv(WINAPI) void;
+        const draw_indexed: *const FnType = @ptrCast(self.vtable[12]);
+
+        draw_indexed(self, IndexCount, StartIndexLocation, BaseVertexLocation);
+    }
+
     pub inline fn Draw(
         self: *ID3D11DeviceContext,
         VertexCount: UINT,
@@ -287,6 +322,37 @@ pub const ID3D11DeviceContext = extern struct {
         const draw: *const FnType = @ptrCast(self.vtable[13]);
 
         draw(self, VertexCount, StartVertexLocation);
+    }
+
+    pub const MapError = error{Unexpected};
+
+    pub fn Map(
+        self: *ID3D11DeviceContext,
+        pResource: *ID3D11Resource,
+        Subresource: UINT,
+        MapType: D3D11_MAP,
+        MapFlags: UINT,
+        pMappedResource: *D3D11_MAPPED_SUBRESOURCE,
+    ) MapError!void {
+        const FnType = fn (*ID3D11DeviceContext, *ID3D11Resource, UINT, D3D11_MAP, UINT, ?*D3D11_MAPPED_SUBRESOURCE) callconv(WINAPI) HRESULT;
+        const map: *const FnType = @ptrCast(self.vtable[14]);
+
+        const hr = map(self, pResource, Subresource, MapType, MapFlags, pMappedResource);
+        return switch (D3D11_ERROR_CODE(hr)) {
+            .S_OK => {},
+            else => |err| unexpectedError(err),
+        };
+    }
+
+    pub inline fn Unmap(
+        self: *ID3D11DeviceContext,
+        pResource: *ID3D11Resource,
+        Subresource: UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, *ID3D11Resource, UINT) callconv(WINAPI) void;
+        const unmap: *const FnType = @ptrCast(self.vtable[15]);
+
+        unmap(self, pResource, Subresource);
     }
 
     pub inline fn IASetInputLayout(self: *ID3D11DeviceContext, pInputLayout: ?*ID3D11InputLayout) void {
@@ -307,9 +373,21 @@ pub const ID3D11DeviceContext = extern struct {
         assert(VertexBuffers.len == Offsets.len);
 
         const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]const ?*ID3D11Buffer, [*]const UINT, [*]const UINT) callconv(WINAPI) void;
-        const ia_set_input_vertex_buffers: *const FnType = @ptrCast(self.vtable[18]);
+        const ia_set_vertex_buffers: *const FnType = @ptrCast(self.vtable[18]);
 
-        ia_set_input_vertex_buffers(self, StartSlot, @intCast(VertexBuffers.len), VertexBuffers.ptr, Strides.ptr, Offsets.ptr);
+        ia_set_vertex_buffers(self, StartSlot, @intCast(VertexBuffers.len), VertexBuffers.ptr, Strides.ptr, Offsets.ptr);
+    }
+
+    pub inline fn IASetIndexBuffer(
+        self: *ID3D11DeviceContext,
+        pIndexBuffer: ?*ID3D11Buffer,
+        Format: DXGI_FORMAT,
+        Offset: UINT,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, ?*ID3D11Buffer, DXGI_FORMAT, UINT) callconv(WINAPI) void;
+        const ia_set_index_buffer: *const FnType = @ptrCast(self.vtable[19]);
+
+        ia_set_index_buffer(self, pIndexBuffer, Format, Offset);
     }
 
     pub inline fn IASetPrimitiveTopology(self: *ID3D11DeviceContext, Topology: D3D11_PRIMITIVE_TOPOLOGY) void {

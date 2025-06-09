@@ -30,7 +30,7 @@ pub const IUnknown = extern struct {
         Unexpected,
     };
 
-    pub fn QueryInterface(self: *IUnknown, riid: REFIID, ppvObject: **anyopaque) !void {
+    pub fn QueryInterface(self: *IUnknown, riid: REFIID, ppvObject: **anyopaque) QueryInterfaceError!void {
         const hr = self.vtable.QueryInterface(self, riid, ppvObject);
         return switch (hr) {
             windows.S_OK => void,

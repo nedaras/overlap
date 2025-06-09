@@ -163,6 +163,9 @@ pub fn unhook() void {
     state.reset_event.set();
 }
 
+// Only reason why we have Backend Interface is in furure we could like dont worry about stuff
+// just need to add init funciton that idk returns anyerror or smth
+// or make IBackend smth like io.Reader where we can pass what errors it can return so like combinde D3D9-D3D12 and OPENGL stuff
 fn frame(swap_chain: *dxgi.IDXGISwapChain) anyerror!void {
     if (state.backend == null) {
         state.backend = .{ .d3d11 = try D3D11Backend.init(swap_chain) };
