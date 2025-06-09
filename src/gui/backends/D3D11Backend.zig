@@ -128,7 +128,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
         .{
             .SemanticName = "COLOR",
             .SemanticIndex = 0,
-            .Format = dxgi.DXGI_FORMAT_R8G8B8A8_UNORM,
+            .Format = dxgi.DXGI_FORMAT_R32G32B32_FLOAT,
             .InputSlot = 0,
             .AlignedByteOffset = 8,
             .InputSlotClass = d3d11.D3D11_INPUT_PER_VERTEX_DATA,
