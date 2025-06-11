@@ -58,17 +58,19 @@ fn extractError(comptime FnType: type) type {
 pub fn run(comptime FnType: type, desc: Desc(extractError(FnType))) !void {
     assert(state.frame_cb == null);
 
+    const window = windows.GetForegroundWindow() orelse return error.NoWindow;
+
     try minhook.MH_Initialize();
     defer minhook.MH_Uninitialize() catch {};
 
-    var d3d11_hook = try D3D11Hook.init(undefined, .{
+    state.frame_cb = desc.frame_cb;
+    state.cleanup_cb = desc.cleanup_cb;
+
+    var d3d11_hook = try D3D11Hook.init(window, .{
         .frame_cb = &frame,
         .error_cb = &errored,
     });
     defer d3d11_hook.deinit();
-
-    state.frame_cb = desc.frame_cb;
-    state.cleanup_cb = desc.cleanup_cb;
 
     state.reset_event.wait();
 
@@ -109,5 +111,7 @@ fn errored(err: D3D11Hook.Error) void {
 // hooked thread
 fn frame(backend: Backend) void {
     state.frame_cb.?() catch @panic("implement");
+    defer gui.clear();
+
     backend.frame(gui.draw_verticies.constSlice(), gui.draw_indecies.constSlice());
 }

@@ -7,6 +7,7 @@ const mem = std.mem;
 const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
+const assert = std.debug.assert;
 
 pub const Error = error{Unexpected};
 
@@ -36,6 +37,8 @@ pub const Desc = struct {
 };
 
 pub fn init(window: windows.HWND, desc: Desc) !*Self {
+    assert(zelf == null);
+
     const d3d11_lib = try windows.GetModuleHandle("d3d11.dll");
 
     const D3D11CreateDeviceAndSwapChain = *const @TypeOf(d3d11.D3D11CreateDeviceAndSwapChain);
@@ -99,12 +102,6 @@ pub fn init(window: windows.HWND, desc: Desc) !*Self {
     try minhook.MH_CreateHook(SwapChainResizeBuffers, resize_buffers, &hkResizeBuffers, &o_resize_buffers);
     errdefer minhook.MH_RemoveHook(SwapChainResizeBuffers, resize_buffers) catch {};
 
-    try minhook.MH_EnableHook(SwapChainPresent, present);
-    errdefer minhook.MH_DisableHook(SwapChainPresent, present) catch {};
-
-    try minhook.MH_EnableHook(SwapChainResizeBuffers, resize_buffers);
-    errdefer minhook.MH_DisableHook(SwapChainResizeBuffers, resize_buffers) catch {};
-
     zelf = Self{
         .frame_cb = desc.frame_cb,
         .error_cb = desc.error_cb,
@@ -114,6 +111,12 @@ pub fn init(window: windows.HWND, desc: Desc) !*Self {
         .o_resize_buffers = o_resize_buffers,
         .forward = true,
     };
+
+    try minhook.MH_EnableHook(SwapChainPresent, present);
+    errdefer minhook.MH_DisableHook(SwapChainPresent, present) catch {};
+
+    try minhook.MH_EnableHook(SwapChainResizeBuffers, resize_buffers);
+    errdefer minhook.MH_DisableHook(SwapChainResizeBuffers, resize_buffers) catch {};
 
     return &zelf.?;
 }
