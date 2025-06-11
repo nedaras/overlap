@@ -246,8 +246,7 @@ const D3D11Backend = struct {
 
         {
             // yee this thing does look simple but it aint idead:
-            // * use back buffer to get them w/h
-            // * try to get like processed window and get its rect
+            // try to get like processed window and get its rect
             const width = 1920.0;
             const height = 1080.0;
 
@@ -264,10 +263,10 @@ const D3D11Backend = struct {
             const B = height;
 
             constant_buffer.mvp = .{
-                .{ 2.0/(R-L),   0.0,         0.0, 0.0 },
-                .{ 0.0,         2.0/(T-B),   0.0, 0.0 },
-                .{ 0.0,         0.0,         0.5, 0.0 },
-                .{ (R+L)/(L-R), (T+B)/(B-T), 0.5, 1.0  }
+                .{ 2.0 / (R - L), 0.0, 0.0, 0.0 },
+                .{ 0.0, 2.0 / (T - B), 0.0, 0.0 },
+                .{ 0.0, 0.0, 0.5, 0.0 },
+                .{ (R + L) / (L - R), (T + B) / (B - T), 0.5, 1.0 },
             };
         }
 
@@ -285,7 +284,6 @@ const D3D11Backend = struct {
             vertex_resource.write(shared.DrawVertex, verticies);
             index_resource.write(shared.DrawIndex, indecies);
         }
-
 
         var offset: windows.UINT = 0;
         var stride: windows.UINT = @sizeOf(shared.DrawVertex);
@@ -332,6 +330,8 @@ fn storeState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) v
 }
 
 fn loadState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) void {
+    defer releaseState(state);
+
     // RSSetScissorRects
     context.RSSetViewports(state.viewports[0..state.viewports_len]);
     // RSSetScissorRects
@@ -339,7 +339,7 @@ fn loadState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) vo
     context.OMSetRenderTargets((&state.render_target_view)[0..1], state.depth_stencil_view);
     // OMSetDepthStencilState
     // PSSetShaderResources
-    // PSSetSamplers()
+    // PSSetSamplers
     context.PSSetShader(state.pixel_shader, state.pixel_shader_ins[0..state.pixel_shader_ins_len]);
     context.VSSetShader(state.vertex_shader, state.vertex_shader_ins[0..state.vertex_shader_ins_len]);
     // GSSetShader
@@ -348,8 +348,6 @@ fn loadState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) vo
     context.IASetVertexBuffers(0, (&state.vertex_buf)[0..1], (&state.vertex_buf_stride)[0..1], (&state.vertex_buf_offset)[0..1]);
     context.VSSetConstantBuffers(0, (&state.constant_buf)[0..1]);
     context.IASetInputLayout(state.input_layout);
-
-    defer releaseState(state);
 }
 
 fn releaseState(state: *DeviceContextState) void {

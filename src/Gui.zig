@@ -18,8 +18,8 @@ draw_indecies: DrawIndecies,
 const Gui = @This();
 
 pub const init = Gui{
-        .draw_verticies = DrawVerticies.init(0) catch unreachable,
-        .draw_indecies = DrawIndecies.init(0) catch unreachable,
+    .draw_verticies = DrawVerticies.init(0) catch unreachable,
+    .draw_indecies = DrawIndecies.init(0) catch unreachable,
 };
 
 pub fn addRectFilled(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
