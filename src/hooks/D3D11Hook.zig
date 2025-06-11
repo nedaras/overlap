@@ -11,7 +11,7 @@ const assert = std.debug.assert;
 
 pub const Error = error{Unexpected};
 
-frame_cb: *const fn (backend: Backend) void,
+frame_cb: *const fn (backend: Backend) bool,
 error_cb: *const fn (err: Error) void,
 
 present: *const SwapChainPresent,
@@ -32,7 +32,7 @@ const SwapChainResizeBuffers = @TypeOf(hkResizeBuffers);
 var zelf: ?Self = null;
 
 pub const Desc = struct {
-    frame_cb: *const fn (backend: Backend) void,
+    frame_cb: *const fn (backend: Backend) bool,
     error_cb: *const fn (err: Error) void,
 };
 
@@ -154,7 +154,12 @@ fn hkPresent(
         }
 
         const backend = self.backend.?.backend();
-        self.frame_cb(backend);
+        if (!self.frame_cb(backend)) {
+            backend.deinit();
+
+            self.backend = null;
+            self.forward = false;
+        }
     }
 
     return self.o_present(pSwapChain, SyncInterval, Flags);

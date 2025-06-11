@@ -104,14 +104,36 @@ pub fn unhook() void {
 }
 
 // hooked thread
-fn errored(err: D3D11Hook.Error) void {
-    @panic(@errorName(err));
+fn errored(err: anyerror) void {
+    assert(state.exit_err == null);
+
+    state.exit_err = err;
+    state.reset_event.set();
 }
 
 // hooked thread
-fn frame(backend: Backend) void {
-    state.frame_cb.?() catch @panic("implement");
+fn frame(backend: Backend) bool {
     defer gui.clear();
 
+    state.frame_cb.?() catch |err| {
+        if (error_tracing) blk: {
+            assert(state.exit_err_trace == null);
+
+            const debug_info = std.debug.getSelfDebugInfo() catch break :blk;
+            const debug_allocator = debug_info.allocator;
+
+            if (@errorReturnTrace()) |trace| {
+                const instruction_addresses = debug_allocator.dupe(usize, trace.instruction_addresses) catch break :blk;
+                state.exit_err_trace = std.builtin.StackTrace{
+                    .instruction_addresses = instruction_addresses,
+                    .index = trace.index,
+                };
+            }
+        }
+        errored(err);
+        return false;
+    };
+
     backend.frame(gui.draw_verticies.constSlice(), gui.draw_indecies.constSlice());
+    return true;
 }
