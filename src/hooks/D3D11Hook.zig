@@ -142,7 +142,7 @@ fn hkPresent(
     SyncInterval: windows.UINT,
     Flags: windows.UINT
 ) callconv(windows.WINAPI) windows.HRESULT {
-    var self = zelf.?;
+    var self = &zelf.?;
     if (self.forward) blk: {
         if (self.backend == null) {
             self.backend = D3D11Backend.init(pSwapChain) catch |err| {
@@ -155,9 +155,6 @@ fn hkPresent(
 
         const backend = self.backend.?.backend();
         if (!self.frame_cb(backend)) {
-            backend.deinit();
-
-            self.backend = null;
             self.forward = false;
         }
     }
@@ -173,7 +170,7 @@ fn hkResizeBuffers(
     NewFormat: dxgi.DXGI_FORMAT,
     SwapChainFlags: windows.UINT
 ) callconv(windows.WINAPI) windows.HRESULT {
-    var self = zelf.?;
+    var self = &zelf.?;
     if (!self.forward) {
         return self.o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
     }

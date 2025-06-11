@@ -96,11 +96,12 @@ pub fn run(comptime FnType: type, desc: Desc(extractError(FnType))) !void {
     }
 }
 
-// main thread
+// hooked thread
+// todo: cache unhook call cuz till main thead awaiks
+//       frame_cb will be called multiple times same as this func
 pub fn unhook() void {
-    @panic("implement");
-    // assert(state.frame_cb != null);
-    // state.reset_event.set();
+    assert(state.frame_cb != null);
+    state.reset_event.set();
 }
 
 // hooked thread
@@ -112,6 +113,9 @@ fn errored(err: anyerror) void {
 }
 
 // hooked thread
+// we have a problem
+// backend::frame can return an error
+// what should we do we cant use comptime structs and anyerror is just gross
 fn frame(backend: Backend) bool {
     defer gui.clear();
 
