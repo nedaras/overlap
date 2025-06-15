@@ -1,4 +1,3 @@
-const std = @import("std");
 const shared = @import("shared.zig");
 
 ptr: *const anyopaque,

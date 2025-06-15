@@ -96,6 +96,23 @@ pub fn run(comptime FnType: type, desc: Desc(extractError(FnType))) !void {
     }
 }
 
+// add format like RGB RGBA only R
+// add like dynamic type
+const ImageDesc = struct {
+    width: u16,
+    height: u16,
+    data: []const u8,
+};
+
+// hooked thread
+pub fn loadImage(allocator: mem.Allocator, desc: ImageDesc) void {
+    // will use to like make a ptr to object D3D11Image OpenGLImage...
+    _ = allocator;
+    // we could have Image interface, with like deinit call
+    // and update call or smth would be nice no?
+    _ = desc;
+}
+
 // hooked thread
 // todo: cache unhook call cuz till main thead awaiks
 //       frame_cb will be called multiple times same as this func

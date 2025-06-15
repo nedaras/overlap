@@ -4,7 +4,6 @@ const windows = std.os.windows;
 // would be intresting to rewrite minhook in zig
 
 const INT = windows.INT;
-const WINAPI = windows.WINAPI;
 const LPVOID = windows.LPVOID;
 const LPCVOID = windows.LPCVOID;
 
@@ -43,14 +42,14 @@ pub const MH_STATUS = enum(INT) {
     _,
 };
 
-pub extern fn MH_Initialize() callconv(WINAPI) MH_STATUS;
+pub extern fn MH_Initialize() callconv(.C) MH_STATUS;
 
-pub extern fn MH_Uninitialize() callconv(WINAPI) MH_STATUS;
+pub extern fn MH_Uninitialize() callconv(.C) MH_STATUS;
 
-pub extern fn MH_CreateHook(pTarget: LPCVOID, pDetour: LPCVOID, ppOriginal: *LPVOID) callconv(WINAPI) MH_STATUS;
+pub extern fn MH_CreateHook(pTarget: LPCVOID, pDetour: LPCVOID, ppOriginal: *LPVOID) callconv(.C) MH_STATUS;
 
-pub extern fn MH_EnableHook(pTarget: LPCVOID) callconv(WINAPI) MH_STATUS;
+pub extern fn MH_EnableHook(pTarget: LPCVOID) callconv(.C) MH_STATUS;
 
-pub extern fn MH_DisableHook(pTarget: LPCVOID) callconv(WINAPI) MH_STATUS;
+pub extern fn MH_DisableHook(pTarget: LPCVOID) callconv(.C) MH_STATUS;
 
-pub extern fn MH_RemoveHook(pTarget: LPCVOID) callconv(WINAPI) MH_STATUS;
+pub extern fn MH_RemoveHook(pTarget: LPCVOID) callconv(.C) MH_STATUS;

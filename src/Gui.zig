@@ -22,7 +22,7 @@ pub const init = Gui{
     .draw_indecies = DrawIndecies.init(0) catch unreachable,
 };
 
-pub fn addRectFilled(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
+pub fn rect(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
     const verticies = [_]shared.DrawVertex{
         .{ .pos = .{ top[x], top[y] }, .uv = .{ 0.0, 0.0 }, .col = col },
         .{ .pos = .{ bot[x], top[y] }, .uv = .{ 1.0, 0.0 }, .col = col },
@@ -39,6 +39,12 @@ pub fn addRectFilled(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
         .verticies = &verticies,
         .indecies = &indecies,
     });
+}
+
+pub fn text(self: *Gui, top: [2]f32, utf8_str: []const u8) void {
+    _ = self;
+    _ = top;
+    _ = utf8_str;
 }
 
 pub fn clear(self: *Gui) void {
