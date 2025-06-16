@@ -47,6 +47,7 @@ pub const D3D11_CPU_ACCESS_READ = 0x20000;
 pub const D3D11_BIND_VERTEX_BUFFER = 1;
 pub const D3D11_BIND_INDEX_BUFFER = 2;
 pub const D3D11_BIND_CONSTANT_BUFFER = 4;
+pub const D3D11_BIND_SHADER_RESOURCE = 8;
 
 pub const D3D11_INPUT_CLASSIFICATION = INT;
 pub const D3D11_INPUT_PER_VERTEX_DATA = 0;
@@ -103,7 +104,27 @@ pub const ID3D11VertexShader = IUnknown;
 pub const ID3D11PixelShader = IUnknown;
 
 pub const D3D11_RENDER_TARGET_VIEW_DESC = opaque {};
+pub const D3D11_SHADER_RESOURCE_VIEW_DESC = opaque {};
 pub const D3D11_RECT = windows.RECT;
+
+
+pub const DXGI_SAMPLE_DESC = extern struct {
+    Count: UINT,
+    Quality: UINT,
+};
+
+pub const D3D11_TEXTURE2D_DESC = extern struct {
+    Width: UINT,
+    Height: UINT,
+    MipLevels: UINT,
+    ArraySize: UINT,
+    Format: DXGI_FORMAT,
+    SampleDesc: DXGI_SAMPLE_DESC,
+    Usage: D3D11_USAGE,
+    BindFlags: UINT,
+    CPUAccessFlags: UINT,
+    MiscFlags: UINT,
+};
 
 pub const D3D11_RENDER_TARGET_BLEND_DESC = extern struct {
     BlendEnable: BOOL,
@@ -228,6 +249,50 @@ pub const ID3D11Device = extern struct {
         const hr = create_buffer(self, pDesc, pInitialData, ppBuffer);
         return switch (D3D11_ERROR_CODE(hr)) {
             .S_OK => {},
+            else => |err| unexpectedError(err),
+        };
+    }
+
+    pub const CreateTexture2DError = error{
+        OutOfMemory,
+        Unexpected,
+    };
+
+    pub fn CreateTexture2D(
+        self: *ID3D11Device,
+        pDesc: *const D3D11_TEXTURE2D_DESC,
+        pInitialData: ?*const D3D11_SUBRESOURCE_DATA,
+        ppTexture2D: **ID3D11Texture2D,
+    ) CreateTexture2DError!void {
+        const FnType = fn (*ID3D11Device, *const D3D11_TEXTURE2D_DESC, ?*const D3D11_SUBRESOURCE_DATA, **ID3D11Texture2D) callconv(WINAPI) HRESULT;
+        const create_texture_2d: *const FnType = @ptrCast(self.vtable[5]);
+
+        const hr = create_texture_2d(self, pDesc, pInitialData, ppTexture2D);
+        return switch (D3D11_ERROR_CODE(hr)) {
+            .S_OK => {},
+            .E_OUTOFMEMORY => error.OutOfMemory,
+            else => |err| unexpectedError(err),
+        };
+    }
+
+    pub const CreateShaderResourceViewError = error{
+        OutOfMemory,
+        Unexpected,
+    };
+
+    pub fn CreateShaderResourceView(
+        self: *ID3D11Device,
+        pResource: *ID3D11Resource,
+        pDesc: ?*const D3D11_SHADER_RESOURCE_VIEW_DESC,
+        ppSRView: **ID3D11ShaderResourceView,
+    ) CreateShaderResourceViewError!void {
+        const FnType = fn (*ID3D11Device, *ID3D11Resource, ?*const D3D11_SHADER_RESOURCE_VIEW_DESC, **ID3D11ShaderResourceView) callconv(WINAPI) HRESULT;
+        const create_shader_resource_view: *const FnType = @ptrCast(self.vtable[7]);
+
+        const hr = create_shader_resource_view(self, pResource, pDesc, ppSRView);
+        return switch (D3D11_ERROR_CODE(hr)) {
+            .S_OK => {},
+            .E_OUTOFMEMORY => error.OutOfMemory,
             else => |err| unexpectedError(err),
         };
     }

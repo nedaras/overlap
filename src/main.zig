@@ -11,14 +11,26 @@ const gui = hook.gui;
 // Only one problem kerning what todo with it i guess mono font but idk
 // or we can store kern table
 
+var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
+const allocator = da.allocator();
+
+var white_pixel: hook.Image = undefined;
+
+// todo: add err handling for init
 fn init() void {
-    // it like means we have been hooked
-    // create textures/fonts
+    std.debug.print("Init called!\n", .{});
+
+    // add T for data arrays type
+    white_pixel = hook.loadImage(allocator, .{
+        .width = 1,
+        .height = 1,
+        .data = &.{0xFF},
+        .format = .R8,
+    }) catch unreachable;
 }
 
 fn cleanup() void {
-    // called right before unhooking
-    // after this call frame fn will not be called
+    white_pixel.deinit();
 }
 
 fn frame() !void {
@@ -29,13 +41,10 @@ fn frame() !void {
 }
 
 pub fn main() !void {
-    const da = std.heap.DebugAllocator(.{}){};
     defer _ = da.deinit();
-
-    const allocator = da.allocator();
-    _ = allocator;
 
     try hook.run(@TypeOf(frame), .{
         .frame_cb = &frame,
+        .init_cb = &init,
     });
 }

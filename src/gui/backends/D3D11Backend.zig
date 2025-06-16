@@ -1,14 +1,18 @@
 const std = @import("std");
+const D3D11Image = @import("D3D11Image.zig");
 const windows = @import("../../windows.zig");
 const shared = @import("../../gui/shared.zig");
 const Backend = @import("../Backend.zig");
+const Image = @import("../Image.zig");
 const mem = std.mem;
 const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
 const d3dcompiler = windows.d3dcompiler;
+const Allocator = mem.Allocator;
 const assert = std.debug.assert;
 
+device: *d3d11.ID3D11Device,
 device_context: *d3d11.ID3D11DeviceContext,
 
 render_target_view: *d3d11.ID3D11RenderTargetView,
@@ -77,12 +81,12 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     var pixel_shader_blob: *d3dcommon.ID3DBlob = undefined;
 
     try swap_chain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device));
-    defer device.Release();
 
     device.GetImmediateContext(&device_context);
     errdefer device_context.Release();
 
     var result = Self{
+        .device = device,
         .device_context = device_context,
         .render_target_view = undefined,
         .vertex_shader = undefined,
@@ -217,6 +221,7 @@ const D3D11Backend = struct {
     pub const vtable = Backend.VTable{
         .deinit = &D3D11Backend.deinit,
         .frame = &D3D11Backend.frame,
+        .loadImage = &D3D11Backend.loadImage,
     };
 
     fn deinit(context: *const anyopaque) void {
@@ -235,6 +240,7 @@ const D3D11Backend = struct {
         self.render_target_view.Release();
 
         self.device_context.Release();
+        self.device.Release();
     }
 
     fn frame(context: *const anyopaque, verticies: []const shared.DrawVertex, indecies: []const shared.DrawIndex) void {
@@ -300,6 +306,16 @@ const D3D11Backend = struct {
         self.device_context.PSSetShader(self.pixel_shader, null);
 
         self.device_context.DrawIndexed(@intCast(indecies.len), 0, 0);
+    }
+
+    fn loadImage(context: *const anyopaque, allocator: Allocator, desc: Image.Desc) Image.Error!Image {
+        const self: *const Self = @ptrCast(@alignCast(context));
+
+        const image = try D3D11Image.init(self.device, allocator, desc);
+        return .{
+            .ptr = image,
+            .vtable = &D3D11Image.vtable,
+        };
     }
 };
 

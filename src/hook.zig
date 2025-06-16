@@ -20,16 +20,19 @@ pub fn Desc(comptime T: type) type {
         const Error = T;
 
         frame_cb: *const fn () Error!void,
+        init_cb: ?*const fn () void = null,
         cleanup_cb: ?*const fn () void = null,
     };
 }
 
+pub const Image = @import("gui/Image.zig");
 pub const gui = &state.gui;
 
 const state = struct {
     var gui = Gui.init;
 
     var frame_cb: ?*const fn () anyerror!void = null;
+    var init_cb: ?*const fn () void = null;
     var cleanup_cb: ?*const fn () void = null;
 
     var reset_event = Thread.ResetEvent{};
@@ -38,6 +41,8 @@ const state = struct {
     // Even if it would not crash saving trace would be nice so we could combinde our trace with hooked functions one
     var exit_err: ?anyerror = null;
     var exit_err_trace: if (error_tracing) ?std.builtin.StackTrace else void = if (error_tracing) null else {};
+
+    var backend: ?Backend = null;
 
     //var hook: ?union {
         //d3d11: *const D3D11Hook,
@@ -64,6 +69,7 @@ pub fn run(comptime FnType: type, desc: Desc(extractError(FnType))) !void {
     defer minhook.MH_Uninitialize() catch {};
 
     state.frame_cb = desc.frame_cb;
+    state.init_cb = desc.init_cb;
     state.cleanup_cb = desc.cleanup_cb;
 
     var d3d11_hook = try D3D11Hook.init(window, .{
@@ -96,21 +102,9 @@ pub fn run(comptime FnType: type, desc: Desc(extractError(FnType))) !void {
     }
 }
 
-// add format like RGB RGBA only R
-// add like dynamic type
-const ImageDesc = struct {
-    width: u16,
-    height: u16,
-    data: []const u8,
-};
-
 // hooked thread
-pub fn loadImage(allocator: mem.Allocator, desc: ImageDesc) void {
-    // will use to like make a ptr to object D3D11Image OpenGLImage...
-    _ = allocator;
-    // we could have Image interface, with like deinit call
-    // and update call or smth would be nice no?
-    _ = desc;
+pub inline fn loadImage(allocator: mem.Allocator, desc: Image.Desc) Image.Error!Image {
+    return state.backend.?.loadImage(allocator, desc);
 }
 
 // hooked thread
@@ -135,6 +129,12 @@ fn errored(err: anyerror) void {
 // what should we do we cant use comptime structs and anyerror is just gross
 fn frame(backend: Backend) bool {
     defer gui.clear();
+
+    if (state.backend == null) {
+        if (state.init_cb) |init| init();
+        state.backend = backend;
+    }
+    assert(state.backend.?.ptr == backend.ptr);
 
     state.frame_cb.?() catch |err| {
         if (error_tracing) blk: {
