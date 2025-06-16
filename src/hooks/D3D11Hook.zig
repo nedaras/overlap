@@ -9,7 +9,10 @@ const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
 const assert = std.debug.assert;
 
-pub const Error = error{Unexpected};
+pub const Error = error{
+    OutOfMemory,
+    Unexpected,
+};
 
 frame_cb: *const fn (backend: Backend) bool,
 error_cb: *const fn (err: Error) void,

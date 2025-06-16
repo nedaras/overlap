@@ -27,6 +27,11 @@ constant_buffer: *d3d11.ID3D11Buffer,
 vertex_buffer: *d3d11.ID3D11Buffer,
 index_buffer: *d3d11.ID3D11Buffer,
 
+sampler: *d3d11.ID3D11SamplerState,
+
+white_pixel_texture: *d3d11.ID3D11Texture2D,
+white_pixel_resource: *d3d11.ID3D11ShaderResourceView,
+
 const Self = @This();
 
 const DeviceContextState = struct {
@@ -65,6 +70,7 @@ const DeviceContextState = struct {
 };
 
 pub const Error = error{
+    OutOfMemory,
     Unexpected,
 };
 
@@ -96,6 +102,9 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
         .constant_buffer = undefined,
         .vertex_buffer = undefined,
         .index_buffer = undefined,
+        .sampler = undefined,
+        .white_pixel_texture = undefined,
+        .white_pixel_resource = undefined,
     };
 
     try swap_chain.GetBuffer(0, d3d11.ID3D11Texture2D.UUID, @ptrCast(&back_buffer));
@@ -199,6 +208,39 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     try device.CreateBuffer(&index_buffer_desc, null, &result.index_buffer);
     errdefer result.index_buffer.Release();
 
+    var texture_desc = mem.zeroes(d3d11.D3D11_TEXTURE2D_DESC);
+    texture_desc.Width = 1;
+    texture_desc.Height = 1;
+    texture_desc.MipLevels = 1;
+    texture_desc.ArraySize = 1;
+    texture_desc.Format = dxgi.DXGI_FORMAT_R8_UINT;
+    texture_desc.SampleDesc.Count = 1;
+    texture_desc.Usage = d3d11.D3D11_USAGE_DEFAULT;
+    texture_desc.BindFlags = d3d11.D3D11_BIND_SHADER_RESOURCE;
+
+    var initial_data = mem.zeroes(d3d11.D3D11_SUBRESOURCE_DATA);
+    initial_data.pSysMem = &[1]u8{0xFF};
+    initial_data.SysMemPitch = 1;
+
+    try device.CreateTexture2D(&texture_desc, &initial_data, &result.white_pixel_texture);
+    errdefer result.white_pixel_texture.Release();
+
+    try device.CreateShaderResourceView(@ptrCast(result.white_pixel_texture), null, &result.white_pixel_resource);
+    errdefer result.white_pixel_resource.Release();
+
+    var sampler_desc = mem.zeroes(d3d11.D3D11_SAMPLER_DESC);
+    sampler_desc.Filter = d3d11.D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    sampler_desc.AddressU = d3d11.D3D11_TEXTURE_ADDRESS_CLAMP;
+    sampler_desc.AddressV = d3d11.D3D11_TEXTURE_ADDRESS_CLAMP;
+    sampler_desc.AddressW = d3d11.D3D11_TEXTURE_ADDRESS_CLAMP;
+    sampler_desc.MipLODBias = 0.0;
+    sampler_desc.ComparisonFunc = d3d11.D3D11_COMPARISON_ALWAYS;
+    sampler_desc.MaxLOD = 0.0;
+    sampler_desc.MaxLOD = 0.0;
+
+    try device.CreateSamplerState(&sampler_desc, &result.sampler);
+    errdefer result.sampler.Release();
+
     return result;
 }
 
@@ -226,6 +268,11 @@ const D3D11Backend = struct {
 
     fn deinit(context: *const anyopaque) void {
         const self: *const Self = @ptrCast(@alignCast(context));
+
+        self.white_pixel_resource.Release();
+        self.white_pixel_texture.Release();
+
+        self.sampler.Release();
 
         self.blend_state.Release();
         self.input_layout.Release();
@@ -304,7 +351,9 @@ const D3D11Backend = struct {
         self.device_context.IASetPrimitiveTopology(d3d11.D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         self.device_context.VSSetShader(self.vertex_shader, null);
         self.device_context.PSSetShader(self.pixel_shader, null);
+        self.device_context.PSSetSamplers(0, (&self.sampler)[0..1]);
 
+        self.device_context.PSSetShaderResources(0, (&self.white_pixel_resource)[0..1]);
         self.device_context.DrawIndexed(@intCast(indecies.len), 0, 0);
     }
 
@@ -354,8 +403,8 @@ fn loadState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) vo
     context.OMSetBlendState(state.blend_state, &state.blend_factor, state.sample_mask);
     context.OMSetRenderTargets((&state.render_target_view)[0..1], state.depth_stencil_view);
     // OMSetDepthStencilState
-    // PSSetShaderResources
-    // PSSetSamplers
+    context.PSSetShaderResources(0, (&state.shader_resource_view)[0..1]);
+    context.PSSetSamplers(0, (&state.sampler_state)[0..1]);
     context.PSSetShader(state.pixel_shader, state.pixel_shader_ins[0..state.pixel_shader_ins_len]);
     context.VSSetShader(state.vertex_shader, state.vertex_shader_ins[0..state.vertex_shader_ins_len]);
     // GSSetShader

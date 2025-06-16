@@ -131,8 +131,8 @@ fn frame(backend: Backend) bool {
     defer gui.clear();
 
     if (state.backend == null) {
-        if (state.init_cb) |init| init();
         state.backend = backend;
+        if (state.init_cb) |init| init();
     }
     assert(state.backend.?.ptr == backend.ptr);
 

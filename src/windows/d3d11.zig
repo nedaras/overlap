@@ -85,6 +85,15 @@ pub const D3D11_BLEND_OP_REV_SUBTRACT = 3;
 pub const D3D11_BLEND_OP_MIN = 4;
 pub const D3D11_BLEND_OP_MAX = 5;
 
+pub const D3D11_FILTER = INT;
+pub const D3D11_FILTER_MIN_MAG_MIP_LINEAR = 0x15;
+
+pub const D3D11_TEXTURE_ADDRESS_MODE = INT;
+pub const D3D11_TEXTURE_ADDRESS_CLAMP = 3;
+
+pub const D3D11_COMPARISON_FUNC = INT;
+pub const D3D11_COMPARISON_ALWAYS = 8;
+
 pub const D3D11_COLOR_WRITE_ENABLE_ALL = 15;
 
 pub const ID3D11ClassLinkage = IUnknown;
@@ -107,6 +116,18 @@ pub const D3D11_RENDER_TARGET_VIEW_DESC = opaque {};
 pub const D3D11_SHADER_RESOURCE_VIEW_DESC = opaque {};
 pub const D3D11_RECT = windows.RECT;
 
+pub const D3D11_SAMPLER_DESC = extern struct {
+    Filter: D3D11_FILTER,
+    AddressU: D3D11_TEXTURE_ADDRESS_MODE,
+    AddressV: D3D11_TEXTURE_ADDRESS_MODE,
+    AddressW: D3D11_TEXTURE_ADDRESS_MODE,
+    MipLODBias: FLOAT,
+    MaxAnisotropy: UINT,
+    ComparisonFunc: D3D11_COMPARISON_FUNC,
+    BorderColor: *const [4]FLOAT,
+    MinLOD: FLOAT,
+    MaxLOD: FLOAT,
+};
 
 pub const DXGI_SAMPLE_DESC = extern struct {
     Count: UINT,
@@ -367,8 +388,6 @@ pub const ID3D11Device = extern struct {
         };
     }
 
-    // 20
-
     pub const CreateBlendStateError = error{Unexpected};
 
     pub fn CreateBlendState(
@@ -380,6 +399,23 @@ pub const ID3D11Device = extern struct {
         const create_blend_state: *const FnType = @ptrCast(self.vtable[20]);
 
         const hr = create_blend_state(self, pBlendStateDesc, ppBlendState);
+        return switch (D3D11_ERROR_CODE(hr)) {
+            .S_OK => {},
+            else => |err| unexpectedError(err),
+        };
+    }
+
+    pub const CreateSamplerStateError = error{Unexpected};
+
+    pub fn CreateSamplerState(
+        self: *ID3D11Device,
+        pSamplerDesc: *const D3D11_SAMPLER_DESC,
+        ppSamplerState: **ID3D11SamplerState,
+    ) CreateSamplerStateError!void {
+        const FnType = fn (*ID3D11Device, *const D3D11_SAMPLER_DESC, **ID3D11SamplerState) callconv(WINAPI) HRESULT;
+        const create_sampler_state: *const FnType = @ptrCast(self.vtable[23]);
+
+        const hr = create_sampler_state(self, pSamplerDesc, ppSamplerState);
         return switch (D3D11_ERROR_CODE(hr)) {
             .S_OK => {},
             else => |err| unexpectedError(err),
@@ -415,6 +451,17 @@ pub const ID3D11DeviceContext = extern struct {
         vs_set_constant_buffers(self, StartSlot, @intCast(ConstantBuffers.len), ConstantBuffers.ptr);
     }
 
+    pub inline fn PSSetShaderResources(
+        self: *ID3D11DeviceContext,
+        StartSlot: UINT,
+        ShaderResourceViews: []const ?*ID3D11ShaderResourceView,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, ?[*]const ?*ID3D11ShaderResourceView) callconv(WINAPI) void;
+        const ps_set_shader_resources: *const FnType = @ptrCast(self.vtable[8]);
+
+        ps_set_shader_resources(self, StartSlot, @intCast(ShaderResourceViews.len), ShaderResourceViews.ptr);
+    }
+
     pub inline fn PSSetShader(
         self: *ID3D11DeviceContext,
         pPixelShader: ?*ID3D11PixelShader,
@@ -427,6 +474,17 @@ pub const ID3D11DeviceContext = extern struct {
         const class_instances_len = if (ClassInstances) |ci| ci.len else 0;
 
         ps_set_shader(self, pPixelShader, class_instance_ptr, @intCast(class_instances_len));
+    }
+
+    pub inline fn PSSetSamplers(
+        self: *ID3D11DeviceContext, 
+        StartSlot: UINT,
+        Samplers: []const ?*ID3D11SamplerState,
+    ) void {
+        const FnType = fn (*ID3D11DeviceContext, UINT, UINT, [*]const ?*ID3D11SamplerState) callconv(WINAPI) void;
+        const ps_set_samplers: *const FnType = @ptrCast(self.vtable[10]);
+
+        ps_set_samplers(self, StartSlot, @intCast(Samplers.len), Samplers.ptr);
     }
 
     pub inline fn VSSetShader(

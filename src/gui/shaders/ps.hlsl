@@ -5,7 +5,10 @@ struct VertexOutput
   float4 col : COLOR0;
 };
 
+sampler sampler0;
+Texture2D texture0;
+
 float4 PS(VertexOutput input) : SV_Target
 {
-  return input.col;
+  return input.col * texture0.Sample(sampler0, input.uv);
 }
