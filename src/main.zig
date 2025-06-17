@@ -9,17 +9,34 @@ const gui = hook.gui;
 var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
 const allocator = da.allocator();
 
+var img: hook.Image = undefined;
+
 // todo: add err handling for init
 fn init() void {
+    img = hook.loadImage(allocator, .{
+        .width = 2,
+        .height = 2,
+        .format = .R8G8B8A8_UNORM,
+        .data = &.{
+            0xFF, 0x00, 0x00, 0xFF, // 0
+            0x00, 0xFF, 0x00, 0xFF, // 1
+            0x00, 0xFF, 0x00, 0xFF, // 2
+            0xFF, 0x00, 0x00, 0xFF, // 3
+        },
+    }) catch unreachable;
+
     std.debug.print("Init called!\n", .{});
 }
 
 fn cleanup() void {
+    img.deinit();
 }
 
 fn frame() !void {
     gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-    gui.rect(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, 0xFFFFFF7F);
+    //gui.rect(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, 0xffffff7f);
+    gui.image(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, undefined);
+
     // such a simple function no?
     gui.text(.{ 200.0, 200.0 }, "Helo");
 }

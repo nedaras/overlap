@@ -47,6 +47,26 @@ pub fn rect(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
     });
 }
 
+pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
+    const verticies = [_]shared.DrawVertex{
+        .{ .pos = .{ top[x], top[y] }, .uv = .{ 0.0, 0.0 }, .col = 0xFFFFFFFF },
+        .{ .pos = .{ bot[x], top[y] }, .uv = .{ 1.0, 0.0 }, .col = 0xFFFFFFFF },
+        .{ .pos = .{ bot[x], bot[y] }, .uv = .{ 1.0, 1.0 }, .col = 0xFFFFFFFF },
+        .{ .pos = .{ top[x], bot[y] }, .uv = .{ 0.0, 1.0 }, .col = 0xFFFFFFFF },
+    };
+
+    const indecies = [_]u16{
+        0, 1, 2,
+        0, 2, 3,
+    };
+
+    self.addDrawCommand(.{
+        .image = src,
+        .verticies = &verticies,
+        .indecies = &indecies,
+    });
+}
+
 pub fn text(self: *Gui, top: [2]f32, utf8_str: []const u8) void {
     _ = self;
     _ = top;

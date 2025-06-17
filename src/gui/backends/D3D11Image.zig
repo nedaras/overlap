@@ -20,7 +20,7 @@ pub fn init(device: *d3d11.ID3D11Device, allocator: Allocator, desc: Image.Desc)
     var result = try allocator.create(Self);
 
     const dxgi_format = switch (desc.format) {
-        .R8 => dxgi.DXGI_FORMAT_R8_UINT,
+        .R8G8B8A8_UNORM => dxgi.DXGI_FORMAT_R8G8B8A8_UNORM,
     };
 
     var texture_desc = mem.zeroes(d3d11.D3D11_TEXTURE2D_DESC);
