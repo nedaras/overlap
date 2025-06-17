@@ -8,7 +8,7 @@ vtable: *const VTable,
 
 pub const VTable = struct {
     deinit: *const fn (*const anyopaque) void,
-    frame: *const fn (*const anyopaque, verticies: []const shared.DrawVertex, indecies: []const u16) void,
+    frame: *const fn (*const anyopaque, verticies: []const shared.DrawVertex, indecies: []const u16, draw_commands: []const shared.DrawCommand) void,
     loadImage: *const fn (*const anyopaque, allocator: Allocator, desc: Image.Desc) Image.Error!Image,
 };
 
@@ -18,8 +18,8 @@ pub inline fn deinit(self: Backend) void {
     self.vtable.deinit(self.ptr);
 }
 
-pub inline fn frame(self: Backend, verticies: []const shared.DrawVertex, indecies: []const u16) void {
-    self.vtable.frame(self.ptr, verticies, indecies);
+pub inline fn frame(self: Backend, verticies: []const shared.DrawVertex, indecies: []const u16, draw_commands: []const shared.DrawCommand) void {
+    self.vtable.frame(self.ptr, verticies, indecies, draw_commands);
 }
 
 pub inline fn loadImage(self: Backend, allocator: Allocator, desc: Image.Desc) Image.Error!Image {

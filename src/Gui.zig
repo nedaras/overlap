@@ -1,6 +1,7 @@
 const std = @import("std");
 const shared = @import("gui/shared.zig");
 const Backend = @import("gui/Backend.zig");
+const Image = @import("gui/Image.zig");
 
 // We can have a potential probelm in the future
 // What if Directx and Opengl calls frame at the same time
@@ -9,8 +10,11 @@ const Backend = @import("gui/Backend.zig");
 const x = 0;
 const y = 1;
 
+const DrawCommands = std.BoundedArray(shared.DrawCommand, 32);
 const DrawVerticies = std.BoundedArray(shared.DrawVertex, 128);
 const DrawIndecies = std.BoundedArray(shared.DrawIndex, 256);
+
+draw_commands: DrawCommands,
 
 draw_verticies: DrawVerticies,
 draw_indecies: DrawIndecies,
@@ -18,8 +22,9 @@ draw_indecies: DrawIndecies,
 const Gui = @This();
 
 pub const init = Gui{
-    .draw_verticies = DrawVerticies.init(0) catch unreachable,
-    .draw_indecies = DrawIndecies.init(0) catch unreachable,
+    .draw_commands = .{},
+    .draw_verticies = .{},
+    .draw_indecies = .{},
 };
 
 pub fn rect(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
@@ -36,6 +41,7 @@ pub fn rect(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
     };
 
     self.addDrawCommand(.{
+        .image = null,
         .verticies = &verticies,
         .indecies = &indecies,
     });
@@ -48,22 +54,40 @@ pub fn text(self: *Gui, top: [2]f32, utf8_str: []const u8) void {
 }
 
 pub fn clear(self: *Gui) void {
+    self.draw_commands.clear();
     self.draw_verticies.clear();
     self.draw_indecies.clear();
 }
 
 const DrawCommand = struct {
+    image: ?Image,
     verticies: []const shared.DrawVertex,
     indecies: []const u16,
 };
 
 // todo: on debug we can check if indecie are like in bounds
 fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
-    const amt: u16 = @intCast(self.draw_verticies.len);
+    const index_off: u16 = @intCast(self.draw_verticies.len);
 
     self.draw_verticies.appendSlice(draw_cmd.verticies) catch unreachable;
 
     for (draw_cmd.indecies) |idx| {
-        self.draw_indecies.append(amt + idx) catch unreachable;
+        self.draw_indecies.append(idx + index_off) catch unreachable;
     }
+
+    // todo: optimize if curr draw cmd image is same as last
+
+    self.draw_commands.append(.{
+        .image = draw_cmd.image,
+        .index_len = @intCast(draw_cmd.indecies.len),
+        .index_off = index_off,
+    }) catch unreachable;
 }
+
+//fn equalImages(a: ?Image, b: ?Image) bool {
+    //if (a != null and b != null) {
+        //return a.?.ptr == b.?.ptr;
+    //}
+
+    //return a == b;
+//}

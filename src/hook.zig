@@ -155,6 +155,6 @@ fn frame(backend: Backend) bool {
         return false;
     };
 
-    backend.frame(gui.draw_verticies.constSlice(), gui.draw_indecies.constSlice());
+    backend.frame(gui.draw_verticies.constSlice(), gui.draw_indecies.constSlice(), gui.draw_commands.constSlice());
     return true;
 }

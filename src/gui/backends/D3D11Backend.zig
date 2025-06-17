@@ -290,7 +290,12 @@ const D3D11Backend = struct {
         self.device.Release();
     }
 
-    fn frame(context: *const anyopaque, verticies: []const shared.DrawVertex, indecies: []const shared.DrawIndex) void {
+    fn frame(
+        context: *const anyopaque,
+        verticies: []const shared.DrawVertex,
+        indecies: []const shared.DrawIndex,
+        draw_commands: []const shared.DrawCommand,
+    ) void {
         const self: *const Self = @ptrCast(@alignCast(context));
 
         var backup_state = DeviceContextState{};
@@ -353,8 +358,19 @@ const D3D11Backend = struct {
         self.device_context.PSSetShader(self.pixel_shader, null);
         self.device_context.PSSetSamplers(0, (&self.sampler)[0..1]);
 
-        self.device_context.PSSetShaderResources(0, (&self.white_pixel_resource)[0..1]);
-        self.device_context.DrawIndexed(@intCast(indecies.len), 0, 0);
+        for (draw_commands) |cmd| {
+            const srv = blk: {
+                if (cmd.image) |img| {
+                    const d3d11_image: *const D3D11Image = @ptrCast(@alignCast(img.ptr));
+                    break :blk d3d11_image.resource;
+                }
+
+                break :blk self.white_pixel_resource;
+            };
+
+            self.device_context.PSSetShaderResources(0, (&srv)[0..1]);
+            self.device_context.DrawIndexed(@intCast(cmd.index_len), @intCast(cmd.index_off), 0);
+        }
     }
 
     fn loadImage(context: *const anyopaque, allocator: Allocator, desc: Image.Desc) Image.Error!Image {
