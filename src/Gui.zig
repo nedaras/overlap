@@ -67,20 +67,20 @@ const DrawCommand = struct {
 
 // todo: on debug we can check if indecie are like in bounds
 fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
-    const index_off: u16 = @intCast(self.draw_verticies.len);
+    const amt: u16 = @intCast(self.draw_verticies.len);
+    const index_off: u16 = @intCast(self.draw_indecies.len);
 
     self.draw_verticies.appendSlice(draw_cmd.verticies) catch unreachable;
 
     for (draw_cmd.indecies) |idx| {
-        self.draw_indecies.append(idx + index_off) catch unreachable;
+        self.draw_indecies.append(amt + idx) catch unreachable;
     }
 
-    // todo: optimize if curr draw cmd image is same as last
-
+    // todo: optimize if curr draw cmd image is same as last draw cmd image
     self.draw_commands.append(.{
         .image = draw_cmd.image,
         .index_len = @intCast(draw_cmd.indecies.len),
-        .index_off = index_off,
+        .index_off = index_off, // todo: make backend calc this
     }) catch unreachable;
 }
 
