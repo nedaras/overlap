@@ -15,7 +15,7 @@ resource: *d3d11.ID3D11ShaderResourceView,
 const Self = @This();
 
 pub fn init(device: *d3d11.ID3D11Device, allocator: Allocator, desc: Image.Desc) Image.Error!*Self {
-    assert(desc.width * desc.height == desc.data.len * @intFromEnum(desc.format));
+    assert(desc.width * desc.height * @intFromEnum(desc.format) == desc.data.len);
 
     var result = try allocator.create(Self);
 

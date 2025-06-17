@@ -35,7 +35,7 @@ fn cleanup() void {
 fn frame() !void {
     gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
     //gui.rect(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, 0xffffff7f);
-    gui.image(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, undefined);
+    gui.image(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, img);
 
     // such a simple function no?
     gui.text(.{ 200.0, 200.0 }, "Helo");
