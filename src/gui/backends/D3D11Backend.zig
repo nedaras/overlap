@@ -175,6 +175,15 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
             .InputSlotClass = d3d11.D3D11_INPUT_PER_VERTEX_DATA,
             .InstanceDataStepRate = 0,
         },
+        .{
+            .SemanticName = "TEXCOORD",
+            .SemanticIndex = 1,
+            .Format = dxgi.DXGI_FORMAT_R8_UINT,
+            .InputSlot = 0,
+            .AlignedByteOffset = 20,
+            .InputSlotClass = d3d11.D3D11_INPUT_PER_VERTEX_DATA,
+            .InstanceDataStepRate = 0,
+        },
     };
 
     try device.CreateInputLayout(input_elements, vertex_shader_blob.slice(), &result.input_layout);
@@ -219,7 +228,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     texture_desc.BindFlags = d3d11.D3D11_BIND_SHADER_RESOURCE;
 
     var initial_data = mem.zeroes(d3d11.D3D11_SUBRESOURCE_DATA);
-    initial_data.pSysMem = &[4]u8{0xFF, 0xFF, 0xFF, 0xFF};
+    initial_data.pSysMem = &[4]u8{ 0xFF, 0xFF, 0xFF, 0xFF };
     initial_data.SysMemPitch = 4;
 
     try device.CreateTexture2D(&texture_desc, &initial_data, &result.white_pixel_texture);

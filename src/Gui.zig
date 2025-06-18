@@ -105,9 +105,9 @@ fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
 }
 
 //fn equalImages(a: ?Image, b: ?Image) bool {
-    //if (a != null and b != null) {
-        //return a.?.ptr == b.?.ptr;
-    //}
+//if (a != null and b != null) {
+//return a.?.ptr == b.?.ptr;
+//}
 
-    //return a == b;
+//return a == b;
 //}

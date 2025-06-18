@@ -7,7 +7,7 @@ pub const Error = error{
 };
 
 pub const Format = enum(u8) {
-    R8G8B8A8_UNORM = 4,
+    RGBA = 4,
 };
 
 pub const Desc = struct {

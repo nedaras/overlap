@@ -45,7 +45,7 @@ const state = struct {
     var backend: ?Backend = null;
 
     //var hook: ?union {
-        //d3d11: *const D3D11Hook,
+    //d3d11: *const D3D11Hook,
     //} = null;
 };
 

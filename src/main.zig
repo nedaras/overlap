@@ -16,7 +16,7 @@ fn init() void {
     img = hook.loadImage(allocator, .{
         .width = 2,
         .height = 2,
-        .format = .R8G8B8A8_UNORM,
+        .format = .RGBA,
         .data = &.{
             0xFF, 0x00, 0x00, 0xFF, // 0
             0x00, 0xFF, 0x00, 0xFF, // 1

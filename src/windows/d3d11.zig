@@ -477,7 +477,7 @@ pub const ID3D11DeviceContext = extern struct {
     }
 
     pub inline fn PSSetSamplers(
-        self: *ID3D11DeviceContext, 
+        self: *ID3D11DeviceContext,
         StartSlot: UINT,
         Samplers: []const ?*ID3D11SamplerState,
     ) void {
