@@ -83,19 +83,32 @@ pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, font: @import("hook.zi
 
         const top = [2]f32{
             at[x] + advance + @as(f32, @floatFromInt(glyph.bearing_x)),
-            at[y] + @as(f32, @floatFromInt(glyph.bearing_y))
+            at[y] + @as(f32, @floatFromInt(16 - glyph.bearing_y)), // todo: fix bearing_y in fat
         };
 
         const bot = [2]f32{
             top[x] + @as(f32, @floatFromInt(glyph.width)),
-            top[y] + @as(f32, @floatFromInt(glyph.height))
+            top[y] + @as(f32, @floatFromInt(glyph.height)),
+        };
+
+
+
+        // todo: idk compute those uvs and float in getGlyph func
+        const uv0 = [2]f32{
+            @as(f32, @floatFromInt(glyph.off_x)) / 10483.0,
+            @as(f32, @floatFromInt(glyph.off_y)) / 27.0,
+        };
+
+        const uv1 = [2]f32{
+            @as(f32, @floatFromInt(glyph.off_x + glyph.width)) / 10483.0,
+            @as(f32, @floatFromInt(glyph.off_y + glyph.height)) / 27.0,
         };
 
         const verticies = [_]shared.DrawVertex{
-            .{ .pos = .{ top[x], top[y] }, .uv = .{ 0.0, 0.0 }, .col = 0xFFFFFFFF },
-            .{ .pos = .{ bot[x], top[y] }, .uv = .{ 1.0, 0.0 }, .col = 0xFFFFFFFF },
-            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ 1.0, 1.0 }, .col = 0xFFFFFFFF },
-            .{ .pos = .{ top[x], bot[y] }, .uv = .{ 0.0, 1.0 }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ top[x], top[y] }, .uv = .{ uv0[x], uv0[y] }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ bot[x], top[y] }, .uv = .{ uv1[x], uv0[y] }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ uv1[x], uv1[y] }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ top[x], bot[y] }, .uv = .{ uv0[x], uv1[y] }, .col = 0xFFFFFFFF },
         };
 
         const indecies = &[_]u16{
