@@ -11,7 +11,7 @@ const allocator = da.allocator();
 
 var img: hook.Image = undefined;
 
-const fw = 208;
+const fw = 220;
 const fh = 14;
 
 // todo: add err handling for init
