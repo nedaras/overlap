@@ -68,15 +68,46 @@ pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
     });
 }
 
-pub fn text(self: *Gui, top: [2]f32, utf8_str: []const u8, font: @import("hook.zig").Font) void {
-    _ = self;
-    _ = top;
-
+pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, font: @import("hook.zig").Font) void {
     const view = std.unicode.Utf8View.init(utf8_str) catch @panic("invalid utf8");
     var it = view.iterator();
 
+    var advance: f32 = 0.0;
     while (it.nextCodepoint()) |unicode| {
-        std.debug.print("{any}\n", .{font.getGlyph(unicode)});
+        const glyph = font.getGlyph(unicode).?;
+        defer advance += @floatFromInt(glyph.advance);
+
+        if (glyph.width == 0 or glyph.height == 0) {
+            continue;
+        }
+
+        const top = [2]f32{
+            at[x] + advance + @as(f32, @floatFromInt(glyph.off_x)),
+            at[y] + @as(f32, @floatFromInt(glyph.off_y))
+        };
+
+        const bot = [2]f32{
+            top[x] + @as(f32, @floatFromInt(glyph.width)),
+            top[y] + @as(f32, @floatFromInt(glyph.height))
+        };
+
+        const verticies = [_]shared.DrawVertex{
+            .{ .pos = .{ top[x], top[y] }, .uv = .{ 0.0, 0.0 }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ bot[x], top[y] }, .uv = .{ 1.0, 0.0 }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ 1.0, 1.0 }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ top[x], bot[y] }, .uv = .{ 0.0, 1.0 }, .col = 0xFFFFFFFF },
+        };
+
+        const indecies = &[_]u16{
+            0, 1, 2,
+            0, 2, 3,
+        };
+
+        self.addDrawCommand(.{
+            .image = font.image,
+            .verticies = &verticies,
+            .indecies = indecies,
+        });
     }
 }
 
