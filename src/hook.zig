@@ -2,9 +2,11 @@ const std = @import("std");
 const windows = @import("windows.zig");
 const minhook = @import("minhook.zig");
 const shared = @import("gui/shared.zig");
+const fat = @import("fat.zig");
 const Gui = @import("Gui.zig");
 const Backend = @import("gui/Backend.zig");
 const D3D11Hook = @import("hooks/D3D11Hook.zig");
+const fs = std.fs;
 const dxgi = windows.dxgi;
 const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
@@ -105,6 +107,51 @@ pub fn run(comptime FnType: type, desc: Desc(extractError(FnType))) !void {
 // hooked thread
 pub inline fn loadImage(allocator: mem.Allocator, desc: Image.Desc) Image.Error!Image {
     return state.backend.?.loadImage(allocator, desc);
+}
+
+pub const Font = struct {
+    allocator: mem.Allocator,
+
+    glyphs: []const fat.Glyph,
+    image: Image,
+
+    pub fn deinit(self: Font) void {
+        self.allocator.free(self.glyphs);
+        self.image.deinit(); // tood: pass allocator to image deinit func
+    }
+
+};
+
+pub fn loadFont(allocator: mem.Allocator, sub_path: []const u8) !Font {
+    const font = try fs.cwd().openFile(sub_path, .{});
+    defer font.close();
+
+    const reader = font.reader();
+    const head = try reader.readStructEndian(fat.Header, .little);
+
+    const glyphs = try allocator.alloc(fat.Glyph, head.glyphs_len);
+    errdefer allocator.free(glyphs);
+
+    try reader.readNoEof(mem.sliceAsBytes(glyphs));
+
+    const texure = try allocator.alloc(u8, @as(usize, head.tex_width) * @as(usize, head.tex_height));
+    defer allocator.free(texure);
+
+    try reader.readNoEof(texure);
+
+    const image = try loadImage(allocator, .{
+        .width = @intCast(head.tex_width),
+        .height = @intCast(head.tex_height),
+        .format = .R,
+        .data = texure,
+    });
+    errdefer image.deinit();
+
+    return .{
+        .allocator = allocator,
+        .glyphs = glyphs,
+        .image = image,
+    };
 }
 
 // hooked thread

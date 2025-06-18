@@ -1,5 +1,4 @@
 const std = @import("std");
-const fat = @import("fat.zig");
 const hook = @import("hook.zig");
 const gui = hook.gui;
 
@@ -10,50 +9,22 @@ const gui = hook.gui;
 var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
 const allocator = da.allocator();
 
-var img: hook.Image = undefined;
-
-var fw: u16 = undefined;
-var fh: u16 = undefined;
+var font: hook.Font = undefined;
 
 // todo: add err handling for init
 fn init() void {
-    const font = @embedFile("gui/font.fat");
-    var fbs = std.io.fixedBufferStream(font);
-
-    const head = fbs.reader().readStruct(fat.Header) catch unreachable;
-    for (0..head.glyphs_len) |_| {
-        _ = fbs.reader().readStruct(fat.Glyph) catch unreachable;
-    }
-
-    fw = head.tex_width;
-    fh = head.tex_height;
-
-    img = hook.loadImage(allocator, .{
-        .width = fw,
-        .height = fh,
-        .format = .R,
-        .data = font[fbs.pos..],
-    }) catch unreachable;
+    font = hook.loadFont(allocator, "font.fat") catch unreachable;
 }
 
 fn cleanup() void {
-    img.deinit();
+    font.deinit();
 }
 
 var x: f32 = 0.0;
 
 fn frame() !void {
-    const ffw: f32 = @floatFromInt(fw);
-    const ffh: f32 = @floatFromInt(fh);
-
-    const slide = @mod(x, ffw);
-    defer x += 0.5;
-
     gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-    gui.image(.{ slide, 300.0 }, .{ slide + ffw, 300.0 + ffh }, img);
-
-    // such a simple function no?
-    gui.text(.{ 200.0, 200.0 }, "Helo");
+    //gui.text(.{ 200.0, 200.0 }, "Helo", font);
 }
 
 pub fn main() !void {

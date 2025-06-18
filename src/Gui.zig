@@ -68,10 +68,13 @@ pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
     });
 }
 
-pub fn text(self: *Gui, top: [2]f32, utf8_str: []const u8) void {
+pub fn text(self: *Gui, top: [2]f32, utf8_str: []const u8, font: @import("hook.zig").Font) void {
     _ = self;
     _ = top;
-    _ = utf8_str;
+    _ = font;
+
+    const view = std.unicode.Utf8View.init(utf8_str) catch @panic("invalid utf8");
+    _ = view;
 }
 
 pub fn clear(self: *Gui) void {
