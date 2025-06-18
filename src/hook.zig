@@ -122,11 +122,10 @@ pub const Font = struct {
 
 };
 
-pub fn loadFont(allocator: mem.Allocator, sub_path: []const u8) !Font {
-    const font = try fs.cwd().openFile(sub_path, .{});
-    defer font.close();
+pub fn loadFont(allocator: mem.Allocator, file: fs.File) !Font {
+    // why the fuck cwd does not work in hooked process????????????
 
-    const reader = font.reader();
+    const reader = file.reader();
     const head = try reader.readStructEndian(fat.Header, .little);
 
     const glyphs = try allocator.alloc(fat.Glyph, head.glyphs_len);

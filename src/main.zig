@@ -10,10 +10,11 @@ var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
 const allocator = da.allocator();
 
 var font: hook.Font = undefined;
+var file: std.fs.File = undefined;
 
 // todo: add err handling for init
 fn init() void {
-    font = hook.loadFont(allocator, "font.fat") catch unreachable;
+    font = hook.loadFont(allocator, file) catch unreachable;
 }
 
 fn cleanup() void {
@@ -29,6 +30,9 @@ fn frame() !void {
 
 pub fn main() !void {
     defer _ = da.deinit();
+
+    file = try std.fs.cwd().openFile("font.fat", .{});
+    defer file.close();
 
     try hook.run(@TypeOf(frame), .{
         .frame_cb = &frame,
