@@ -82,8 +82,8 @@ pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, font: @import("hook.zi
         }
 
         const top = [2]f32{
-            at[x] + advance + @as(f32, @floatFromInt(glyph.off_x)),
-            at[y] + @as(f32, @floatFromInt(glyph.off_y))
+            at[x] + advance + @as(f32, @floatFromInt(glyph.bearing_x)),
+            at[y] + @as(f32, @floatFromInt(glyph.bearing_y))
         };
 
         const bot = [2]f32{
