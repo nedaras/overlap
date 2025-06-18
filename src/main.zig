@@ -11,8 +11,8 @@ const allocator = da.allocator();
 
 var img: hook.Image = undefined;
 
-const fw = 220;
-const fh = 14;
+const fw = 10483;
+const fh = 27;
 
 // todo: add err handling for init
 fn init() void {
@@ -28,10 +28,14 @@ fn cleanup() void {
     img.deinit();
 }
 
+var x: f32 = 0.0;
+
 fn frame() !void {
+    const slide = @mod(x, fw);
+    defer x += 0.5;
+
     gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-    //gui.rect(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, 0xffffff7f);
-    gui.image(.{ 300.0, 300.0 }, .{ 300.0 + fw, 300.0 + fh }, img);
+    gui.image(.{ slide, 300.0 }, .{ slide + fw, 300.0 + fh }, img);
 
     // such a simple function no?
     gui.text(.{ 200.0, 200.0 }, "Helo");
