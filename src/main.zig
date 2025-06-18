@@ -11,11 +11,14 @@ const allocator = da.allocator();
 
 var img: hook.Image = undefined;
 
+const fw = 208;
+const fh = 14;
+
 // todo: add err handling for init
 fn init() void {
     img = hook.loadImage(allocator, .{
-        .width = 299,
-        .height = 22,
+        .width = fw,
+        .height = fh,
         .format = .R,
         .data = @embedFile("gui/font.bmp"),
     }) catch unreachable;
@@ -28,7 +31,7 @@ fn cleanup() void {
 fn frame() !void {
     gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
     //gui.rect(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, 0xffffff7f);
-    gui.image(.{ 300.0, 300.0 }, .{ 300.0 + 299.0, 300.0 + 22.0 }, img);
+    gui.image(.{ 300.0, 300.0 }, .{ 300.0 + fw, 300.0 + fh }, img);
 
     // such a simple function no?
     gui.text(.{ 200.0, 200.0 }, "Helo");
