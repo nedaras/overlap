@@ -7,6 +7,7 @@ pub const Error = error{
 };
 
 pub const Format = enum(u8) {
+    R = 1,
     RGBA = 4,
 };
 
@@ -22,10 +23,15 @@ vtable: *const VTable,
 
 pub const VTable = struct {
     deinit: *const fn (*anyopaque) void,
+    format: *const fn (*const anyopaque) Format,
 };
 
 const Image = @This();
 
 pub inline fn deinit(self: Image) void {
     self.vtable.deinit(self.ptr);
+}
+
+pub inline fn format(self: Image) Format {
+    return self.vtable.format(self.ptr);
 }

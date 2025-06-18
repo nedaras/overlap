@@ -16,16 +16,12 @@ fn init() void {
     img = hook.loadImage(allocator, .{
         .width = 2,
         .height = 2,
-        .format = .RGBA,
+        .format = .R,
         .data = &.{
-            0xFF, 0x00, 0x00, 0xFF, // 0
-            0x00, 0xFF, 0x00, 0xFF, // 1
-            0x00, 0xFF, 0x00, 0xFF, // 2
-            0xFF, 0x00, 0x00, 0xFF, // 3
+            0xFF, 0x00,
+            0x00, 0xFF,
         },
     }) catch unreachable;
-
-    std.debug.print("Init called!\n", .{});
 }
 
 fn cleanup() void {
