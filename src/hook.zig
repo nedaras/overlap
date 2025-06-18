@@ -120,10 +120,23 @@ pub const Font = struct {
         self.image.deinit(); // tood: pass allocator to image deinit func
     }
 
+    pub fn getGlyph(self: Font, unicode: u21) ?fat.Glyph {
+        const Context = struct {
+            needle: u32,
+
+            fn compare(ctx: @This(), g: fat.Glyph) std.math.Order {
+                return std.math.order(ctx.needle, g.unicode);
+            }
+        };        
+
+        const idx = std.sort.binarySearch(fat.Glyph, self.glyphs, Context{ .needle = @intCast(unicode) }, Context.compare) orelse return null;
+        return self.glyphs[idx];
+    }
 };
 
 pub fn loadFont(allocator: mem.Allocator, file: fs.File) !Font {
     // why the fuck cwd does not work in hooked process????????????
+    // todo: Find out if its the reason why stack traces dont work is its cuz cwd just shits it self
 
     const reader = file.reader();
     const head = try reader.readStructEndian(fat.Header, .little);

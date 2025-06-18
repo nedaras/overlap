@@ -25,7 +25,7 @@ var x: f32 = 0.0;
 
 fn frame() !void {
     gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-    //gui.text(.{ 200.0, 200.0 }, "Helo", font);
+    gui.text(.{ 200.0, 200.0 }, "Helo", font);
 }
 
 pub fn main() !void {
