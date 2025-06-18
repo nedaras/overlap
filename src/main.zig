@@ -14,13 +14,10 @@ var img: hook.Image = undefined;
 // todo: add err handling for init
 fn init() void {
     img = hook.loadImage(allocator, .{
-        .width = 2,
-        .height = 2,
+        .width = 299,
+        .height = 22,
         .format = .R,
-        .data = &.{
-            0xFF, 0x00,
-            0x00, 0xFF,
-        },
+        .data = @embedFile("gui/font.bmp"),
     }) catch unreachable;
 }
 
@@ -31,7 +28,7 @@ fn cleanup() void {
 fn frame() !void {
     gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
     //gui.rect(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, 0xffffff7f);
-    gui.image(.{ 300.0, 300.0 }, .{ 600.0, 600.0 }, img);
+    gui.image(.{ 300.0, 300.0 }, .{ 300.0 + 299.0, 300.0 + 22.0 }, img);
 
     // such a simple function no?
     gui.text(.{ 200.0, 200.0 }, "Helo");
