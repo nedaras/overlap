@@ -222,14 +222,14 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     texture_desc.Height = 1;
     texture_desc.MipLevels = 1;
     texture_desc.ArraySize = 1;
-    texture_desc.Format = dxgi.DXGI_FORMAT_R8G8B8A8_UNORM;
+    texture_desc.Format = dxgi.DXGI_FORMAT_R8_UNORM;
     texture_desc.SampleDesc.Count = 1;
     texture_desc.Usage = d3d11.D3D11_USAGE_DEFAULT;
     texture_desc.BindFlags = d3d11.D3D11_BIND_SHADER_RESOURCE;
 
     var initial_data = mem.zeroes(d3d11.D3D11_SUBRESOURCE_DATA);
-    initial_data.pSysMem = &[4]u8{ 0xFF, 0xFF, 0xFF, 0xFF };
-    initial_data.SysMemPitch = 4;
+    initial_data.pSysMem = &[1]u8{ 0xFF };
+    initial_data.SysMemPitch = 1;
 
     try device.CreateTexture2D(&texture_desc, &initial_data, &result.white_pixel_texture);
     errdefer result.white_pixel_texture.Release();
