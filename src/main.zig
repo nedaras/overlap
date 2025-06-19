@@ -1,4 +1,5 @@
 const std = @import("std");
+const Hook = @import("hook2.zig");
 const hook = @import("hook.zig");
 const gui = hook.gui;
 
@@ -40,12 +41,28 @@ pub fn main() !void {
     // i mean yee it prob will be a bit slower cuz we will have mutexes between this main thread and hooked Present thread
     // but it is worth it
 
-    file = try std.fs.cwd().openFile("font.fat", .{});
-    defer file.close();
+    //file = try std.fs.cwd().openFile("font.fat", .{});
+    //defer file.close();
 
-    try hook.run(@TypeOf(frame), .{
-        .frame_cb = &frame,
-        .init_cb = &init,
-        .cleanup_cb = &cleanup,
-    });
+    //try hook.run(@TypeOf(frame), .{
+        //.frame_cb = &frame,
+        //.init_cb = &init,
+        //.cleanup_cb = &cleanup,
+    //});
+
+    // this is much more simpler just for now its kinda ugly
+
+    var hook2 = try Hook.init();
+    defer hook2.deinit();
+
+
+    // init_cb
+
+    while (true) {
+        // frame_cb
+        Hook.gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
+        try hook2.present();
+    }
+
+    // cleanup_cb
 }

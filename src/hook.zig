@@ -29,7 +29,7 @@ pub fn Desc(comptime T: type) type {
 }
 
 pub const Image = @import("gui/Image.zig");
-pub const Font = Gui.Font;
+pub const Font = @import("gui/Font.zig");
 pub const gui = &state.gui;
 
 const state = struct {

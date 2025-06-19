@@ -3,6 +3,7 @@ const shared = @import("gui/shared.zig");
 const fat = @import("fat.zig");
 const Backend = @import("gui/Backend.zig");
 const Image = @import("gui/Image.zig");
+const Font = @import("gui/Font.zig");
 const Allocator = std.mem.Allocator;
 
 // We can have a potential probelm in the future
@@ -154,49 +155,3 @@ fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
 
 //return a == b;
 //}
-
-// todo: move to Font.zig
-pub const Font = struct {
-    glyphs: []const fat.Glyph,
-    image: Image,
-
-    pub fn deinit(self: Font, allocator: Allocator) void {
-        allocator.free(self.glyphs);
-        self.image.deinit(allocator);
-    }
-
-    pub const Glyph = struct {
-        size: [2]f32,
-        bearing: [2]f32,
-        uv_top: [2]f32,
-        uv_bot: [2]f32,
-        advance: f32,
-    };
-
-    pub fn loadGlyph(self: Font, unicode: u21) ?Glyph {
-        const Context = struct {
-            needle: u32,
-
-            fn compare(ctx: @This(), g: fat.Glyph) std.math.Order {
-                return std.math.order(ctx.needle, g.unicode);
-            }
-        };
-
-        const idx = std.sort.binarySearch(fat.Glyph, self.glyphs, Context{ .needle = @intCast(unicode) }, Context.compare) orelse return null;
-        const glyph = self.glyphs[idx];
-
-        return .{
-            .size = .{ @floatFromInt(glyph.width), @floatFromInt(glyph.height) },
-            .bearing = .{ @floatFromInt(glyph.bearing_x), @floatFromInt(glyph.bearing_y) },
-            .uv_top = .{
-                @as(f32, @floatFromInt(glyph.off_x)) / @as(f32, @floatFromInt(self.image.width)),
-                @as(f32, @floatFromInt(glyph.off_y)) / @as(f32, @floatFromInt(self.image.height)),
-            },
-            .uv_bot = .{
-                @as(f32, @floatFromInt(glyph.off_x + glyph.width)) / @as(f32, @floatFromInt(self.image.width)),
-                @as(f32, @floatFromInt(glyph.off_y + glyph.height)) / @as(f32, @floatFromInt(self.image.height)),
-            },
-            .advance = @floatFromInt(glyph.advance),
-        };
-    }
-};
