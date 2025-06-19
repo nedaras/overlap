@@ -48,7 +48,7 @@ pub fn rect(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
 }
 
 pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
-    const flags: u8 = @intFromEnum(src.format());
+    const flags: u8 = @intFromEnum(src.format);
     const verticies = [_]shared.DrawVertex{
         .{ .pos = .{ top[x], top[y] }, .uv = .{ 0.0, 0.0 }, .col = 0xFFFFFFFF, .flags = flags },
         .{ .pos = .{ bot[x], top[y] }, .uv = .{ 1.0, 0.0 }, .col = 0xFFFFFFFF, .flags = flags },
@@ -91,17 +91,15 @@ pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, font: @import("hook.zi
             top[y] + @as(f32, @floatFromInt(glyph.height)),
         };
 
-
-
         // todo: idk compute those uvs and float in getGlyph func
         const uv0 = [2]f32{
-            @as(f32, @floatFromInt(glyph.off_x)) / 10483.0,
-            @as(f32, @floatFromInt(glyph.off_y)) / 27.0,
+            @as(f32, @floatFromInt(glyph.off_x)) / @as(f32, @floatFromInt(font.image.width)),
+            @as(f32, @floatFromInt(glyph.off_y)) / @as(f32, @floatFromInt(font.image.height)),
         };
 
         const uv1 = [2]f32{
-            @as(f32, @floatFromInt(glyph.off_x + glyph.width)) / 10483.0,
-            @as(f32, @floatFromInt(glyph.off_y + glyph.height)) / 27.0,
+            @as(f32, @floatFromInt(glyph.off_x + glyph.width)) / @as(f32, @floatFromInt(font.image.width)),
+            @as(f32, @floatFromInt(glyph.off_y + glyph.height)) / @as(f32, @floatFromInt(font.image.height)),
         };
 
         const verticies = [_]shared.DrawVertex{

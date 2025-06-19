@@ -228,7 +228,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     texture_desc.BindFlags = d3d11.D3D11_BIND_SHADER_RESOURCE;
 
     var initial_data = mem.zeroes(d3d11.D3D11_SUBRESOURCE_DATA);
-    initial_data.pSysMem = &[1]u8{ 0xFF };
+    initial_data.pSysMem = &[1]u8{0xFF};
     initial_data.SysMemPitch = 1;
 
     try device.CreateTexture2D(&texture_desc, &initial_data, &result.white_pixel_texture);
@@ -389,6 +389,9 @@ const D3D11Backend = struct {
         return .{
             .ptr = image,
             .vtable = &D3D11Image.vtable,
+            .width = desc.width,
+            .height = desc.height,
+            .format = desc.format,
         };
     }
 };

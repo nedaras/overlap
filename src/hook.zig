@@ -110,14 +110,12 @@ pub inline fn loadImage(allocator: mem.Allocator, desc: Image.Desc) Image.Error!
 }
 
 pub const Font = struct {
-    allocator: mem.Allocator,
-
     glyphs: []const fat.Glyph,
     image: Image,
 
-    pub fn deinit(self: Font) void {
-        self.allocator.free(self.glyphs);
-        self.image.deinit(); // tood: pass allocator to image deinit func
+    pub fn deinit(self: Font, allocator: mem.Allocator) void {
+        allocator.free(self.glyphs);
+        self.image.deinit(allocator);
     }
 
     pub fn getGlyph(self: Font, unicode: u21) ?fat.Glyph {
@@ -127,7 +125,7 @@ pub const Font = struct {
             fn compare(ctx: @This(), g: fat.Glyph) std.math.Order {
                 return std.math.order(ctx.needle, g.unicode);
             }
-        };        
+        };
 
         const idx = std.sort.binarySearch(fat.Glyph, self.glyphs, Context{ .needle = @intCast(unicode) }, Context.compare) orelse return null;
         return self.glyphs[idx];
@@ -160,7 +158,6 @@ pub fn loadFont(allocator: mem.Allocator, file: fs.File) !Font {
     errdefer image.deinit();
 
     return .{
-        .allocator = allocator,
         .glyphs = glyphs,
         .image = image,
     };

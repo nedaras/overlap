@@ -8,10 +8,6 @@ const assert = std.debug.assert;
 const Allocator = mem.Allocator;
 const Format = Image.Format;
 
-allocator: Allocator,
-
-texture_format: Format,
-
 texture: *d3d11.ID3D11Texture2D,
 resource: *d3d11.ID3D11ShaderResourceView,
 
@@ -21,7 +17,6 @@ pub fn init(device: *d3d11.ID3D11Device, allocator: Allocator, desc: Image.Desc)
     assert(desc.width * desc.height * @intFromEnum(desc.format) == desc.data.len);
 
     var result = try allocator.create(Self);
-    result.texture_format = desc.format;
 
     const dxgi_format: windows.INT = switch (desc.format) {
         .R => dxgi.DXGI_FORMAT_R8_UNORM,
@@ -53,19 +48,13 @@ pub fn init(device: *d3d11.ID3D11Device, allocator: Allocator, desc: Image.Desc)
 
 pub const vtable = Image.VTable{
     .deinit = &deinit,
-    .format = &format,
 };
 
-fn deinit(context: *anyopaque) void {
+fn deinit(context: *anyopaque, allocator: Allocator) void {
     const self: *Self = @ptrCast(@alignCast(context));
 
     self.resource.Release();
     self.texture.Release();
 
-    self.allocator.destroy(self);
-}
-
-fn format(context: *const anyopaque) Format {
-    const self: *const Self = @ptrCast(@alignCast(context));
-    return self.texture_format;
+    allocator.destroy(self);
 }

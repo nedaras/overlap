@@ -21,17 +21,17 @@ pub const Desc = struct {
 ptr: *anyopaque,
 vtable: *const VTable,
 
+width: u32,
+height: u32,
+
+format: Format,
+
 pub const VTable = struct {
-    deinit: *const fn (*anyopaque) void,
-    format: *const fn (*const anyopaque) Format,
+    deinit: *const fn (*anyopaque, allocator: Allocator) void,
 };
 
 const Image = @This();
 
-pub inline fn deinit(self: Image) void {
-    self.vtable.deinit(self.ptr);
-}
-
-pub inline fn format(self: Image) Format {
-    return self.vtable.format(self.ptr);
+pub inline fn deinit(self: Image, allocator: Allocator) void {
+    self.vtable.deinit(self.ptr, allocator);
 }
