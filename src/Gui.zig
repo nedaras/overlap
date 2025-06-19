@@ -1,7 +1,9 @@
 const std = @import("std");
 const shared = @import("gui/shared.zig");
+const fat = @import("fat.zig");
 const Backend = @import("gui/Backend.zig");
 const Image = @import("gui/Image.zig");
+const Allocator = std.mem.Allocator;
 
 // We can have a potential probelm in the future
 // What if Directx and Opengl calls frame at the same time
@@ -68,45 +70,36 @@ pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
     });
 }
 
-pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, font: @import("hook.zig").Font) void {
-    const view = std.unicode.Utf8View.init(utf8_str) catch @panic("invalid utf8");
+pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, font: Font) void {
+    const view = std.unicode.Utf8View.init(utf8_str) catch return;
     var it = view.iterator();
 
     var advance: f32 = 0.0;
     while (it.nextCodepoint()) |unicode| {
-        const glyph = font.getGlyph(unicode).?;
-        defer advance += @floatFromInt(glyph.advance);
+        // if no glyph render the missing char glyph or smth
+        const glyph = font.loadGlyph(unicode).?;
+        defer advance += glyph.advance;
 
-        if (glyph.width == 0 or glyph.height == 0) {
+        // todo: in fat space is not a char for some reason
+        if (glyph.size[x] == 0.0 or glyph.size[y] == 0.0) {
             continue;
         }
 
         const top = [2]f32{
-            at[x] + advance + @as(f32, @floatFromInt(glyph.bearing_x)),
-            at[y] + @as(f32, @floatFromInt(16 - glyph.bearing_y)), // todo: fix bearing_y in fat
+            at[x] + glyph.bearing[x] + advance,
+            at[y] + glyph.bearing[y],
         };
 
         const bot = [2]f32{
-            top[x] + @as(f32, @floatFromInt(glyph.width)),
-            top[y] + @as(f32, @floatFromInt(glyph.height)),
-        };
-
-        // todo: idk compute those uvs and float in getGlyph func
-        const uv0 = [2]f32{
-            @as(f32, @floatFromInt(glyph.off_x)) / @as(f32, @floatFromInt(font.image.width)),
-            @as(f32, @floatFromInt(glyph.off_y)) / @as(f32, @floatFromInt(font.image.height)),
-        };
-
-        const uv1 = [2]f32{
-            @as(f32, @floatFromInt(glyph.off_x + glyph.width)) / @as(f32, @floatFromInt(font.image.width)),
-            @as(f32, @floatFromInt(glyph.off_y + glyph.height)) / @as(f32, @floatFromInt(font.image.height)),
+            top[x] + glyph.size[x],
+            top[y] + glyph.size[y],
         };
 
         const verticies = [_]shared.DrawVertex{
-            .{ .pos = .{ top[x], top[y] }, .uv = .{ uv0[x], uv0[y] }, .col = 0xFFFFFFFF },
-            .{ .pos = .{ bot[x], top[y] }, .uv = .{ uv1[x], uv0[y] }, .col = 0xFFFFFFFF },
-            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ uv1[x], uv1[y] }, .col = 0xFFFFFFFF },
-            .{ .pos = .{ top[x], bot[y] }, .uv = .{ uv0[x], uv1[y] }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv_top[x], glyph.uv_top[y] }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ bot[x], top[y] }, .uv = .{ glyph.uv_bot[x], glyph.uv_top[y] }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ glyph.uv_bot[x], glyph.uv_bot[y] }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ top[x], bot[y] }, .uv = .{ glyph.uv_top[x], glyph.uv_bot[y] }, .col = 0xFFFFFFFF },
         };
 
         const indecies = &[_]u16{
@@ -114,6 +107,7 @@ pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, font: @import("hook.zi
             0, 2, 3,
         };
 
+        // todo: reuze the image
         self.addDrawCommand(.{
             .image = font.image,
             .verticies = &verticies,
@@ -160,3 +154,49 @@ fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
 
 //return a == b;
 //}
+
+// todo: move to Font.zig
+pub const Font = struct {
+    glyphs: []const fat.Glyph,
+    image: Image,
+
+    pub fn deinit(self: Font, allocator: Allocator) void {
+        allocator.free(self.glyphs);
+        self.image.deinit(allocator);
+    }
+
+    pub const Glyph = struct {
+        size: [2]f32,
+        bearing: [2]f32,
+        uv_top: [2]f32,
+        uv_bot: [2]f32,
+        advance: f32,
+    };
+
+    pub fn loadGlyph(self: Font, unicode: u21) ?Glyph {
+        const Context = struct {
+            needle: u32,
+
+            fn compare(ctx: @This(), g: fat.Glyph) std.math.Order {
+                return std.math.order(ctx.needle, g.unicode);
+            }
+        };
+
+        const idx = std.sort.binarySearch(fat.Glyph, self.glyphs, Context{ .needle = @intCast(unicode) }, Context.compare) orelse return null;
+        const glyph = self.glyphs[idx];
+
+        return .{
+            .size = .{ @floatFromInt(glyph.width), @floatFromInt(glyph.height) },
+            .bearing = .{ @floatFromInt(glyph.bearing_x), @floatFromInt(glyph.bearing_y) },
+            .uv_top = .{
+                @as(f32, @floatFromInt(glyph.off_x)) / @as(f32, @floatFromInt(self.image.width)),
+                @as(f32, @floatFromInt(glyph.off_y)) / @as(f32, @floatFromInt(self.image.height)),
+            },
+            .uv_bot = .{
+                @as(f32, @floatFromInt(glyph.off_x + glyph.width)) / @as(f32, @floatFromInt(self.image.width)),
+                @as(f32, @floatFromInt(glyph.off_y + glyph.height)) / @as(f32, @floatFromInt(self.image.height)),
+            },
+            .advance = @floatFromInt(glyph.advance),
+        };
+    }
+};

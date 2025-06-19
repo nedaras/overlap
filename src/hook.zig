@@ -13,6 +13,7 @@ const d3dcommon = windows.d3dcommon;
 const d3dcompiler = windows.d3dcompiler;
 const atomic = std.atomic;
 const mem = std.mem;
+const Allocator = mem.Allocator;
 const Thread = std.Thread;
 const assert = std.debug.assert;
 const error_tracing = std.posix.unexpected_error_tracing;
@@ -28,6 +29,7 @@ pub fn Desc(comptime T: type) type {
 }
 
 pub const Image = @import("gui/Image.zig");
+pub const Font = Gui.Font;
 pub const gui = &state.gui;
 
 const state = struct {
@@ -105,34 +107,11 @@ pub fn run(comptime FnType: type, desc: Desc(extractError(FnType))) !void {
 }
 
 // hooked thread
-pub inline fn loadImage(allocator: mem.Allocator, desc: Image.Desc) Image.Error!Image {
+pub inline fn loadImage(allocator: Allocator, desc: Image.Desc) Image.Error!Image {
     return state.backend.?.loadImage(allocator, desc);
 }
 
-pub const Font = struct {
-    glyphs: []const fat.Glyph,
-    image: Image,
-
-    pub fn deinit(self: Font, allocator: mem.Allocator) void {
-        allocator.free(self.glyphs);
-        self.image.deinit(allocator);
-    }
-
-    pub fn getGlyph(self: Font, unicode: u21) ?fat.Glyph {
-        const Context = struct {
-            needle: u32,
-
-            fn compare(ctx: @This(), g: fat.Glyph) std.math.Order {
-                return std.math.order(ctx.needle, g.unicode);
-            }
-        };
-
-        const idx = std.sort.binarySearch(fat.Glyph, self.glyphs, Context{ .needle = @intCast(unicode) }, Context.compare) orelse return null;
-        return self.glyphs[idx];
-    }
-};
-
-pub fn loadFont(allocator: mem.Allocator, file: fs.File) !Font {
+pub fn loadFont(allocator: Allocator, file: fs.File) !Font {
     // why the fuck cwd does not work in hooked process????????????
     // todo: Find out if its the reason why stack traces dont work is its cuz cwd just shits it self
 
