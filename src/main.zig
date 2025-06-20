@@ -59,9 +59,9 @@ pub fn main() !void {
     // init_cb
 
     while (true) {
-        // frame_cb
+        hook2.wait();
         Hook.gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-        try hook2.present();
+        hook2.done();
     }
 
     // cleanup_cb
