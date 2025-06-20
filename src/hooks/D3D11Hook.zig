@@ -14,8 +14,10 @@ pub const Error = error{
     Unexpected,
 };
 
-frame_cb: *const fn (backend: Backend) bool,
-error_cb: *const fn (err: Error) void,
+frame_cb: *const fn (context: *anyopaque, backend: Backend) bool,
+error_cb: *const fn (context: *anyopaque, err: Error) void,
+
+context: *anyopaque,
 
 present: *const SwapChainPresent,
 resize_buffers: *const SwapChainResizeBuffers,
@@ -35,8 +37,9 @@ const SwapChainResizeBuffers = @TypeOf(hkResizeBuffers);
 var zelf: ?Self = null;
 
 pub const Desc = struct {
-    frame_cb: *const fn (backend: Backend) bool,
-    error_cb: *const fn (err: Error) void,
+    frame_cb: *const fn (context: *anyopaque, backend: Backend) bool,
+    error_cb: *const fn (context: *anyopaque, err: Error) void,
+    context: *anyopaque,
 };
 
 pub fn init(window: windows.HWND, desc: Desc) !*Self {
@@ -108,6 +111,7 @@ pub fn init(window: windows.HWND, desc: Desc) !*Self {
     zelf = Self{
         .frame_cb = desc.frame_cb,
         .error_cb = desc.error_cb,
+        .context = desc.context,
         .present = present,
         .resize_buffers = resize_buffers,
         .o_present = o_present,
@@ -146,14 +150,14 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
         if (self.backend == null) {
             self.backend = D3D11Backend.init(pSwapChain) catch |err| {
                 self.forward = false;
-                self.error_cb(err);
+                self.error_cb(self.context, err);
 
                 break :blk;
             };
         }
 
         const backend = self.backend.?.backend();
-        if (!self.frame_cb(backend)) {
+        if (!self.frame_cb(self.context, backend)) {
             self.forward = false;
         }
     }
@@ -176,7 +180,7 @@ fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, 
 
     self.backend = D3D11Backend.init(pSwapChain) catch |err| blk: {
         self.forward = false;
-        self.error_cb(err);
+        self.error_cb(self.context, err);
         break :blk null;
     };
 
