@@ -5,10 +5,12 @@ pub fn main() !void {
     var da = std.heap.DebugAllocator(.{}){};
     defer _ = da.deinit();
 
-    const allocator = da.allocator();
+    //const allocator = da.allocator();
 
-    var hook = try Hook.init(allocator);
-    defer hook.deinit();
+    var hook = Hook{};
+
+    try hook.attach();
+    defer hook.detach();
 
     const gui = &hook.gui;
 

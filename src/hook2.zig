@@ -7,23 +7,18 @@ const D3D11Hook = @import("hooks/D3D11Hook.zig");
 const Thread = std.Thread;
 const Allocator = std.mem.Allocator;
 
-allocator: Allocator,
-d3d11_hook: *D3D11Hook,
+d3d11_hook: ?*D3D11Hook = null,
 
-reset_event_a: Thread.ResetEvent,
-reset_event_b: Thread.ResetEvent,
+reset_event_a: Thread.ResetEvent = .{},
+reset_event_b: Thread.ResetEvent = .{},
 
-gui: Gui,
+gui: Gui = .init,
 
 const Self = @This();
 
 // todo: just add zelf thingy cuz there should be only one hook tbf
-pub fn init(allocator: Allocator) !*Self {
+pub fn attach(self: *Self) !void {
     const window = windows.GetForegroundWindow() orelse return error.NoWindow;
-
-    // kinda stupid ngl
-    const result = try allocator.create(Self);
-    errdefer allocator.destroy(result);
 
     try minhook.MH_Initialize();
     errdefer minhook.MH_Uninitialize() catch {};
@@ -31,38 +26,16 @@ pub fn init(allocator: Allocator) !*Self {
     var d3d11_hook = try D3D11Hook.init(window, .{
         .frame_cb = &frame,
         .error_cb = &errored,
-        .context = result,
+        .context = self,
     });
     errdefer d3d11_hook.deinit();
 
-    // todo: add like d3d11_hook::wait
-    // its like waiting for first present call to make backend object
-    // but that backend can become null if resize buffers fails or smth
-
-    while (d3d11_hook.backend == null) {
-        std.atomic.spinLoopHint();
-    }
-
-    result.* = .{
-        .allocator = allocator,
-        .d3d11_hook = d3d11_hook,
-        .reset_event_a = .{},
-        .reset_event_b = .{},
-        .gui = Gui.init,
-    };
-
-    return result;
+    self.d3d11_hook = d3d11_hook;
 }
 
-
-// todo: rename this like unhook
-// and instead of init add like hook func and init will be just Hook{};
-
-pub fn deinit(self: *Self) void {
-    self.d3d11_hook.deinit();
+pub fn detach(self: *Self) void {
+    self.d3d11_hook.?.deinit();
     minhook.MH_Uninitialize() catch {};
-
-    self.allocator.destroy(self);
 }
 
 pub fn newFrame(self: *Self) void {
@@ -86,6 +59,7 @@ fn frame(context: *anyopaque, backend: Backend) bool {
 
     self.reset_event_a.set();
 
+    // now it waits even if we unhook cuz noone resets it
     self.reset_event_b.wait();
     self.reset_event_b.reset();
 
