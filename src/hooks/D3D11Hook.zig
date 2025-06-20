@@ -144,7 +144,11 @@ pub fn deinit(self: *Self) void {
     zelf = null;
 }
 
-fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
+fn hkPresent(
+    pSwapChain: *dxgi.IDXGISwapChain,
+    SyncInterval: windows.UINT,
+    Flags: windows.UINT,
+) callconv(windows.WINAPI) windows.HRESULT {
     var self = &zelf.?;
     if (self.forward) blk: {
         if (self.backend == null) {
@@ -165,7 +169,14 @@ fn hkPresent(pSwapChain: *dxgi.IDXGISwapChain, SyncInterval: windows.UINT, Flags
     return self.o_present(pSwapChain, SyncInterval, Flags);
 }
 
-fn hkResizeBuffers(pSwapChain: *dxgi.IDXGISwapChain, BufferCount: windows.UINT, Width: windows.UINT, Height: windows.UINT, NewFormat: dxgi.DXGI_FORMAT, SwapChainFlags: windows.UINT) callconv(windows.WINAPI) windows.HRESULT {
+fn hkResizeBuffers(
+    pSwapChain: *dxgi.IDXGISwapChain,
+    BufferCount: windows.UINT,
+    Width: windows.UINT,
+    Height: windows.UINT,
+    NewFormat: dxgi.DXGI_FORMAT,
+    SwapChainFlags: windows.UINT,
+) callconv(windows.WINAPI) windows.HRESULT {
     var self = &zelf.?;
     if (!self.forward) {
         return self.o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);

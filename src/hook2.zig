@@ -14,6 +14,7 @@ const Allocator = mem.Allocator;
 
 d3d11_hook: ?*D3D11Hook = null,
 
+// todo: better names
 reset_event_a: Thread.ResetEvent = .{},
 reset_event_b: Thread.ResetEvent = .{},
 
@@ -36,6 +37,7 @@ pub fn attach(self: *Self) !void {
     });
     errdefer d3d11_hook.deinit();
 
+    // i need to understant that while waiting error_cb can be called to indicate that Backend was not created
     self.reset_event_a.wait();
 
     self.d3d11_hook = d3d11_hook;
@@ -59,10 +61,12 @@ pub fn endFrame(self: *Self) void {
 }
 
 pub inline fn loadImage(self: *Self, allocator: Allocator, desc: Image.Desc) Image.Error!Image {
+    // todo: idk???
     return self.d3d11_hook.?.backend.?.backend().loadImage(allocator, desc);
 }
 
 pub fn loadFont(self: *Self, allocator: Allocator, sub_path: []const u8) !Font {
+    // todo: add like check if fat file is fat idk
     const file = try fs.cwd().openFile(sub_path, .{});
     defer file.close();
 
@@ -94,6 +98,7 @@ pub fn loadFont(self: *Self, allocator: Allocator, sub_path: []const u8) !Font {
 }
 
 // hooked thread
+// AAAAAAAAAAAA
 fn errored(context: *anyopaque, err: D3D11Hook.Error) void {
     _ = context;
     err catch unreachable;
@@ -101,6 +106,9 @@ fn errored(context: *anyopaque, err: D3D11Hook.Error) void {
 
 // hooked thread
 // if false is returned frame will never be called again
+// ok this backend is kinda useless, cuz it should never be null
+// and it is null only if resize buffers fails, if so errored gets called that would mean that yee backend will be invalid!!
+// and we should return error anyway sooo idk
 fn frame(context: *anyopaque, backend: Backend) bool {
     const self: *Self = @ptrCast(@alignCast(context));
 
