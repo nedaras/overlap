@@ -13,6 +13,7 @@ reset_event_a: Thread.ResetEvent = .{},
 reset_event_b: Thread.ResetEvent = .{},
 
 gui: Gui = .init,
+exiting: bool = false,
 
 const Self = @This();
 
@@ -30,10 +31,19 @@ pub fn attach(self: *Self) !void {
     });
     errdefer d3d11_hook.deinit();
 
+    // tood: put into wait or smth idk
+    while (self.d3d11_hook == null) {
+        @branchHint(.cold);
+        std.atomic.spinLoopHint();
+    }
+
     self.d3d11_hook = d3d11_hook;
 }
 
 pub fn detach(self: *Self) void {
+    self.exiting = true;
+    self.reset_event_b.set();
+
     self.d3d11_hook.?.deinit();
     minhook.MH_Uninitialize() catch {};
 }
@@ -54,6 +64,7 @@ fn errored(context: *anyopaque, err: D3D11Hook.Error) void {
 }
 
 // hooked thread
+// if false is returned frame will never be called again
 fn frame(context: *anyopaque, backend: Backend) bool {
     const self: *Self = @ptrCast(@alignCast(context));
 
@@ -62,6 +73,10 @@ fn frame(context: *anyopaque, backend: Backend) bool {
     // now it waits even if we unhook cuz noone resets it
     self.reset_event_b.wait();
     self.reset_event_b.reset();
+
+    if (self.exiting) {
+        return false;
+    }
 
     backend.frame(self.gui.draw_verticies.constSlice(), self.gui.draw_indecies.constSlice(), self.gui.draw_commands.constSlice());
     self.gui.clear();
