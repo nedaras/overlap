@@ -5,7 +5,7 @@ pub fn main() !void {
     var da = std.heap.DebugAllocator(.{}){};
     defer _ = da.deinit();
 
-    //const allocator = da.allocator();
+    const allocator = da.allocator();
 
     var hook = Hook{};
 
@@ -13,6 +13,9 @@ pub fn main() !void {
     defer hook.detach();
 
     const gui = &hook.gui;
+
+    const font = try hook.loadFont(allocator, "font.fat");
+    defer font.deinit(allocator);
 
     var x: f32 = 0.0;
     while (true) {
@@ -26,5 +29,6 @@ pub fn main() !void {
         }
 
         gui.rect(.{ 100.0 + x, 100.0 }, .{ 500.0 + x, 500.0 }, 0x0F191EFF);
+        gui.text(.{ 200.0, 200.0 }, "Helo", font);
     }
 }

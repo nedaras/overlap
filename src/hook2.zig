@@ -1,11 +1,16 @@
 const std = @import("std");
 const windows = @import("windows.zig");
 const minhook = @import("minhook.zig");
+const fat = @import("fat.zig");
 const Gui = @import("Gui.zig");
 const Backend = @import("gui/Backend.zig");
 const D3D11Hook = @import("hooks/D3D11Hook.zig");
+const Image = @import("gui/Image.zig");
+const Font = @import("gui/Font.zig");
+const mem = std.mem;
+const fs = std.fs;
 const Thread = std.Thread;
-const Allocator = std.mem.Allocator;
+const Allocator = mem.Allocator;
 
 d3d11_hook: ?*D3D11Hook = null,
 
@@ -31,11 +36,7 @@ pub fn attach(self: *Self) !void {
     });
     errdefer d3d11_hook.deinit();
 
-    // tood: put into wait or smth idk
-    while (self.d3d11_hook == null) {
-        @branchHint(.cold);
-        std.atomic.spinLoopHint();
-    }
+    self.reset_event_a.wait();
 
     self.d3d11_hook = d3d11_hook;
 }
@@ -55,6 +56,41 @@ pub fn newFrame(self: *Self) void {
 pub fn endFrame(self: *Self) void {
     self.reset_event_a.reset();
     self.reset_event_b.set();
+}
+
+pub inline fn loadImage(self: *Self, allocator: Allocator, desc: Image.Desc) Image.Error!Image {
+    return self.d3d11_hook.?.backend.?.backend().loadImage(allocator, desc);
+}
+
+pub fn loadFont(self: *Self, allocator: Allocator, sub_path: []const u8) !Font {
+    const file = try fs.cwd().openFile(sub_path, .{});
+    defer file.close();
+
+    const reader = file.reader();
+    const head = try reader.readStructEndian(fat.Header, .little);
+
+    const glyphs = try allocator.alloc(fat.Glyph, head.glyphs_len);
+    errdefer allocator.free(glyphs);
+
+    try reader.readNoEof(mem.sliceAsBytes(glyphs));
+
+    const texure = try allocator.alloc(u8, @as(usize, head.tex_width) * @as(usize, head.tex_height));
+    defer allocator.free(texure);
+
+    try reader.readNoEof(texure);
+
+    const image = try self.loadImage(allocator, .{
+        .width = @intCast(head.tex_width),
+        .height = @intCast(head.tex_height),
+        .format = .R,
+        .data = texure,
+    });
+    errdefer image.deinit();
+
+    return .{
+        .glyphs = glyphs,
+        .image = image,
+    };
 }
 
 // hooked thread
