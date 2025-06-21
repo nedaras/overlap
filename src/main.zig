@@ -7,19 +7,19 @@ pub fn main() !void {
 
     const allocator = da.allocator();
 
-    var hook = Hook{};
+    var hook: Hook = .init;
 
     try hook.attach();
     defer hook.detach();
 
-    const gui = &hook.gui;
+    const gui = hook.gui();
 
     const font = try hook.loadFont(allocator, "font.fat");
     defer font.deinit(allocator);
 
     var x: f32 = 0.0;
     while (true) {
-        hook.newFrame();
+        try hook.newFrame();
         defer hook.endFrame();
 
         x += 0.5;

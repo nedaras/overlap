@@ -11,19 +11,34 @@ const mem = std.mem;
 const fs = std.fs;
 const Thread = std.Thread;
 const Allocator = mem.Allocator;
+const assert = std.debug.assert;
+
+const Gateway = struct {
+    gui: Gui,
+
+    main_reset_event: Thread.ResetEvent,
+    hooked_reset_event: Thread.ResetEvent,
+
+    err: ?FrameError,
+    exiting: bool,
+};
 
 d3d11_hook: ?*D3D11Hook = null,
-
-// todo: better names
-reset_event_a: Thread.ResetEvent = .{},
-reset_event_b: Thread.ResetEvent = .{},
-
-gui: Gui = .init,
-exiting: bool = false,
+gateway: Gateway,
 
 const Self = @This();
 
-// todo: just add zelf thingy cuz there should be only one hook tbf
+pub const init = Self{
+    .d3d11_hook = null,
+    .gateway = .{
+        .gui = .init,
+        .main_reset_event = .{},
+        .hooked_reset_event = .{},
+        .err = null,
+        .exiting = false,
+    },
+};
+
 pub fn attach(self: *Self) !void {
     const window = windows.GetForegroundWindow() orelse return error.NoWindow;
 
@@ -37,27 +52,39 @@ pub fn attach(self: *Self) !void {
     });
     errdefer d3d11_hook.deinit();
 
-    // i need to understant that while waiting error_cb can be called to indicate that Backend was not created
-    self.reset_event_a.wait();
+    try newFrame(self);
+    assert(d3d11_hook.backend != null);
 
     self.d3d11_hook = d3d11_hook;
 }
 
 pub fn detach(self: *Self) void {
-    self.exiting = true;
-    self.reset_event_b.set();
+    self.gateway.exiting = true;
+    self.gateway.main_reset_event.set();
 
+    // this line will bring some problems
     self.d3d11_hook.?.deinit();
     minhook.MH_Uninitialize() catch {};
 }
 
-pub fn newFrame(self: *Self) void {
-    self.reset_event_a.wait();
+pub inline fn gui(self: *Self) *Gui {
+    return &self.gateway.gui;
+}
+
+pub const FrameError = D3D11Hook.Error;
+
+pub fn newFrame(self: *Self) FrameError!void {
+    assert(self.gateway.err == null);
+    self.gateway.main_reset_event.wait();
+    if (self.gateway.err) |err| {
+        @branchHint(.cold);
+        return err;
+    }
 }
 
 pub fn endFrame(self: *Self) void {
-    self.reset_event_a.reset();
-    self.reset_event_b.set();
+    self.gateway.main_reset_event.reset();
+    self.gateway.hooked_reset_event.set();
 }
 
 pub inline fn loadImage(self: *Self, allocator: Allocator, desc: Image.Desc) Image.Error!Image {
@@ -98,10 +125,14 @@ pub fn loadFont(self: *Self, allocator: Allocator, sub_path: []const u8) !Font {
 }
 
 // hooked thread
-// AAAAAAAAAAAA
+// only after this call backend becomes invalid
 fn errored(context: *anyopaque, err: D3D11Hook.Error) void {
-    _ = context;
-    err catch unreachable;
+    const self: *Self = @ptrCast(@alignCast(context));
+
+    assert(self.gateway.err == null);
+
+    self.gateway.err = err;
+    self.gateway.main_reset_event.set();
 }
 
 // hooked thread
@@ -112,18 +143,24 @@ fn errored(context: *anyopaque, err: D3D11Hook.Error) void {
 fn frame(context: *anyopaque, backend: Backend) bool {
     const self: *Self = @ptrCast(@alignCast(context));
 
-    self.reset_event_a.set();
+    assert(self.gateway.err == null);
+    self.gateway.main_reset_event.set();
 
-    // now it waits even if we unhook cuz noone resets it
-    self.reset_event_b.wait();
-    self.reset_event_b.reset();
-
-    if (self.exiting) {
+    if (self.gateway.exiting) {
         return false;
     }
 
-    backend.frame(self.gui.draw_verticies.constSlice(), self.gui.draw_indecies.constSlice(), self.gui.draw_commands.constSlice());
-    self.gui.clear();
+    self.gateway.hooked_reset_event.wait();
+    self.gateway.hooked_reset_event.reset();
+
+    const shared_gui = self.gui();
+    defer shared_gui.clear();
+
+    backend.frame(
+        shared_gui.draw_verticies.constSlice(),
+        shared_gui.draw_indecies.constSlice(),
+        shared_gui.draw_commands.constSlice(),
+    );
 
     return true;
 }
