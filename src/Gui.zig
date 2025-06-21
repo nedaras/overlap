@@ -97,10 +97,10 @@ pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, font: Font) void {
         };
 
         const verticies = [_]shared.DrawVertex{
-            .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv_top[x], glyph.uv_top[y] }, .col = 0xFFFFFFFF },
-            .{ .pos = .{ bot[x], top[y] }, .uv = .{ glyph.uv_bot[x], glyph.uv_top[y] }, .col = 0xFFFFFFFF },
-            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ glyph.uv_bot[x], glyph.uv_bot[y] }, .col = 0xFFFFFFFF },
-            .{ .pos = .{ top[x], bot[y] }, .uv = .{ glyph.uv_top[x], glyph.uv_bot[y] }, .col = 0xFFFFFFFF },
+            .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv_top[x], glyph.uv_top[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ bot[x], top[y] }, .uv = .{ glyph.uv_bot[x], glyph.uv_top[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ glyph.uv_bot[x], glyph.uv_bot[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ top[x], bot[y] }, .uv = .{ glyph.uv_top[x], glyph.uv_bot[y] }, .col = 0xFFFFFFFF, .flags = 5 },
         };
 
         const indecies = &[_]u16{
