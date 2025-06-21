@@ -2,7 +2,10 @@ const std = @import("std");
 const kernel32 = @import("windows/kernel32.zig");
 const psapi = @import("windows/psapi.zig");
 const user32 = @import("windows/user32.zig");
+const winhttp = @import("windows/winhttp.zig");
 const windows = std.os.windows;
+const unicode = std.unicode;
+const assert = std.debug.assert;
 
 pub usingnamespace windows;
 
@@ -11,16 +14,25 @@ pub const d3d11 = @import("windows/d3d11.zig");
 pub const d3dcommon = @import("windows/d3dcommon.zig");
 pub const d3dcompiler = @import("windows/d3dcompiler.zig");
 
+const TRUE = windows.TRUE;
 const ULONG = windows.ULONG;
+const DWORD = windows.DWORD;
 const WINAPI = windows.WINAPI;
 const HRESULT = windows.HRESULT;
 
 pub const REFIID = *const windows.GUID;
+pub const HINTERNET = winhttp.HINTERNET;
 
 pub const DLL_PROCESS_DETACH = 0;
 pub const DLL_PROCESS_ATTACH = 1;
 pub const DLL_THREAD_ATTACH = 2;
 pub const DLL_THREAD_DETACH = 3;
+
+pub const WINHTTP_ACCESS_TYPE_DEFAULT_PROXY = 0;
+pub const WINHTTP_ACCESS_TYPE_NO_PROXY = 1;
+
+pub const WINHTTP_NO_PROXY_NAME = null;
+pub const WINHTTP_NO_PROXY_BYPASS = null;
 
 pub const IUnknown = extern struct {
     vtable: *const IUnknownVTable,
@@ -147,4 +159,30 @@ pub fn GetWindowRect(hWnd: windows.HWND) GetWindowRectError!windows.RECT {
     }
 
     return rect;
+}
+
+pub const WinHttpOpenError = error{Unexpected};
+
+pub fn WinHttpOpen(
+    pszAgentW: ?[:0]const u16,
+    dwAccessType: DWORD,
+    pszProxyW: ?[:0]const u16,
+    pszProxyBypassW: ?[:0]const u16,
+    dwFlags: DWORD,
+) WinHttpOpenError!HINTERNET {
+    const pszAgentW_ptr = if (pszAgentW) |slice| slice.ptr else null;
+    const pszProxyW_ptr = if (pszProxyW) |slice| slice.ptr else null;
+    const pszProxyBypassW_ptr = if (pszProxyBypassW) |slice| slice.ptr else null;
+
+    if (winhttp.WinHttpOpen(pszAgentW_ptr, dwAccessType, pszProxyW_ptr, pszProxyBypassW_ptr, dwFlags)) |internet| {
+        return internet;
+    }
+
+    return switch (windows.kernel32.GetLastError()) {
+        else => |err| windows.unexpectedError(err),
+    };
+}
+
+pub fn WinHttpCloseHandle(hInternet: HINTERNET) void {
+    assert(winhttp.WinHttpCloseHandle(hInternet) == TRUE);
 }
