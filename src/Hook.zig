@@ -74,7 +74,6 @@ pub inline fn gui(self: *Self) *Gui {
 pub const FrameError = D3D11Hook.Error;
 
 pub fn newFrame(self: *Self) FrameError!void {
-    assert(self.gateway.err == null);
     self.gateway.main_reset_event.wait();
     if (self.gateway.err) |err| {
         @branchHint(.cold);

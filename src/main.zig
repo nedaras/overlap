@@ -1,5 +1,5 @@
 const std = @import("std");
-const Hook = @import("hook2.zig");
+const Hook = @import("Hook.zig");
 
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{}){};
