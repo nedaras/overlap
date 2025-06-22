@@ -6,16 +6,35 @@ const Hook = @import("Hook.zig");
 //   on windows we can use winhttp
 //   on linux we can use libcurl
 
+// Btw the access tokens and window we tryna hook should be passed by the injector/launcher
+
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{}){};
     defer _ = da.deinit();
 
     const allocator = da.allocator();
 
-    var client: http.Client = .{};
-    defer client.deinit();
+    {
+        const uri = std.Uri{
+            .scheme = "https",
+            .host = .{
+                .raw = "api.ipify.org",
+            },
+        };
 
-    try client.open();
+        var server_header_buffer: [512]u8 = undefined;
+
+        var client = try http.Client.init();
+        defer client.deinit();
+
+        const request = try client.open(.GET, uri, .{
+            .server_header_buffer = &server_header_buffer,
+        });
+        defer request.deinit();
+
+        try request.send();
+        try request.wait();
+    }
 
     var hook: Hook = .init;
 

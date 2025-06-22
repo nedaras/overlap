@@ -15,13 +15,16 @@ pub const d3dcommon = @import("windows/d3dcommon.zig");
 pub const d3dcompiler = @import("windows/d3dcompiler.zig");
 
 const TRUE = windows.TRUE;
+const FALSE = windows.FALSE;
 const ULONG = windows.ULONG;
 const DWORD = windows.DWORD;
 const WINAPI = windows.WINAPI;
+const LPCWSTR = windows.LPCWSTR;
 const HRESULT = windows.HRESULT;
 
 pub const REFIID = *const windows.GUID;
 pub const HINTERNET = winhttp.HINTERNET;
+pub const INTERNET_PORT = winhttp.INTERNET_PORT;
 
 pub const DLL_PROCESS_DETACH = 0;
 pub const DLL_PROCESS_ATTACH = 1;
@@ -33,6 +36,15 @@ pub const WINHTTP_ACCESS_TYPE_NO_PROXY = 1;
 
 pub const WINHTTP_NO_PROXY_NAME = null;
 pub const WINHTTP_NO_PROXY_BYPASS = null;
+pub const WINHTTP_NO_REFERER = null;
+pub const WINHTTP_NO_REQUEST_DATA = null;
+pub const WINHTTP_NO_ADDITIONAL_HEADERS = null;
+
+pub const WINHTTP_FLAG_SECURE = 0x00800000;
+
+pub const WINHTTP_DEFAULT_ACCEPT_TYPES = &[_:null]?LPCWSTR{
+    unicode.wtf8ToWtf16LeStringLiteral("*/*"),
+};
 
 pub const IUnknown = extern struct {
     vtable: *const IUnknownVTable,
@@ -174,8 +186,8 @@ pub fn WinHttpOpen(
     const pszProxyW_ptr = if (pszProxyW) |slice| slice.ptr else null;
     const pszProxyBypassW_ptr = if (pszProxyBypassW) |slice| slice.ptr else null;
 
-    if (winhttp.WinHttpOpen(pszAgentW_ptr, dwAccessType, pszProxyW_ptr, pszProxyBypassW_ptr, dwFlags)) |internet| {
-        return internet;
+    if (winhttp.WinHttpOpen(pszAgentW_ptr, dwAccessType, pszProxyW_ptr, pszProxyBypassW_ptr, dwFlags)) |session| {
+        return session;
     }
 
     return switch (windows.kernel32.GetLastError()) {
@@ -186,3 +198,76 @@ pub fn WinHttpOpen(
 pub fn WinHttpCloseHandle(hInternet: HINTERNET) void {
     assert(winhttp.WinHttpCloseHandle(hInternet) == TRUE);
 }
+
+pub const WinHttpConnectError = error{Unexpected};
+
+pub fn WinHttpConnect(
+    hSession: HINTERNET,
+    pswzServerName: [:0]const u16,
+    nServerPort: INTERNET_PORT,
+    dwReserved: DWORD,
+) WinHttpConnectError!HINTERNET {
+    if (winhttp.WinHttpConnect(hSession, pswzServerName.ptr, nServerPort, dwReserved)) |connection| {
+        return connection;
+    }
+
+    return switch (windows.kernel32.GetLastError()) {
+        else => |err| windows.unexpectedError(err),
+    };
+}
+
+pub const WinHttpOpenRequestError = error{Unexpected};
+
+pub fn WinHttpOpenRequest(
+    hConnect: HINTERNET,
+    pwszVerb: [:0]const u16,
+    pwszObjectName: [:0]const u16,
+    pwszVersion: ?[:0]const u16,
+    pwszReferrer: ?[:0]const u16,
+    ppwszAcceptTypes: [:null]const ?LPCWSTR,
+    dwFlags: DWORD,
+) WinHttpOpenRequestError!HINTERNET {
+    const pwszVersion_ptr = if (pwszVersion) |slice| slice.ptr else null;
+    const pwszReferrer_ptr = if (pwszReferrer) |slice| slice.ptr else null;
+
+    if (winhttp.WinHttpOpenRequest(hConnect, pwszVerb.ptr, pwszObjectName.ptr, pwszVersion_ptr, pwszReferrer_ptr, ppwszAcceptTypes.ptr, dwFlags)) |request| {
+        return request;
+    }
+
+    return switch (windows.kernel32.GetLastError()) {
+        else => |err| windows.unexpectedError(err),
+    };
+}
+
+pub const WinHttpSendRequestError = error{Unexpected};
+
+pub fn WinHttpSendRequest(
+    hRequest: HINTERNET,
+    Headers: ?[]const u16,
+    Optional: ?[]const u16,
+    dwTotalLength: DWORD,
+    dwContext: ?*DWORD,
+) WinHttpSendRequestError!void {
+    const lpszHeaders = if (Headers) |slice| slice.ptr else null;
+    const dwHeadersLength: DWORD = if (Headers) |slice| @intCast(slice.len) else 0;
+
+    const lpOptional = if (Optional) |slice| slice.ptr else null;
+    const dwOptionalLength: DWORD = if (Optional) |slice| @intCast(slice.len) else 0;
+
+    if (winhttp.WinHttpSendRequest(hRequest, lpszHeaders, dwHeadersLength, lpOptional, dwOptionalLength, dwTotalLength, dwContext) == FALSE) {
+        return switch (windows.kernel32.GetLastError()) {
+            else => |err| windows.unexpectedError(err),
+        };
+    }
+}
+
+pub const WinHttpReceiveResponseError = error{Unexpected};
+
+pub fn WinHttpReceiveResponse(hRequest: HINTERNET) WinHttpOpenRequestError!void {
+    if (winhttp.WinHttpReceiveResponse(hRequest, null) == FALSE) {
+        return switch (windows.kernel32.GetLastError()) {
+            else => |err| windows.unexpectedError(err),
+        };
+    }
+}
+
