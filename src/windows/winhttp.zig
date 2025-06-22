@@ -4,6 +4,7 @@ const windows = std.os.windows;
 const BOOL = windows.BOOL;
 const WINAPI = windows.WINAPI;
 const DWORD = windows.DWORD;
+const LPVOID = windows.LPVOID;
 const LPCWSTR = windows.LPCWSTR;
 const LPCVOID = windows.LPCVOID;
 const WCHAR = windows.WCHAR;
@@ -58,4 +59,11 @@ pub extern "winhttp" fn WinHttpQueryHeaders(
     lpBuffer: LPCVOID,
     lpdwBufferLength: LPDWORD,
     lpdwIndex: ?LPDWORD,
+) callconv(WINAPI) BOOL;
+
+pub extern "winhttp" fn WinHttpReadData(
+    hRequest: HINTERNET,
+    lpBuffer: LPVOID,
+    dwNumberOfBytesToRead: DWORD,
+    lpdwNumberOfBytesRead: LPDWORD,
 ) callconv(WINAPI) BOOL;

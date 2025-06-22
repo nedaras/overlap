@@ -208,10 +208,7 @@ pub fn WinHttpCloseHandle(hInternet: HINTERNET) void {
     assert(winhttp.WinHttpCloseHandle(hInternet) == TRUE);
 }
 
-pub const WinHttpConnectError = error{
-    NetworkUnreachable,
-    Unexpected,
-};
+pub const WinHttpConnectError = error{Unexpected};
 
 pub fn WinHttpConnect(
     hSession: HINTERNET,
@@ -224,7 +221,6 @@ pub fn WinHttpConnect(
     }
 
     return switch (windows.kernel32.GetLastError()) {
-        @as(Win32Error, @enumFromInt(12007)) => error.NetworkUnreachable,
         else => |err| windows.unexpectedError(err),
     };
 }
@@ -252,7 +248,10 @@ pub fn WinHttpOpenRequest(
     };
 }
 
-pub const WinHttpSendRequestError = error{Unexpected};
+pub const WinHttpSendRequestError = error{
+    NetworkUnreachable,
+    Unexpected
+};
 
 pub fn WinHttpSendRequest(
     hRequest: HINTERNET,
@@ -269,6 +268,7 @@ pub fn WinHttpSendRequest(
 
     if (winhttp.WinHttpSendRequest(hRequest, lpszHeaders, dwHeadersLength, lpOptional, dwOptionalLength, dwTotalLength, dwContext) == FALSE) {
         return switch (windows.kernel32.GetLastError()) {
+            @as(Win32Error, @enumFromInt(12007)) => error.NetworkUnreachable,
             else => |err| windows.unexpectedError(err),
         };
     }
@@ -301,4 +301,18 @@ pub fn WinHttpQueryHeaders(
             else => |err| windows.unexpectedError(err),
         };
     }
+}
+
+pub const WinHttpReadDataError = error{Unexpected};
+
+pub fn WinHttpReadData(hRequest: HINTERNET, Buffer: []u8) WinHttpReadDataError!usize {
+    var lpdwNumberOfBytesRead: DWORD = 0;
+
+    if (winhttp.WinHttpReadData(hRequest, Buffer.ptr, @intCast(Buffer.len), &lpdwNumberOfBytesRead) == FALSE) {
+        return switch (windows.kernel32.GetLastError()) {
+            else => |err| windows.unexpectedError(err),
+        };
+    }
+
+    return lpdwNumberOfBytesRead;
 }

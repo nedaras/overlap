@@ -38,6 +38,15 @@ pub fn main() !void {
         try request.wait();
 
         std.debug.print("{}\n", .{request.response.status});
+
+        var buf: [1024]u8 = undefined;
+        while (true) {
+            const amt = try request.read(&buf);
+            if (amt == 0) break;
+
+            std.debug.print("{s}", .{buf[0..amt]});
+        }
+        std.debug.print("\n", .{});
     }
 
     var hook: Hook = .init;

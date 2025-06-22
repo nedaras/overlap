@@ -45,6 +45,7 @@ pub const Client = struct {
         }
 
         pub fn send(self: Request) !void {
+            // prob call in open cuz this is where like handshake is done
             try windows.WinHttpSendRequest(
                 self.session,
                 windows.WINHTTP_NO_ADDITIONAL_HEADERS,
@@ -78,6 +79,10 @@ pub const Client = struct {
             self.response.status = @enumFromInt(status_code);
         }
 
+        pub fn read(self: Request, buffer: []u8) !usize {
+            return windows.WinHttpReadData(self.session, buffer);
+        }
+
     };
 
     pub fn open(
@@ -96,6 +101,11 @@ pub const Client = struct {
         const connection = try windows.WinHttpConnect(self.handle, host, uriPort(valid_uri, protocol), 0);
         errdefer windows.WinHttpCloseHandle(connection);
 
+        const flags: windows.DWORD = switch (protocol) {
+            .plain => 0,
+            .tls => windows.WINHTTP_FLAG_SECURE,
+        };
+
         const session = try windows.WinHttpOpenRequest(
             connection,
             methodNameW(method),
@@ -103,7 +113,7 @@ pub const Client = struct {
             null,
             windows.WINHTTP_NO_REFERER,
             windows.WINHTTP_DEFAULT_ACCEPT_TYPES,
-            windows.WINHTTP_FLAG_SECURE,
+            flags,
         );
         errdefer windows.WinHttpCloseHandle(session);
 
