@@ -26,6 +26,10 @@ pub const Client = struct {
         };
     }
 
+    pub const Response = struct {
+        status: http.Status,
+    };
+
     pub const Request = struct {
         uri: Uri,
 
@@ -33,6 +37,7 @@ pub const Client = struct {
         session: windows.HINTERNET,
 
         method: http.Method,
+        response: Response,
 
         pub fn deinit(self: Request) void {
             windows.WinHttpCloseHandle(self.session);
@@ -49,12 +54,28 @@ pub const Client = struct {
             );
         }
 
-        pub fn wait(self: Request) !void {
+        pub fn write() !void {
+            // WinHttpWriteData
+        }
+
+        pub fn finish(self: Request) !void {
             try windows.WinHttpReceiveResponse(self.session);
         }
 
-        pub fn write() !void {
-            // WinHttpWriteData
+        pub fn wait(self: *Request) !void {
+            var status_code: windows.DWORD = 0;
+            var status_code_size: windows.DWORD = @sizeOf(@TypeOf(status_code));
+
+            try windows.WinHttpQueryHeaders(
+                self.session,
+                windows.WINHTTP_QUERY_STATUS_CODE | windows.WINHTTP_QUERY_FLAG_NUMBER,
+                windows.WINHTTP_HEADER_NAME_BY_INDEX,
+                &status_code,
+                &status_code_size,
+                windows.WINHTTP_NO_HEADER_INDEX,
+            );
+
+            self.response.status = @enumFromInt(status_code);
         }
 
     };
@@ -93,6 +114,9 @@ pub const Client = struct {
             .connection = connection,
             .session = session,
             .method = method,
+            .response = .{
+                .status = undefined,
+            },
         };
     }
 

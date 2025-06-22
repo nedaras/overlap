@@ -21,6 +21,9 @@ const DWORD = windows.DWORD;
 const WINAPI = windows.WINAPI;
 const LPCWSTR = windows.LPCWSTR;
 const HRESULT = windows.HRESULT;
+const LPCVOID = windows.LPCVOID;
+const LPDWORD = *windows.DWORD;
+const Win32Error = windows.Win32Error;
 
 pub const REFIID = *const windows.GUID;
 pub const HINTERNET = winhttp.HINTERNET;
@@ -39,12 +42,18 @@ pub const WINHTTP_NO_PROXY_BYPASS = null;
 pub const WINHTTP_NO_REFERER = null;
 pub const WINHTTP_NO_REQUEST_DATA = null;
 pub const WINHTTP_NO_ADDITIONAL_HEADERS = null;
+pub const WINHTTP_NO_HEADER_INDEX = null;
+
+pub const WINHTTP_HEADER_NAME_BY_INDEX = null;
 
 pub const WINHTTP_FLAG_SECURE = 0x00800000;
 
 pub const WINHTTP_DEFAULT_ACCEPT_TYPES = &[_:null]?LPCWSTR{
     unicode.wtf8ToWtf16LeStringLiteral("*/*"),
 };
+
+pub const WINHTTP_QUERY_STATUS_CODE = 19;
+pub const WINHTTP_QUERY_FLAG_NUMBER = 0x20000000;
 
 pub const IUnknown = extern struct {
     vtable: *const IUnknownVTable,
@@ -199,7 +208,10 @@ pub fn WinHttpCloseHandle(hInternet: HINTERNET) void {
     assert(winhttp.WinHttpCloseHandle(hInternet) == TRUE);
 }
 
-pub const WinHttpConnectError = error{Unexpected};
+pub const WinHttpConnectError = error{
+    NetworkUnreachable,
+    Unexpected,
+};
 
 pub fn WinHttpConnect(
     hSession: HINTERNET,
@@ -212,6 +224,7 @@ pub fn WinHttpConnect(
     }
 
     return switch (windows.kernel32.GetLastError()) {
+        @as(Win32Error, @enumFromInt(12007)) => error.NetworkUnreachable,
         else => |err| windows.unexpectedError(err),
     };
 }
@@ -271,3 +284,21 @@ pub fn WinHttpReceiveResponse(hRequest: HINTERNET) WinHttpOpenRequestError!void 
     }
 }
 
+pub const WinHttpQueryHeadersError = error{Unexpected};
+
+pub fn WinHttpQueryHeaders(
+    hRequest: HINTERNET,
+    dwInfoLevel: DWORD,
+    Name: ?[:0]const u16,
+    lpBuffer: LPCVOID,
+    lpdwBufferLength: LPDWORD,
+    lpdwIndex: ?LPDWORD,
+) WinHttpQueryHeadersError!void {
+    const pwszName = if (Name) |slice| slice.ptr else null;
+
+    if (winhttp.WinHttpQueryHeaders(hRequest, dwInfoLevel, pwszName, lpBuffer, lpdwBufferLength, lpdwIndex) == FALSE) {
+        return switch (windows.kernel32.GetLastError()) {
+            else => |err| windows.unexpectedError(err),
+        };
+    }
+}

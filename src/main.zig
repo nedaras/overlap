@@ -24,16 +24,20 @@ pub fn main() !void {
 
         var server_header_buffer: [512]u8 = undefined;
 
-        var client = try http.Client.init();
+        const client = try http.Client.init();
         defer client.deinit();
 
-        const request = try client.open(.GET, uri, .{
+        var request = try client.open(.GET, uri, .{
             .server_header_buffer = &server_header_buffer,
         });
         defer request.deinit();
 
         try request.send();
+        try request.finish();
+
         try request.wait();
+
+        std.debug.print("{}\n", .{request.response.status});
     }
 
     var hook: Hook = .init;
