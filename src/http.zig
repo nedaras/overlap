@@ -217,7 +217,6 @@ pub const Client = struct {
             windows.WinHttpCloseHandle(self.connection);
         }
 
-
         fn emitOverridableHeader(self: Request, prefix: []const u16, v: Headers.Value) !bool {
             switch (v) {
                 .default => return true,
@@ -441,12 +440,7 @@ fn methodNameW(method: http.Method) [:0]const u16 {
     };
 }
 
-fn connect(
-    client: *Client,
-    host: []const u16,
-    port: u16,
-    protocol: Protocol
-) !windows.HINTERNET {
+fn connect(client: *Client, host: []const u16, port: u16, protocol: Protocol) !windows.HINTERNET {
     if (client.connection_pool.findConnection(.{
         .host = host,
         .port = port,

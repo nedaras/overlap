@@ -190,8 +190,8 @@ pub const Request = struct {
 
     uri: Uri,
     client: *Client,
-    /// This is null when the connection is released.
-    connection: ?*Connection,
+    // /// This is null when the connection is released.
+    connection: *Connection,
     //keep_alive: bool,
 
     method: http.Method,
@@ -216,16 +216,15 @@ pub const Request = struct {
     };
 
     pub fn deinit(req: *Request) void {
-        if (req.connection) |connection| {
-            if (!req.response.done) {
-                // If the response wasn't fully read, then we need to close the connection.
-                connection.closing = true;
-            }
-
-            req.client.connection_pool.release(req.client.allocator, connection);
+        if (!req.response.done) {
+            // If the response wasn't fully read, then we need to close the connection.
+            req.connection.closing = true;
         }
 
+        req.client.connection_pool.release(req.client.allocator, req.connection);
+
         windows.WinHttpCloseHandle(req.handle);
+
         req.* = undefined;
     }
 
@@ -275,9 +274,41 @@ pub const Request = struct {
         );
     }
 
+    pub fn write(req: *Request, bytes: []const u8) !usize {
+        switch (req.transfer_encoding) {
+            .chunked => {
+                if (bytes.len > 0) {
+                    var head_buf: [20]u8 = undefined;
+                    const head = std.fmt.bufPrint(&head_buf, "{x}\r\n", .{bytes.len}) catch unreachable;
+
+                    try req.innerWriteAll(head);
+                    try req.innerWriteAll(bytes);
+                    try req.innerWriteAll("\r\n");
+                }
+
+                return bytes.len;
+            },
+            .content_length => |*len| {
+                if (len.* < bytes.len) return error.MessageTooLong;
+
+                const amt = try windows.WinHttpWriteData(req.handle, bytes);
+                len.* -= amt;
+                return amt;
+            },
+            .none => return error.NotWriteable,
+        }
+    }
+
+    pub fn writeAll(req: *Request, bytes: []const u8) !void {
+        var index: usize = 0;
+        while (index < bytes.len) {
+            index += try write(req, bytes[index..]);
+        }
+    }
+
     pub fn finish(req: Request) !void {
         switch (req.transfer_encoding) {
-            .chunked => @panic("not yeet"),//try self.writeAllInner("0\r\n\r\n"),
+            .chunked => try req.innerWriteAll("0\r\n\r\n"),
             .content_length => |len| if (len != 0) return error.MessageNotCompleted,
             .none => {},
         }
@@ -310,6 +341,13 @@ pub const Request = struct {
 
         return amt;
         // need to handle trailing headers maybe
+    }
+
+    fn innerWriteAll(self: Request, bytes: []const u8) !void {
+        var index: usize = 0;
+        while (index < bytes.len) {
+            index += try windows.WinHttpWriteData(self.handle, bytes);
+        }
     }
 
     fn emitOverridableHeader(req: Request, prefix: []const u16, v: Headers.Value) !bool {
@@ -401,7 +439,6 @@ pub fn open(
     errdefer req.deinit();
 
     return req;
-    
 }
 
 pub fn connect(
@@ -423,7 +460,7 @@ pub fn connect(
     const len = try unicode.wtf8ToWtf16Le(&wide_host, host);
     wide_host[len] = 0;
 
-    const session = try windows.WinHttpConnect(client.handle, wide_host[0..len:0], port);
+    const session = try windows.WinHttpConnect(client.handle, wide_host[0..len :0], port);
     errdefer windows.WinHttpCloseHandle(session);
 
     conn.data = .{

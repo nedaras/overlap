@@ -28,35 +28,39 @@ pub fn main() !void {
         var client = try Client.init(allocator);
         defer client.deinit();
 
-        var request = try client.open(.GET, uri, .{
-            .server_header_buffer = &server_header_buffer,
-            .headers = .{
-                .authorization = .{ .override = "TOKEN" },
-            },
-        });
-        defer request.deinit();
-
-        //request.transfer_encoding = .chunked;
-
-        try request.send();
-
-        //try request.writeAll("Hello\n");
-        //try request.writeAll("World!");
-
-        try request.finish();
-
-        try request.wait();
-
-        std.debug.print("{}\n", .{request.response.status});
-
-        var buf: [1024]u8 = undefined;
         while (true) {
-            const amt = try request.read(&buf);
-            if (amt == 0) break;
+            var request = try client.open(.GET, uri, .{
+                .server_header_buffer = &server_header_buffer,
+                .headers = .{
+                    .authorization = .{ .override = "TOKEN" },
+                },
+            });
+            defer request.deinit();
 
-            std.debug.print("{s}", .{buf[0..amt]});
+            request.transfer_encoding = .chunked;
+
+            try request.send();
+
+            try request.writeAll("Hello\n");
+            try request.writeAll("World!");
+
+            try request.finish();
+
+            try request.wait();
+
+            std.debug.print("{}\n", .{request.response.status});
+
+            var buf: [1024]u8 = undefined;
+            while (true) {
+                const amt = try request.read(&buf);
+                if (amt == 0) break;
+
+                std.debug.print("{s}", .{buf[0..amt]});
+            }
+            std.debug.print("\n", .{});
+
+            std.time.sleep(std.time.ms_per_s * 3);
         }
-        std.debug.print("\n", .{});
     }
 
     var hook: Hook = .init;
