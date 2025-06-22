@@ -74,3 +74,10 @@ pub extern "winhttp" fn WinHttpWriteData(
     dwNumberOfBytesToWrite: DWORD,
     lpdwNumberOfBytesWritten: LPDWORD,
 ) callconv(WINAPI) BOOL;
+
+pub extern "winhttp" fn WinHttpAddRequestHeaders(
+    hRequest: HINTERNET,
+    lpszHeaders: LPCWSTR,
+    dwHeadersLength: DWORD,
+    dwModifiers: DWORD,
+) callconv(WINAPI) BOOL;

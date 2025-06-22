@@ -53,6 +53,15 @@ pub const Client = struct {
         }
 
         pub fn send(self: Request) !void {
+            // add headers...
+            if (self.transfer_encoding == .chunked) {
+                try windows.WinHttpAddRequestHeaders(
+                    self.session,
+                    unicode.wtf8ToWtf16LeStringLiteral("Transfer-Encoding: chunked"),
+                    windows.WINHTTP_ADDREQ_FLAG_ADD | windows.WINHTTP_ADDREQ_FLAG_REPLACE,
+                );
+            }
+
             const content_len = switch (self.transfer_encoding) {
                 .none => windows.WINHTTP_IGNORE_REQUEST_TOTAL_LENGTH,
                 .content_length => |len| len,

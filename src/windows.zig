@@ -50,6 +50,9 @@ pub const WINHTTP_IGNORE_REQUEST_TOTAL_LENGTH = 0;
 
 pub const WINHTTP_FLAG_SECURE = 0x00800000;
 
+pub const WINHTTP_ADDREQ_FLAG_ADD = 0x20000000;
+pub const WINHTTP_ADDREQ_FLAG_REPLACE = 0x80000000;
+
 pub const WINHTTP_DEFAULT_ACCEPT_TYPES = &[_:null]?LPCWSTR{
     unicode.wtf8ToWtf16LeStringLiteral("*/*"),
 };
@@ -302,13 +305,12 @@ pub fn WinHttpQueryHeaders(
     }
 }
 
-// todo: dont @intCast and return u32
 pub const WinHttpReadDataError = error{Unexpected};
 
 pub fn WinHttpReadData(hRequest: HINTERNET, Buffer: []u8) WinHttpReadDataError!u32 {
     var lpdwNumberOfBytesRead: DWORD = 0;
 
-    if (winhttp.WinHttpReadData(hRequest, Buffer.ptr, @intCast(Buffer.len), &lpdwNumberOfBytesRead) == FALSE) {
+    if (winhttp.WinHttpReadData(hRequest, Buffer.ptr, @truncate(Buffer.len), &lpdwNumberOfBytesRead) == FALSE) {
         return switch (windows.kernel32.GetLastError()) {
             else => |err| windows.unexpectedError(err),
         };
@@ -322,11 +324,25 @@ pub const WinHttpWriteDataError = error{Unexpected};
 pub fn WinHttpWriteData(hRequest: HINTERNET, Buffer: []const u8) WinHttpWriteDataError!u32 {
     var lpdwNumberOfBytesWritten: DWORD = 0;
 
-    if (winhttp.WinHttpWriteData(hRequest, Buffer.ptr, @intCast(Buffer.len), &lpdwNumberOfBytesWritten) == FALSE) {
+    if (winhttp.WinHttpWriteData(hRequest, Buffer.ptr, @truncate(Buffer.len), &lpdwNumberOfBytesWritten) == FALSE) {
         return switch (windows.kernel32.GetLastError()) {
             else => |err| windows.unexpectedError(err),
         };
     }
 
     return lpdwNumberOfBytesWritten;
+}
+
+pub const WinHttpAddRequestHeadersError = error{Unexpected};
+
+pub fn WinHttpAddRequestHeaders(
+    hRequest: HINTERNET,
+    Headers: []const u16,
+    dwModifiers: DWORD,
+) WinHttpAddRequestHeadersError!void {
+    if (winhttp.WinHttpAddRequestHeaders(hRequest, Headers.ptr, @intCast(Headers.len), dwModifiers) == FALSE) {
+        return switch (windows.kernel32.GetLastError()) {
+            else => |err| windows.unexpectedError(err),
+        };
+    }
 }
