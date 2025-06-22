@@ -14,6 +14,12 @@ pub const Client = struct {
         server_header_buffer: []u8,
     };
 
+    pub const RequestTransfer = union(enum) {
+        content_length: u32,
+        chunked: void,
+        none: void,
+    };
+
     pub fn init() !Client {
         return .{
             .handle = try windows.WinHttpOpen(
@@ -37,6 +43,8 @@ pub const Client = struct {
         session: windows.HINTERNET,
 
         method: http.Method,
+        transfer_encoding: RequestTransfer,
+
         response: Response,
 
         pub fn deinit(self: Request) void {
@@ -46,17 +54,11 @@ pub const Client = struct {
 
         pub fn send(self: Request) !void {
             // prob call in open cuz this is where like handshake is done
-            try windows.WinHttpSendRequest(
-                self.session,
-                windows.WINHTTP_NO_ADDITIONAL_HEADERS,
-                windows.WINHTTP_NO_REQUEST_DATA,
-                0,
-                null
-            );
+            try windows.WinHttpSendRequest(self.session, windows.WINHTTP_NO_ADDITIONAL_HEADERS, windows.WINHTTP_NO_REQUEST_DATA, self.transfer_encoding.content_length, null);
         }
 
-        pub fn write() !void {
-            // WinHttpWriteData
+        pub fn write(self: Request, buffer: []const u8) !usize {
+            return try windows.WinHttpWriteData(self.session, buffer);
         }
 
         pub fn finish(self: Request) !void {
@@ -82,7 +84,6 @@ pub const Client = struct {
         pub fn read(self: Request, buffer: []u8) !usize {
             return windows.WinHttpReadData(self.session, buffer);
         }
-
     };
 
     pub fn open(
@@ -124,6 +125,7 @@ pub const Client = struct {
             .connection = connection,
             .session = session,
             .method = method,
+            .transfer_encoding = .none,
             .response = .{
                 .status = undefined,
             },

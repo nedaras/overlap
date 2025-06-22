@@ -67,3 +67,10 @@ pub extern "winhttp" fn WinHttpReadData(
     dwNumberOfBytesToRead: DWORD,
     lpdwNumberOfBytesRead: LPDWORD,
 ) callconv(WINAPI) BOOL;
+
+pub extern "winhttp" fn WinHttpWriteData(
+    hRequest: HINTERNET,
+    lpBuffer: LPCVOID,
+    dwNumberOfBytesToWrite: DWORD,
+    lpdwNumberOfBytesWritten: LPDWORD,
+) callconv(WINAPI) BOOL;

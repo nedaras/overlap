@@ -18,8 +18,9 @@ pub fn main() !void {
         const uri = std.Uri{
             .scheme = "https",
             .host = .{
-                .raw = "api.ipify.org",
+                .raw = "httpbin.org",
             },
+            .path = .{ .raw = "/anything" },
         };
 
         var server_header_buffer: [512]u8 = undefined;
@@ -27,12 +28,18 @@ pub fn main() !void {
         const client = try http.Client.init();
         defer client.deinit();
 
-        var request = try client.open(.GET, uri, .{
+        var request = try client.open(.POST, uri, .{
             .server_header_buffer = &server_header_buffer,
         });
         defer request.deinit();
 
+        const playload = "Hello World";
+        request.transfer_encoding = .{ .content_length = @intCast(playload.len) };
+
         try request.send();
+
+        _ = try request.write(playload);
+
         try request.finish();
 
         try request.wait();

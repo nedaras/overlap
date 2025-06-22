@@ -248,10 +248,7 @@ pub fn WinHttpOpenRequest(
     };
 }
 
-pub const WinHttpSendRequestError = error{
-    NetworkUnreachable,
-    Unexpected
-};
+pub const WinHttpSendRequestError = error{ NetworkUnreachable, Unexpected };
 
 pub fn WinHttpSendRequest(
     hRequest: HINTERNET,
@@ -303,6 +300,7 @@ pub fn WinHttpQueryHeaders(
     }
 }
 
+// todo: dont @intCast and return u32
 pub const WinHttpReadDataError = error{Unexpected};
 
 pub fn WinHttpReadData(hRequest: HINTERNET, Buffer: []u8) WinHttpReadDataError!usize {
@@ -315,4 +313,21 @@ pub fn WinHttpReadData(hRequest: HINTERNET, Buffer: []u8) WinHttpReadDataError!u
     }
 
     return lpdwNumberOfBytesRead;
+}
+
+pub const WinHttpWriteDataError = error{Unexpected};
+
+pub fn WinHttpWriteData(
+    hRequest: HINTERNET,
+    Buffer: []const u8,
+) WinHttpWriteDataError!usize {
+    var lpdwNumberOfBytesWritten: DWORD = 0;
+
+    if (winhttp.WinHttpWriteData(hRequest, Buffer.ptr, @intCast(Buffer.len), &lpdwNumberOfBytesWritten) == FALSE) {
+        return switch (windows.kernel32.GetLastError()) {
+            else => |err| windows.unexpectedError(err),
+        };
+    }
+
+    return lpdwNumberOfBytesWritten;
 }
