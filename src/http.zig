@@ -53,15 +53,67 @@ pub const Client = struct {
         }
 
         pub fn send(self: Request) !void {
-            // prob call in open cuz this is where like handshake is done
-            try windows.WinHttpSendRequest(self.session, windows.WINHTTP_NO_ADDITIONAL_HEADERS, windows.WINHTTP_NO_REQUEST_DATA, self.transfer_encoding.content_length, null);
+            const content_len = switch (self.transfer_encoding) {
+                .none => windows.WINHTTP_IGNORE_REQUEST_TOTAL_LENGTH,
+                .content_length => |len| len,
+                .chunked => 0,
+            };
+
+            try windows.WinHttpSendRequest(
+                self.session,
+                windows.WINHTTP_NO_ADDITIONAL_HEADERS,
+                windows.WINHTTP_NO_REQUEST_DATA,
+                content_len,
+                null,
+            );
         }
 
-        pub fn write(self: Request, buffer: []const u8) !usize {
-            return try windows.WinHttpWriteData(self.session, buffer);
+        fn writeAllInner(self: Request, bytes: []const u8) !void {
+            var index: usize = 0;
+            while (index < bytes.len) {
+                index += try windows.WinHttpWriteData(self.connection, bytes);
+            }
+        }
+
+        pub fn write(self: *Request, bytes: []const u8) !usize {
+            switch (self.transfer_encoding) {
+                .chunked => {
+                    if (bytes.len > 0) {
+                        var head_buf: [20]u8 = undefined;
+                        const head = std.fmt.bufPrint(&head_buf, "{x}\r\n", .{bytes.len}) catch unreachable;
+
+                        try self.writeAllInner(head);
+                        try self.writeAllInner(bytes);
+                        try self.writeAllInner("\r\n");
+                    }
+
+                    return bytes.len;
+                },
+                .content_length => |*len| {
+                    if (len.* < bytes.len) return error.MessageTooLong;
+
+                    const amt = try windows.WinHttpWriteData(self.session, bytes);
+                    len.* -= amt;
+                    return amt;
+                },
+                .none => return error.NotWriteable,
+            }
+        }
+
+        pub fn writeAll(self: *Request, bytes: []const u8) !void {
+            var index: usize = 0;
+            while (index < bytes.len) {
+                index += try write(self, bytes[index..]);
+            }
         }
 
         pub fn finish(self: Request) !void {
+            switch (self.transfer_encoding) {
+                .chunked => try self.writeAllInner("0\r\n\r\n"),
+                .content_length => |len| if (len != 0) return error.MessageNotCompleted,
+                .none => {},
+            }
+
             try windows.WinHttpReceiveResponse(self.session);
         }
 
@@ -82,7 +134,7 @@ pub const Client = struct {
         }
 
         pub fn read(self: Request, buffer: []u8) !usize {
-            return windows.WinHttpReadData(self.session, buffer);
+            return @intCast(try windows.WinHttpReadData(self.session, buffer));
         }
     };
 
@@ -154,12 +206,6 @@ fn validateUri(uri: Uri, arena: Allocator) !struct { Protocol, Uri } {
     valid_uri.path = .{
         .raw = try uri.path.toRawMaybeAlloc(arena),
     };
-
-    if (valid_uri.path.isEmpty()) {
-        valid_uri.path = .{
-            .raw = "/",
-        };
-    }
 
     return .{ protocol, valid_uri };
 }

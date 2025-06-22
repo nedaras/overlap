@@ -33,12 +33,12 @@ pub fn main() !void {
         });
         defer request.deinit();
 
-        const playload = "Hello World";
-        request.transfer_encoding = .{ .content_length = @intCast(playload.len) };
+        request.transfer_encoding = .chunked;
 
         try request.send();
 
-        _ = try request.write(playload);
+        try request.writeAll("Hello\n");
+        try request.writeAll("World!");
 
         try request.finish();
 

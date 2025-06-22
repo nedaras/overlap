@@ -46,6 +46,8 @@ pub const WINHTTP_NO_HEADER_INDEX = null;
 
 pub const WINHTTP_HEADER_NAME_BY_INDEX = null;
 
+pub const WINHTTP_IGNORE_REQUEST_TOTAL_LENGTH = 0;
+
 pub const WINHTTP_FLAG_SECURE = 0x00800000;
 
 pub const WINHTTP_DEFAULT_ACCEPT_TYPES = &[_:null]?LPCWSTR{
@@ -303,7 +305,7 @@ pub fn WinHttpQueryHeaders(
 // todo: dont @intCast and return u32
 pub const WinHttpReadDataError = error{Unexpected};
 
-pub fn WinHttpReadData(hRequest: HINTERNET, Buffer: []u8) WinHttpReadDataError!usize {
+pub fn WinHttpReadData(hRequest: HINTERNET, Buffer: []u8) WinHttpReadDataError!u32 {
     var lpdwNumberOfBytesRead: DWORD = 0;
 
     if (winhttp.WinHttpReadData(hRequest, Buffer.ptr, @intCast(Buffer.len), &lpdwNumberOfBytesRead) == FALSE) {
@@ -317,10 +319,7 @@ pub fn WinHttpReadData(hRequest: HINTERNET, Buffer: []u8) WinHttpReadDataError!u
 
 pub const WinHttpWriteDataError = error{Unexpected};
 
-pub fn WinHttpWriteData(
-    hRequest: HINTERNET,
-    Buffer: []const u8,
-) WinHttpWriteDataError!usize {
+pub fn WinHttpWriteData(hRequest: HINTERNET, Buffer: []const u8) WinHttpWriteDataError!u32 {
     var lpdwNumberOfBytesWritten: DWORD = 0;
 
     if (winhttp.WinHttpWriteData(hRequest, Buffer.ptr, @intCast(Buffer.len), &lpdwNumberOfBytesWritten) == FALSE) {
