@@ -66,22 +66,34 @@ pub const Client = struct {
             windows.WinHttpCloseHandle(self.connection);
         }
 
+
+        fn emitOverridableHeader(self: Request, prefix: []const u16, v: Headers.Value) !bool {
+            switch (v) {
+                .default => return true,
+                .omit => return false,
+                .override => |x| {
+                    var server_header: std.heap.FixedBufferAllocator = .init(self.server_header_buffer);
+
+                    const value = try unicode.wtf8ToWtf16LeAlloc(server_header.allocator(), x);
+                    const header = try server_header.allocator().alloc(u16, prefix.len + value.len);
+
+                    @memcpy(header[0..prefix.len], prefix);
+                    @memcpy(header[prefix.len .. prefix.len + value.len], value);
+
+                    try windows.WinHttpAddRequestHeaders(
+                        self.session,
+                        header,
+                        windows.WINHTTP_ADDREQ_FLAG_ADD | windows.WINHTTP_ADDREQ_FLAG_REPLACE,
+                    );
+
+                    return false;
+                },
+            }
+        }
+
         pub fn send(self: Request) !void {
-            if (self.headers.authorization == .override) {
-                var server_header: std.heap.FixedBufferAllocator = .init(self.server_header_buffer);
-
-                const prefix = unicode.wtf8ToWtf16LeStringLiteral("Authorization: ");
-                const value = try unicode.wtf8ToWtf16LeAlloc(server_header.allocator(), self.headers.authorization.override);
-
-                const header = try server_header.allocator().alloc(u16, prefix.len + value.len);
-                @memcpy(header[0..prefix.len], prefix);
-                @memcpy(header[prefix.len .. prefix.len + value.len], value);
-
-                try windows.WinHttpAddRequestHeaders(
-                    self.session,
-                    header,
-                    windows.WINHTTP_ADDREQ_FLAG_ADD | windows.WINHTTP_ADDREQ_FLAG_REPLACE,
-                );
+            if (try emitOverridableHeader(self, unicode.wtf8ToWtf16LeStringLiteral("Authorization: "), self.headers.authorization)) {
+                // ...
             }
 
             if (self.transfer_encoding == .chunked) {
