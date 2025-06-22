@@ -1,5 +1,5 @@
 const std = @import("std");
-const http = @import("http.zig");
+const Client = @import("http/WinHttpClient.zig");
 const Hook = @import("Hook.zig");
 
 // For http i will not be using std.http cuz it is rly heavy
@@ -25,10 +25,10 @@ pub fn main() !void {
 
         var server_header_buffer: [512]u8 = undefined;
 
-        const client = try http.Client.init();
+        var client = try Client.init(allocator);
         defer client.deinit();
 
-        var request = try client.open(.POST, uri, .{
+        var request = try client.open(.GET, uri, .{
             .server_header_buffer = &server_header_buffer,
             .headers = .{
                 .authorization = .{ .override = "TOKEN" },
@@ -36,12 +36,12 @@ pub fn main() !void {
         });
         defer request.deinit();
 
-        request.transfer_encoding = .chunked;
+        //request.transfer_encoding = .chunked;
 
         try request.send();
 
-        try request.writeAll("Hello\n");
-        try request.writeAll("World!");
+        //try request.writeAll("Hello\n");
+        //try request.writeAll("World!");
 
         try request.finish();
 

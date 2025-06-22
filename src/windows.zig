@@ -219,9 +219,8 @@ pub fn WinHttpConnect(
     hSession: HINTERNET,
     pswzServerName: [:0]const u16,
     nServerPort: INTERNET_PORT,
-    dwReserved: DWORD,
 ) WinHttpConnectError!HINTERNET {
-    if (winhttp.WinHttpConnect(hSession, pswzServerName.ptr, nServerPort, dwReserved)) |connection| {
+    if (winhttp.WinHttpConnect(hSession, pswzServerName.ptr, nServerPort, 0)) |connection| {
         return connection;
     }
 
