@@ -77,7 +77,7 @@ pub extern "winhttp" fn WinHttpWriteData(
 
 pub extern "winhttp" fn WinHttpAddRequestHeaders(
     hRequest: HINTERNET,
-    lpszHeaders: LPCWSTR,
+    lpszHeaders: [*]const WCHAR,
     dwHeadersLength: DWORD,
     dwModifiers: DWORD,
 ) callconv(WINAPI) BOOL;

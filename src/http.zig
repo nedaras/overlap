@@ -12,6 +12,7 @@ pub const Client = struct {
 
     pub const RequestOptions = struct {
         server_header_buffer: []u8,
+        headers: Headers = .{},
     };
 
     pub const RequestTransfer = union(enum) {
@@ -32,6 +33,16 @@ pub const Client = struct {
         };
     }
 
+    pub const Headers = struct {
+        authorization: Value = .default,
+
+        pub const Value = union(enum) {
+            default,
+            omit,
+            override: []const u8,
+        };
+    };
+
     pub const Response = struct {
         status: http.Status,
     };
@@ -42,8 +53,11 @@ pub const Client = struct {
         connection: windows.HINTERNET,
         session: windows.HINTERNET,
 
+        server_header_buffer: []u8,
+
         method: http.Method,
         transfer_encoding: RequestTransfer,
+        headers: Headers,
 
         response: Response,
 
@@ -53,7 +67,23 @@ pub const Client = struct {
         }
 
         pub fn send(self: Request) !void {
-            // add headers...
+            if (self.headers.authorization == .override) {
+                var server_header: std.heap.FixedBufferAllocator = .init(self.server_header_buffer);
+
+                const prefix = unicode.wtf8ToWtf16LeStringLiteral("Authorization: ");
+                const value = try unicode.wtf8ToWtf16LeAlloc(server_header.allocator(), self.headers.authorization.override);
+
+                const header = try server_header.allocator().alloc(u16, prefix.len + value.len);
+                @memcpy(header[0..prefix.len], prefix);
+                @memcpy(header[prefix.len .. prefix.len + value.len], value);
+
+                try windows.WinHttpAddRequestHeaders(
+                    self.session,
+                    header,
+                    windows.WINHTTP_ADDREQ_FLAG_ADD | windows.WINHTTP_ADDREQ_FLAG_REPLACE,
+                );
+            }
+
             if (self.transfer_encoding == .chunked) {
                 try windows.WinHttpAddRequestHeaders(
                     self.session,
@@ -62,10 +92,11 @@ pub const Client = struct {
                 );
             }
 
+            // we can set content_len greater then u32 up to u64, but i dont care
             const content_len = switch (self.transfer_encoding) {
-                .none => windows.WINHTTP_IGNORE_REQUEST_TOTAL_LENGTH,
+                .chunked => windows.WINHTTP_IGNORE_REQUEST_TOTAL_LENGTH,
                 .content_length => |len| len,
-                .chunked => 0,
+                .none => 0,
             };
 
             try windows.WinHttpSendRequest(
@@ -80,7 +111,7 @@ pub const Client = struct {
         fn writeAllInner(self: Request, bytes: []const u8) !void {
             var index: usize = 0;
             while (index < bytes.len) {
-                index += try windows.WinHttpWriteData(self.connection, bytes);
+                index += try windows.WinHttpWriteData(self.session, bytes);
             }
         }
 
@@ -184,9 +215,11 @@ pub const Client = struct {
         return .{
             .uri = valid_uri,
             .connection = connection,
+            .server_header_buffer = options.server_header_buffer,
             .session = session,
             .method = method,
             .transfer_encoding = .none,
+            .headers = options.headers,
             .response = .{
                 .status = undefined,
             },

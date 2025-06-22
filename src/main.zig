@@ -30,6 +30,9 @@ pub fn main() !void {
 
         var request = try client.open(.POST, uri, .{
             .server_header_buffer = &server_header_buffer,
+            .headers = .{
+                .authorization = .{ .override = "TOKEN" },
+            },
         });
         defer request.deinit();
 
