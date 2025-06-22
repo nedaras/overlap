@@ -1,5 +1,5 @@
 const std = @import("std");
-const Client = @import("http/WinHttpClient.zig");
+const http = @import("http.zig");
 const Hook = @import("Hook.zig");
 
 // For http i will not be using std.http cuz it is rly heavy
@@ -25,11 +25,11 @@ pub fn main() !void {
 
         var server_header_buffer: [512]u8 = undefined;
 
-        var client = try Client.init(allocator);
+        var client = try http.Client.init(allocator);
         defer client.deinit();
 
         while (true) {
-            var request = try client.open(.GET, uri, .{
+            var request = try client.open(.POST, uri, .{
                 .server_header_buffer = &server_header_buffer,
                 .headers = .{
                     .authorization = .{ .override = "TOKEN" },

@@ -265,6 +265,7 @@ pub const Request = struct {
             .none => {},
         }
 
+        // if we set it as GET and try to send some payload we get like err 87 invalid params or smth
         try windows.WinHttpSendRequest(
             req.handle,
             windows.WINHTTP_NO_ADDITIONAL_HEADERS,
