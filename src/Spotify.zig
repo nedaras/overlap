@@ -1,4 +1,5 @@
 const std = @import("std");
+const json = std.json;
 const Client = @import("http.zig").Client;
 const Uri = std.Uri;
 
@@ -8,10 +9,16 @@ authorization : []const u8,
 
 const Spotify = @This();
 
-pub fn getAvailableDevices(self: *Spotify) !void {
+pub const Track = struct {
+    timestamp: u64,
+    progress_ms: u32,
+};
+
+pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
+    const allocator = self.http_client.allocator;
     var buf: [1024]u8 = undefined;
 
-    var req = try self.http_client.open(.GET, uri("/me/player/devices"), .{
+    var req = try self.http_client.open(.GET, uri("/me/player/currently-playing"), .{
         .server_header_buffer = &buf,
         .headers = .{
             .authorization = .{ .override = self.authorization },
@@ -24,13 +31,25 @@ pub fn getAvailableDevices(self: *Spotify) !void {
 
     try req.wait();
 
-    while (true) {
-        const amt = try req.read(&buf);
-        if (amt == 0) break;
-
-        std.debug.print("{s}", .{buf[0..amt]});
+    if (req.response.status != .ok) {
+        return error.BadResponse;
     }
-    std.debug.print("\n", .{});
+
+    var json_reader = json.reader(allocator, req.reader());
+    defer json_reader.deinit();
+
+    const options: json.ParseOptions = .{
+        .allocate = .alloc_if_needed,
+        .ignore_unknown_fields = true,
+        .duplicate_field_behavior = .use_first,
+    };
+
+    return json.parseFromTokenSource(
+        Track,
+        allocator,
+        &json_reader,
+        options,
+    );
 }
 
 fn uri(comptime path: []const u8) Uri {

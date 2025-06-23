@@ -2,6 +2,7 @@ const std = @import("std");
 const windows = @import("../windows.zig");
 const http = std.http;
 const unicode = std.unicode;
+const io = std.io;
 const Allocator = std.mem.Allocator;
 const Protocol = http.Client.Connection.Protocol;
 const Uri = std.Uri;
@@ -333,7 +334,15 @@ pub const Request = struct {
         req.response.status = @enumFromInt(status_code);
     }
 
-    pub fn read(req: *Request, buffer: []u8) !usize {
+    pub const ReadError = error{Unexpected};
+
+    pub const Reader = io.Reader(*Request, ReadError, read);
+
+    pub fn reader(req: *Request) Reader {
+        return .{ .context = req };
+    }
+
+    pub fn read(req: *Request, buffer: []u8) ReadError!usize {
         // need to handle compression maybe
         const amt = try windows.WinHttpReadData(req.handle, buffer);
         if (amt == 0) {

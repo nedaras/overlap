@@ -17,7 +17,10 @@ pub fn main() !void {
         .authorization = "Bearer ...",
     };
 
-    try spotify.getAvailableDevices();
+    const track = try spotify.getCurrentlyPlayingTrack();
+    defer track.deinit();
+
+    std.debug.print("{}\n", .{track.value});
 
     var hook: Hook = .init;
 
