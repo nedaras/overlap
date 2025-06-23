@@ -20,23 +20,25 @@ pub fn main() !void {
     const track = try spotify.getCurrentlyPlayingTrack();
     defer track.deinit();
 
-    std.debug.print("{}\n", .{track.value});
-
-    var hook: Hook = .init;
-
-    try hook.attach();
-    defer hook.detach();
-
-    const gui = hook.gui();
-
-    const font = try hook.loadFont(allocator, "font.fat");
-    defer font.deinit(allocator);
-
-    while (true) {
-        try hook.newFrame();
-        defer hook.endFrame();
-
-        gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-        gui.text(.{ 200.0, 200.0 }, "Helo", 0xFFFFFFFF, font);
+    for (track.value.item.album.images) |image| {
+        std.debug.print("{d}x{d}: '{s}'\n", .{image.width, image.height, image.url});
     }
+
+    //var hook: Hook = .init;
+
+    //try hook.attach();
+    //defer hook.detach();
+
+    //const gui = hook.gui();
+
+    //const font = try hook.loadFont(allocator, "font.fat");
+    //defer font.deinit(allocator);
+
+    //while (true) {
+        //try hook.newFrame();
+        //defer hook.endFrame();
+
+        //gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
+        //gui.text(.{ 200.0, 200.0 }, "Helo", 0xFFFFFFFF, font);
+    //}
 }

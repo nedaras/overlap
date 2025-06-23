@@ -12,11 +12,21 @@ const Spotify = @This();
 pub const Track = struct {
     timestamp: u64,
     progress_ms: u32,
+    item: struct { // can be null
+        album: struct {
+            images: [3]struct {
+                url: []const u8,
+                height: u16,
+                width: u16,
+            },
+        },
+        name: []const u8,
+    },
 };
 
 pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
     const allocator = self.http_client.allocator;
-    var buf: [1024]u8 = undefined;
+    var buf: [4 * 1024]u8 = undefined;
 
     var req = try self.http_client.open(.GET, uri("/me/player/currently-playing"), .{
         .server_header_buffer = &buf,
@@ -32,6 +42,7 @@ pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
     try req.wait();
 
     if (req.response.status != .ok) {
+        std.debug.print("{}\n", .{req.response.status});
         return error.BadResponse;
     }
 
@@ -41,7 +52,6 @@ pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
     const options: json.ParseOptions = .{
         .allocate = .alloc_if_needed,
         .ignore_unknown_fields = true,
-        .duplicate_field_behavior = .use_first,
     };
 
     return json.parseFromTokenSource(
