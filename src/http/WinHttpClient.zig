@@ -313,11 +313,11 @@ pub const Request = struct {
             .content_length => |len| if (len != 0) return error.MessageNotCompleted,
             .none => {},
         }
-
-        try windows.WinHttpReceiveResponse(req.handle);
     }
 
     pub fn wait(req: *Request) !void {
+        try windows.WinHttpReceiveResponse(req.handle);
+
         var status_code: windows.DWORD = 0;
         var status_code_size: windows.DWORD = @sizeOf(@TypeOf(status_code));
 

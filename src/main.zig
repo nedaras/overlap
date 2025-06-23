@@ -1,12 +1,7 @@
 const std = @import("std");
-const http = @import("http.zig");
+const Client = @import("http.zig").Client;
+const Spotify = @import("Spotify.zig");
 const Hook = @import("Hook.zig");
-
-// For http i will not be using std.http cuz it is rly heavy
-//   on windows we can use winhttp
-//   on linux we can use libcurl
-
-// Btw the access tokens and window we tryna hook should be passed by the injector/launcher
 
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{}){};
@@ -14,54 +9,15 @@ pub fn main() !void {
 
     const allocator = da.allocator();
 
-    {
-        const uri = std.Uri{
-            .scheme = "https",
-            .host = .{
-                .raw = "httpbin.org",
-            },
-            .path = .{ .raw = "/anything" },
-        };
+    var client = try Client.init(allocator);
+    defer client.deinit();
 
-        var server_header_buffer: [512]u8 = undefined;
+    var spotify = Spotify{
+        .http_client = &client,
+        .authorization = "Bearer ...",
+    };
 
-        var client = try http.Client.init(allocator);
-        defer client.deinit();
-
-        while (true) {
-            var request = try client.open(.POST, uri, .{
-                .server_header_buffer = &server_header_buffer,
-                .headers = .{
-                    .authorization = .{ .override = "TOKEN" },
-                },
-            });
-            defer request.deinit();
-
-            request.transfer_encoding = .chunked;
-
-            try request.send();
-
-            try request.writeAll("Hello\n");
-            try request.writeAll("World!");
-
-            try request.finish();
-
-            try request.wait();
-
-            std.debug.print("{}\n", .{request.response.status});
-
-            var buf: [1024]u8 = undefined;
-            while (true) {
-                const amt = try request.read(&buf);
-                if (amt == 0) break;
-
-                std.debug.print("{s}", .{buf[0..amt]});
-            }
-            std.debug.print("\n", .{});
-
-            std.time.sleep(std.time.ms_per_s * 3);
-        }
-    }
+    try spotify.getAvailableDevices();
 
     var hook: Hook = .init;
 

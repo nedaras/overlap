@@ -1,4 +1,31 @@
 const std = @import("std");
 const HRESULT = std.os.windows.HRESULT;
 
-pub const DXGI_ERROR = enum(HRESULT) { SUCCESS = 0, ACCESS_DENIED = @as(c_long, @bitCast(@as(c_ulong, 0x887A002B))), ACCESS_LOST = @as(c_long, @bitCast(@as(c_ulong, 0x887A0026))), ALREADY_EXISTS = @as(c_long, @bitCast(@as(c_ulong, 0x887A0036))), CANNOT_PROTECT_CONTENT = @as(c_long, @bitCast(@as(c_ulong, 0x887A002A))), DEVICE_HUNG = @as(c_long, @bitCast(@as(c_ulong, 0x887A0006))), DEVICE_REMOVED = @as(c_long, @bitCast(@as(c_ulong, 0x887A0005))), DEVICE_RESET = @as(c_long, @bitCast(@as(c_ulong, 0x887A0007))), DRIVER_INTERNAL_ERROR = @as(c_long, @bitCast(@as(c_ulong, 0x887A0020))), FRAME_STATISTICS_DISJOINT = @as(c_long, @bitCast(@as(c_ulong, 0x887A000B))), GRAPHICS_VIDPN_SOURCE_IN_USE = @as(c_long, @bitCast(@as(c_ulong, 0x887A000C))), INVALID_CALL = @as(c_long, @bitCast(@as(c_ulong, 0x887A0001))), MORE_DATA = @as(c_long, @bitCast(@as(c_ulong, 0x887A0003))), NAME_ALREADY_EXISTS = @as(c_long, @bitCast(@as(c_ulong, 0x887A002C))), NONEXCLUSIVE = @as(c_long, @bitCast(@as(c_ulong, 0x887A0021))), NOT_CURRENTLY_AVAILABLE = @as(c_long, @bitCast(@as(c_ulong, 0x887A0022))), NOT_FOUND = @as(c_long, @bitCast(@as(c_ulong, 0x887A0002))), REMOTE_CLIENT_DISCONNECTED = @as(c_long, @bitCast(@as(c_ulong, 0x887A0023))), REMOTE_OUTOFMEMORY = @as(c_long, @bitCast(@as(c_ulong, 0x887A0024))), RESTRICT_TO_OUTPUT_STALE = @as(c_long, @bitCast(@as(c_ulong, 0x887A0029))), SDK_COMPONENT_MISSING = @as(c_long, @bitCast(@as(c_ulong, 0x887A002D))), SESSION_DISCONNECTED = @as(c_long, @bitCast(@as(c_ulong, 0x887A0028))), UNSUPPORTED = @as(c_long, @bitCast(@as(c_ulong, 0x887A0004))), WAIT_TIMEOUT = @as(c_long, @bitCast(@as(c_ulong, 0x887A0027))), WAS_STILL_DRAWING = @as(c_long, @bitCast(@as(c_ulong, 0x887A000A))), _ };
+pub const DXGI_ERROR = enum(HRESULT) {
+    SUCCESS = 0,
+    ACCESS_DENIED = @as(c_long, @bitCast(@as(c_ulong, 0x887A002B))),
+    ACCESS_LOST = @as(c_long, @bitCast(@as(c_ulong, 0x887A0026))),
+    ALREADY_EXISTS = @as(c_long, @bitCast(@as(c_ulong, 0x887A0036))),
+    CANNOT_PROTECT_CONTENT = @as(c_long, @bitCast(@as(c_ulong, 0x887A002A))),
+    DEVICE_HUNG = @as(c_long, @bitCast(@as(c_ulong, 0x887A0006))),
+    DEVICE_REMOVED = @as(c_long, @bitCast(@as(c_ulong, 0x887A0005))),
+    DEVICE_RESET = @as(c_long, @bitCast(@as(c_ulong, 0x887A0007))),
+    DRIVER_INTERNAL_ERROR = @as(c_long, @bitCast(@as(c_ulong, 0x887A0020))),
+    FRAME_STATISTICS_DISJOINT = @as(c_long, @bitCast(@as(c_ulong, 0x887A000B))),
+    GRAPHICS_VIDPN_SOURCE_IN_USE = @as(c_long, @bitCast(@as(c_ulong, 0x887A000C))),
+    INVALID_CALL = @as(c_long, @bitCast(@as(c_ulong, 0x887A0001))),
+    MORE_DATA = @as(c_long, @bitCast(@as(c_ulong, 0x887A0003))),
+    NAME_ALREADY_EXISTS = @as(c_long, @bitCast(@as(c_ulong, 0x887A002C))),
+    NONEXCLUSIVE = @as(c_long, @bitCast(@as(c_ulong, 0x887A0021))),
+    NOT_CURRENTLY_AVAILABLE = @as(c_long, @bitCast(@as(c_ulong, 0x887A0022))),
+    NOT_FOUND = @as(c_long, @bitCast(@as(c_ulong, 0x887A0002))),
+    REMOTE_CLIENT_DISCONNECTED = @as(c_long, @bitCast(@as(c_ulong, 0x887A0023))),
+    REMOTE_OUTOFMEMORY = @as(c_long, @bitCast(@as(c_ulong, 0x887A0024))),
+    RESTRICT_TO_OUTPUT_STALE = @as(c_long, @bitCast(@as(c_ulong, 0x887A0029))),
+    SDK_COMPONENT_MISSING = @as(c_long, @bitCast(@as(c_ulong, 0x887A002D))),
+    SESSION_DISCONNECTED = @as(c_long, @bitCast(@as(c_ulong, 0x887A0028))),
+    UNSUPPORTED = @as(c_long, @bitCast(@as(c_ulong, 0x887A0004))),
+    WAIT_TIMEOUT = @as(c_long, @bitCast(@as(c_ulong, 0x887A0027))),
+    WAS_STILL_DRAWING = @as(c_long, @bitCast(@as(c_ulong, 0x887A000A))),
+    _,
+};
