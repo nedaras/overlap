@@ -176,11 +176,15 @@ pub const Request = struct {
         req.response.status = @enumFromInt(status_code);
 
         var server_header: std.heap.FixedBufferAllocator = .init(req.server_header_buffer);
-        const content_length = try req.quearyHeader(server_header.allocator(), windows.WINHTTP_QUERY_CONTENT_LENGTH);
-        std.debug.print("{s}\n", .{content_length.?});
+
+        if (try req.quearyHeader(server_header.allocator(), windows.WINHTTP_QUERY_CONTENT_LENGTH)) |content_lengt| {
+            defer server_header.allocator().free(content_lengt);
+
+            req.response.content_length = try std.fmt.parseInt(u64, content_lengt, 10);
+        }
     }
 
-    fn quearyHeader(req: Request, arena: Allocator, info: windows.DWORD) !?[]u8 {
+    fn quearyHeader(req: Request, allocator: Allocator, info: windows.DWORD) !?[]u8 {
         var header_len: windows.DWORD = 0;
         windows.WinHttpQueryHeaders(
             req.handle,
@@ -195,7 +199,7 @@ pub const Request = struct {
             else => |e| return e,
         };
 
-        const header = try arena.alloc(u16, header_len >> 1);
+        const header = try allocator.alloc(u16, header_len >> 1);
 
         windows.WinHttpQueryHeaders(
             req.handle,
@@ -213,7 +217,7 @@ pub const Request = struct {
         const out = std.mem.sliceAsBytes(header);
         const len = unicode.wtf16LeToWtf8(out, header);
 
-        return out[0..len - 1];
+        return allocator.remap(out, len);
     }
 
     pub const ReadError = error{Unexpected};

@@ -44,22 +44,16 @@ pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
     try req.wait();
 
     if (req.response.status != .ok) {
-        std.debug.print("{}\n", .{req.response.status});
-
-        // http.Status.unauthorized -> access token invalid
-
-        return error.BadResponse;
-    }
-
-    if (req.response.status != .ok) {
         req.response.skip = true;
         assert(try req.read(&header_buf) == 0);
 
         return switch (req.response.status) {
             .ok => unreachable,
+            // .no_content => not playing
             .unauthorized => error.Unauthorized, // this should be handled
             .forbidden => error.Forbiden,
             .too_many_requests => error.RateLimited, // this should be handled
+            // .not_found when no device
             else => |x| {
                 std.debug.print("{}\n", .{x});
                 return error.InvalidStatusCode;
@@ -106,6 +100,7 @@ pub fn skipToNext(self: *Spotify) !void {
         .unauthorized => error.Unauthorized, // this should be handled
         .forbidden => error.Forbiden,
         .too_many_requests => error.RateLimited, // this should be handled
+        // .not_found when no device
         else => |x| {
             std.debug.print("{}\n", .{x});
             return error.InvalidStatusCode;

@@ -38,12 +38,12 @@ pub fn main() !void {
 
     try req.wait();
 
+    std.debug.print("{any}\n", .{req.response.content_length});
+
     var hook: Hook = .init;
 
     try hook.attach();
     defer hook.detach();
-
-    // download image
 
     const gui = hook.gui();
 
