@@ -59,18 +59,23 @@ pub fn main() !void {
     var h: c_int = 0;
     var c: c_int = 0;
 
-    if (stbi_load_from_memory(image_buf.ptr, @intCast(image_buf.len), &w, &h, &c, 0)) |ptr| {
-        defer stbi_image_free(ptr);
+    const img_ptr = stbi_load_from_memory(image_buf.ptr, @intCast(image_buf.len), &w, &h, &c, 4).?;
+    defer stbi_image_free(img_ptr);
 
-        std.debug.print("{d}x{d}: {d}\n", .{w, h, c});
-    } else {
-        std.debug.print("stbi_load_from_memory failed!\n", .{});
-    }
+    std.debug.print("{d}x{d}: {d}\n", .{w, h, c});
 
     var hook: Hook = .init;
 
     try hook.attach();
     defer hook.detach();
+
+    const img = try hook.loadImage(allocator, .{
+        .format = .RGBA,
+        .data = img_ptr[0..@intCast(w * h * c)],
+        .width = @intCast(w),
+        .height = @intCast(h),
+    });
+    defer img.deinit(allocator);
 
     const gui = hook.gui();
 
@@ -82,6 +87,8 @@ pub fn main() !void {
         defer hook.endFrame();
 
         gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
+        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(w), @floatFromInt(h) }, img);
+
         gui.text(.{ 200.0, 200.0 }, "Helogjk", 0xFFFFFFFF, font);
     }
 }
