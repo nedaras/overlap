@@ -183,6 +183,10 @@ pub const Response = struct {
 
     /// `false`: headers. `true`: trailers.
     done: bool,
+
+    /// Whether the response body should be skipped. Any data read from the
+    /// response body will be discarded.
+    skip: bool = false,
 };
 
 pub const Request = struct {
@@ -343,6 +347,14 @@ pub const Request = struct {
     }
 
     pub fn read(req: *Request, buffer: []u8) ReadError!usize {
+        if (req.response.skip) {
+            //var buf: [8192]u8 = undefined;
+
+            // todo: test if not reading the response will still reuse the connection
+            req.response.done = true;
+            return 0;
+        }
+
         // need to handle compression maybe
         const amt = try windows.WinHttpReadData(req.handle, buffer);
         if (amt == 0) {

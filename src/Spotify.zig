@@ -1,11 +1,13 @@
 const std = @import("std");
 const json = std.json;
+const http = std.http;
 const Client = @import("http.zig").Client;
 const Uri = std.Uri;
+const assert = std.debug.assert;
 
 http_client: *Client,
 
-authorization : []const u8,
+authorization: []const u8,
 
 const Spotify = @This();
 
@@ -43,14 +45,32 @@ pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
 
     if (req.response.status != .ok) {
         std.debug.print("{}\n", .{req.response.status});
+
+        // http.Status.unauthorized -> access token invalid
+
         return error.BadResponse;
+    }
+
+    if (req.response.status != .ok) {
+        req.response.skip = true;
+        assert(try req.read(&.{}) == 0);
+
+        return switch (req.response.status) {
+            .ok => unreachable,
+            .unauthorized => error.Unauthorized, // this should be handled
+            .forbidden => error.Forbiden,
+            .too_many_requests => error.RateLimited, // this should be handled
+            else => |x| {
+                std.debug.print("{}\n", .{x});
+                return error.InvalidStatusCode;
+            },
+        };
     }
 
     var json_reader = json.reader(allocator, req.reader());
     defer json_reader.deinit();
 
     const options: json.ParseOptions = .{
-        .allocate = .alloc_if_needed,
         .ignore_unknown_fields = true,
     };
 
@@ -60,6 +80,68 @@ pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
         &json_reader,
         options,
     );
+}
+
+pub fn skipToNext(self: *Spotify) !void {
+    var buf: [4 * 1024]u8 = undefined;
+
+    var req = try self.http_client.open(.GET, uri("/me/player/next"), .{
+        .server_header_buffer = &buf,
+        .headers = .{
+            .authorization = .{ .override = self.authorization },
+        },
+    });
+    defer req.deinit();
+
+    try req.send();
+    try req.finish();
+
+    try req.wait();
+
+    req.response.skip = true;
+    assert(try req.read(&.{}) == 0);
+
+    return switch (req.response.status) {
+        .no_content => {},
+        .unauthorized => error.Unauthorized, // this should be handled
+        .forbidden => error.Forbiden,
+        .too_many_requests => error.RateLimited, // this should be handled
+        else => |x| {
+            std.debug.print("{}\n", .{x});
+            return error.InvalidStatusCode;
+        },
+    };
+}
+
+pub fn skipToPrevious(self: *Spotify) !void {
+    var buf: [4 * 1024]u8 = undefined;
+
+    var req = try self.http_client.open(.GET, uri("/me/player/previous"), .{
+        .server_header_buffer = &buf,
+        .headers = .{
+            .authorization = .{ .override = self.authorization },
+        },
+    });
+    defer req.deinit();
+
+    try req.send();
+    try req.finish();
+
+    try req.wait();
+
+    req.response.skip = true;
+    assert(try req.read(&.{}) == 0);
+
+    return switch (req.response.status) {
+        .no_content => {},
+        .unauthorized => error.Unauthorized, // this should be handled
+        .forbidden => error.Forbiden,
+        .too_many_requests => error.RateLimited, // this should be handled
+        else => |x| {
+            std.debug.print("{}\n", .{x});
+            return error.InvalidStatusCode;
+        },
+    };
 }
 
 fn uri(comptime path: []const u8) Uri {

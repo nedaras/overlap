@@ -17,11 +17,13 @@ pub fn main() !void {
         .authorization = "Bearer ...",
     };
 
+    try spotify.skipToNext();
+
     const track = try spotify.getCurrentlyPlayingTrack();
     defer track.deinit();
 
     for (track.value.item.album.images) |image| {
-        std.debug.print("{d}x{d}: '{s}'\n", .{image.width, image.height, image.url});
+        std.debug.print("{d}x{d}: '{s}'\n", .{ image.width, image.height, image.url });
     }
 
     //var hook: Hook = .init;
@@ -35,10 +37,10 @@ pub fn main() !void {
     //defer font.deinit(allocator);
 
     //while (true) {
-        //try hook.newFrame();
-        //defer hook.endFrame();
+    //try hook.newFrame();
+    //defer hook.endFrame();
 
-        //gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-        //gui.text(.{ 200.0, 200.0 }, "Helo", 0xFFFFFFFF, font);
+    //gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
+    //gui.text(.{ 200.0, 200.0 }, "Helo", 0xFFFFFFFF, font);
     //}
 }
