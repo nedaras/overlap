@@ -24,13 +24,25 @@ pub fn main() !void {
 
     std.debug.print("{d}ms\n", .{track.value.progress_ms});
 
+    const image = track.value.item.album.images[2];
+    const uri = try std.Uri.parse(image.url);
+
+    var buf: [512]u8 = undefined;
+    var req = try client.open(.GET, uri, .{
+        .server_header_buffer = &buf,
+    });
+    defer req.deinit();
+
+    try req.send();
+    try req.finish();
+
+    try req.wait();
+
     var hook: Hook = .init;
 
     try hook.attach();
     defer hook.detach();
 
-    const image = track.value.item.album.images[2];
-    std.debug.print("{s}\n", .{image.url});
     // download image
 
     const gui = hook.gui();

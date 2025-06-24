@@ -20,6 +20,9 @@ const Client = @This();
 pub const Response = struct {
     status: http.Status,
 
+    /// If present, the number of bytes in the response body.
+    content_length: ?u64 = null,
+
     /// `false`: headers. `true`: trailers.
     done: bool,
 
@@ -158,16 +161,59 @@ pub const Request = struct {
         var status_code: windows.DWORD = 0;
         var status_code_size: windows.DWORD = @sizeOf(@TypeOf(status_code));
 
-        try windows.WinHttpQueryHeaders(
+        windows.WinHttpQueryHeaders(
             req.handle,
             windows.WINHTTP_QUERY_STATUS_CODE | windows.WINHTTP_QUERY_FLAG_NUMBER,
             windows.WINHTTP_HEADER_NAME_BY_INDEX,
             &status_code,
             &status_code_size,
             windows.WINHTTP_NO_HEADER_INDEX,
-        );
+        ) catch |err| return switch (err) {
+            error.HeaderNotFound => unreachable,
+            else => |e| e,
+        };
 
         req.response.status = @enumFromInt(status_code);
+
+        var server_header: std.heap.FixedBufferAllocator = .init(req.server_header_buffer);
+        const content_length = try req.quearyHeader(server_header.allocator(), windows.WINHTTP_QUERY_CONTENT_LENGTH);
+        std.debug.print("{s}\n", .{content_length.?});
+    }
+
+    fn quearyHeader(req: Request, arena: Allocator, info: windows.DWORD) !?[]u8 {
+        var header_len: windows.DWORD = 0;
+        windows.WinHttpQueryHeaders(
+            req.handle,
+            info,
+            null,
+            null,
+            &header_len,
+            windows.WINHTTP_NO_HEADER_INDEX,
+        ) catch |err| return switch(err) {
+            error.HeaderNotFound => null,
+            else => |e| e,
+        };
+
+        const header = try arena.alloc(u16, header_len);
+
+        windows.WinHttpQueryHeaders(
+            req.handle,
+            windows.WINHTTP_QUERY_CONTENT_LENGTH,
+            null,
+            header.ptr,
+            &header_len,
+            windows.WINHTTP_NO_HEADER_INDEX,
+        ) catch |err| return switch(err) {
+            error.HeaderNotFound => unreachable,
+            else => |e| e,
+        };
+
+        assert(header_len == header.len);
+
+        const out = std.mem.sliceAsBytes(header);
+        const len = unicode.wtf16LeToWtf8(out, header);
+
+        return out[0..len];
     }
 
     pub const ReadError = error{Unexpected};
@@ -180,8 +226,7 @@ pub const Request = struct {
 
     pub fn read(req: *Request, buffer: []u8) ReadError!usize {
         if (req.response.skip) {
-            var buf: [8192]u8 = undefined;
-            while (try windows.WinHttpReadData(req.handle, &buf) != 0) {}
+            while (try windows.WinHttpReadData(req.handle, buffer) != 0) {}
 
             req.response.done = true;
             return 0;

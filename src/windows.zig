@@ -57,6 +57,7 @@ pub const WINHTTP_DEFAULT_ACCEPT_TYPES = &[_:null]?LPCWSTR{
     unicode.wtf8ToWtf16LeStringLiteral("*/*"),
 };
 
+pub const WINHTTP_QUERY_CONTENT_LENGTH = 5;
 pub const WINHTTP_QUERY_STATUS_CODE = 19;
 pub const WINHTTP_QUERY_FLAG_NUMBER = 0x20000000;
 
@@ -285,13 +286,16 @@ pub fn WinHttpReceiveResponse(hRequest: HINTERNET) WinHttpOpenRequestError!void 
     }
 }
 
-pub const WinHttpQueryHeadersError = error{Unexpected};
+pub const WinHttpQueryHeadersError = error{
+    HeaderNotFound,
+    Unexpected
+};
 
 pub fn WinHttpQueryHeaders(
     hRequest: HINTERNET,
     dwInfoLevel: DWORD,
     Name: ?[:0]const u16,
-    lpBuffer: LPCVOID,
+    lpBuffer: ?LPCVOID,
     lpdwBufferLength: LPDWORD,
     lpdwIndex: ?LPDWORD,
 ) WinHttpQueryHeadersError!void {
@@ -299,6 +303,7 @@ pub fn WinHttpQueryHeaders(
 
     if (winhttp.WinHttpQueryHeaders(hRequest, dwInfoLevel, pwszName, lpBuffer, lpdwBufferLength, lpdwIndex) == FALSE) {
         return switch (windows.kernel32.GetLastError()) {
+            @as(Win32Error, @enumFromInt(12150)) => error.HeaderNotFound,
             else => |err| windows.unexpectedError(err),
         };
     }

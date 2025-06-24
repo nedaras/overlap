@@ -28,10 +28,10 @@ pub const Track = struct {
 
 pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
     const allocator = self.http_client.allocator;
-    var buf: [4 * 1024]u8 = undefined;
+    var header_buf: [4 * 1024]u8 = undefined;
 
-    var req = try self.http_client.open(.POST, uri("/me/player/currently-playing"), .{
-        .server_header_buffer = &buf,
+    var req = try self.http_client.open(.GET, uri("/me/player/currently-playing"), .{
+        .server_header_buffer = &header_buf,
         .headers = .{
             .authorization = .{ .override = self.authorization },
         },
@@ -53,7 +53,7 @@ pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
 
     if (req.response.status != .ok) {
         req.response.skip = true;
-        assert(try req.read(&.{}) == 0);
+        assert(try req.read(&header_buf) == 0);
 
         return switch (req.response.status) {
             .ok => unreachable,
@@ -83,10 +83,10 @@ pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
 }
 
 pub fn skipToNext(self: *Spotify) !void {
-    var buf: [4 * 1024]u8 = undefined;
+    var header_buf: [4 * 1024]u8 = undefined;
 
-    var req = try self.http_client.open(.GET, uri("/me/player/next"), .{
-        .server_header_buffer = &buf,
+    var req = try self.http_client.open(.POST, uri("/me/player/next"), .{
+        .server_header_buffer = &header_buf,
         .headers = .{
             .authorization = .{ .override = self.authorization },
         },
@@ -99,7 +99,7 @@ pub fn skipToNext(self: *Spotify) !void {
     try req.wait();
 
     req.response.skip = true;
-    assert(try req.read(&.{}) == 0);
+    assert(try req.read(&header_buf) == 0);
 
     return switch (req.response.status) {
         .ok, .no_content => {},
@@ -114,10 +114,10 @@ pub fn skipToNext(self: *Spotify) !void {
 }
 
 pub fn skipToPrevious(self: *Spotify) !void {
-    var buf: [4 * 1024]u8 = undefined;
+    var header_buf: [4 * 1024]u8 = undefined;
 
     var req = try self.http_client.open(.POST, uri("/me/player/previous"), .{
-        .server_header_buffer = &buf,
+        .server_header_buffer = &header_buf,
         .headers = .{
             .authorization = .{ .override = self.authorization },
         },
@@ -130,7 +130,7 @@ pub fn skipToPrevious(self: *Spotify) !void {
     try req.wait();
 
     req.response.skip = true;
-    assert(try req.read(&.{}) == 0);
+    assert(try req.read(&header_buf) == 0);
 
     return switch (req.response.status) {
         .ok, .no_content => {},

@@ -56,7 +56,7 @@ pub extern "winhttp" fn WinHttpQueryHeaders(
     hRequest: HINTERNET,
     dwInfoLevel: DWORD,
     pwszName: ?LPCWSTR,
-    lpBuffer: LPCVOID,
+    lpBuffer: ?LPCVOID,
     lpdwBufferLength: LPDWORD,
     lpdwIndex: ?LPDWORD,
 ) callconv(WINAPI) BOOL;
