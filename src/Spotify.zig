@@ -30,7 +30,7 @@ pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
     const allocator = self.http_client.allocator;
     var buf: [4 * 1024]u8 = undefined;
 
-    var req = try self.http_client.open(.GET, uri("/me/player/currently-playing"), .{
+    var req = try self.http_client.open(.POST, uri("/me/player/currently-playing"), .{
         .server_header_buffer = &buf,
         .headers = .{
             .authorization = .{ .override = self.authorization },
@@ -102,7 +102,7 @@ pub fn skipToNext(self: *Spotify) !void {
     assert(try req.read(&.{}) == 0);
 
     return switch (req.response.status) {
-        .no_content => {},
+        .ok, .no_content => {},
         .unauthorized => error.Unauthorized, // this should be handled
         .forbidden => error.Forbiden,
         .too_many_requests => error.RateLimited, // this should be handled
@@ -116,7 +116,7 @@ pub fn skipToNext(self: *Spotify) !void {
 pub fn skipToPrevious(self: *Spotify) !void {
     var buf: [4 * 1024]u8 = undefined;
 
-    var req = try self.http_client.open(.GET, uri("/me/player/previous"), .{
+    var req = try self.http_client.open(.POST, uri("/me/player/previous"), .{
         .server_header_buffer = &buf,
         .headers = .{
             .authorization = .{ .override = self.authorization },
@@ -133,7 +133,7 @@ pub fn skipToPrevious(self: *Spotify) !void {
     assert(try req.read(&.{}) == 0);
 
     return switch (req.response.status) {
-        .no_content => {},
+        .ok, .no_content => {},
         .unauthorized => error.Unauthorized, // this should be handled
         .forbidden => error.Forbiden,
         .too_many_requests => error.RateLimited, // this should be handled

@@ -13,170 +13,7 @@ allocator: Allocator,
 
 handle: windows.HINTERNET,
 
-connection_pool: ConnectionPool = .{},
-
 const Client = @This();
-
-/// A set of linked lists of connections that can be reused.
-pub const ConnectionPool = struct {
-    mutex: std.Thread.Mutex = .{},
-    /// Open connections that are currently in use.
-    used: Queue = .{},
-    /// Open connections that are not currently in use.
-    free: Queue = .{},
-    free_len: usize = 0,
-    free_size: usize = 32,
-
-    /// The criteria for a connection to be considered a match.
-    pub const Criteria = struct {
-        host: []const u8,
-        port: u16,
-        protocol: Protocol,
-    };
-
-    const Queue = std.DoublyLinkedList(Connection);
-    pub const Node = Queue.Node;
-
-    /// Finds and acquires a connection from the connection pool matching the criteria. This function is threadsafe.
-    /// If no connection is found, null is returned.
-    pub fn findConnection(pool: *ConnectionPool, criteria: Criteria) ?*Connection {
-        pool.mutex.lock();
-        defer pool.mutex.unlock();
-
-        var next = pool.free.last;
-        while (next) |node| : (next = node.prev) {
-            if (node.data.protocol != criteria.protocol) continue;
-            if (node.data.port != criteria.port) continue;
-
-            // Domain names are case-insensitive (RFC 5890, Section 2.3.2.4)
-            if (!std.ascii.eqlIgnoreCase(node.data.host, criteria.host)) continue;
-
-            pool.acquireUnsafe(node);
-            return &node.data;
-        }
-
-        return null;
-    }
-
-    /// Acquires an existing connection from the connection pool. This function is not threadsafe.
-    pub fn acquireUnsafe(pool: *ConnectionPool, node: *Node) void {
-        pool.free.remove(node);
-        pool.free_len -= 1;
-
-        pool.used.append(node);
-    }
-
-    /// Acquires an existing connection from the connection pool. This function is threadsafe.
-    pub fn acquire(pool: *ConnectionPool, node: *Node) void {
-        pool.mutex.lock();
-        defer pool.mutex.unlock();
-
-        return pool.acquireUnsafe(node);
-    }
-
-    /// Tries to release a connection back to the connection pool. This function is threadsafe.
-    /// If the connection is marked as closing, it will be closed instead.
-    ///
-    /// The allocator must be the owner of all nodes in this pool.
-    /// The allocator must be the owner of all resources associated with the connection.
-    pub fn release(pool: *ConnectionPool, allocator: Allocator, connection: *Connection) void {
-        pool.mutex.lock();
-        defer pool.mutex.unlock();
-
-        const node: *Node = @fieldParentPtr("data", connection);
-
-        pool.used.remove(node);
-
-        if (node.data.closing or pool.free_size == 0) {
-            node.data.close(allocator);
-            return allocator.destroy(node);
-        }
-
-        if (pool.free_len >= pool.free_size) {
-            const popped = pool.free.popFirst() orelse unreachable;
-            pool.free_len -= 1;
-
-            popped.data.close(allocator);
-            allocator.destroy(popped);
-        }
-
-        if (false) { // node.data.proxied
-            pool.free.prepend(node); // proxied connections go to the end of the queue, always try direct connections first
-        } else {
-            pool.free.append(node);
-        }
-
-        pool.free_len += 1;
-    }
-
-    /// Adds a newly created node to the pool of used connections. This function is threadsafe.
-    pub fn addUsed(pool: *ConnectionPool, node: *Node) void {
-        pool.mutex.lock();
-        defer pool.mutex.unlock();
-
-        pool.used.append(node);
-    }
-
-    /// Resizes the connection pool. This function is threadsafe.
-    ///
-    /// If the new size is smaller than the current size, then idle connections will be closed until the pool is the new size.
-    pub fn resize(pool: *ConnectionPool, allocator: Allocator, new_size: usize) void {
-        pool.mutex.lock();
-        defer pool.mutex.unlock();
-
-        const next = pool.free.first;
-        _ = next;
-        while (pool.free_len > new_size) {
-            const popped = pool.free.popFirst() orelse unreachable;
-            pool.free_len -= 1;
-
-            popped.data.close(allocator);
-            allocator.destroy(popped);
-        }
-
-        pool.free_size = new_size;
-    }
-
-    /// Frees the connection pool and closes all connections within. This function is threadsafe.
-    ///
-    /// All future operations on the connection pool will deadlock.
-    pub fn deinit(pool: *ConnectionPool, allocator: Allocator) void {
-        pool.mutex.lock();
-
-        var next = pool.free.first;
-        while (next) |node| {
-            defer allocator.destroy(node);
-            next = node.next;
-
-            node.data.close(allocator);
-        }
-
-        next = pool.used.first;
-        while (next) |node| {
-            defer allocator.destroy(node);
-            next = node.next;
-
-            node.data.close(allocator);
-        }
-
-        pool.* = undefined;
-    }
-};
-
-pub const Connection = struct {
-    handle: windows.HINTERNET,
-
-    protocol: Protocol,
-    host: []const u8,
-    port: u16,
-
-    closing: bool = false,
-
-    pub fn close(conn: Connection, allocator: Allocator) void {
-        windows.WinHttpCloseHandle(conn.handle);
-        allocator.free(conn.host);
-    }
-};
 
 pub const Response = struct {
     status: http.Status,
@@ -195,8 +32,7 @@ pub const Request = struct {
 
     uri: Uri,
     client: *Client,
-    // /// This is null when the connection is released.
-    connection: *Connection,
+    connection: windows.HINTERNET,
     //keep_alive: bool,
 
     method: http.Method,
@@ -221,14 +57,8 @@ pub const Request = struct {
     };
 
     pub fn deinit(req: *Request) void {
-        if (!req.response.done) {
-            // If the response wasn't fully read, then we need to close the connection.
-            req.connection.closing = true;
-        }
-
-        req.client.connection_pool.release(req.client.allocator, req.connection);
-
         windows.WinHttpCloseHandle(req.handle);
+        windows.WinHttpCloseHandle(req.connection);
 
         req.* = undefined;
     }
@@ -348,9 +178,10 @@ pub const Request = struct {
 
     pub fn read(req: *Request, buffer: []u8) ReadError!usize {
         if (req.response.skip) {
-            //var buf: [8192]u8 = undefined;
+            // winhttp will reuse a connection only if full body was read
+            var buf: [8192]u8 = undefined;
+            while (try windows.WinHttpReadData(req.handle, &buf) != 0) {}
 
-            // todo: test if not reading the response will still reuse the connection
             req.response.done = true;
             return 0;
         }
@@ -410,11 +241,7 @@ pub fn init(allocator: Allocator) !Client {
     };
 }
 
-pub fn deinit(client: *Client) void {
-    assert(client.connection_pool.used.first == null);
-
-    client.connection_pool.deinit(client.allocator);
-
+pub fn deinit(client: Client) void {
     windows.WinHttpCloseHandle(client.handle);
 }
 
@@ -427,25 +254,30 @@ pub fn open(
     var server_header: std.heap.FixedBufferAllocator = .init(options.server_header_buffer);
 
     const protocol, const valid_uri = try validateUri(uri, server_header.allocator());
+    const host = try unicode.wtf8ToWtf16LeAllocZ(server_header.allocator(), valid_uri.host.?.raw);
     const path = try unicode.wtf8ToWtf16LeAllocZ(server_header.allocator(), valid_uri.path.raw);
 
-    const conn = try connect(client, valid_uri.host.?.raw, uriPort(valid_uri, protocol), protocol);
+    const conn = try windows.WinHttpConnect(client.handle, host, uriPort(valid_uri, protocol));
+    errdefer windows.WinHttpCloseHandle(conn);
 
     const flags: windows.DWORD = switch (protocol) {
         .plain => 0,
         .tls => windows.WINHTTP_FLAG_SECURE,
     };
 
-    var req: Request = .{
-        .handle = try windows.WinHttpOpenRequest(
-            conn.handle,
-            methodName(method),
-            path,
-            null,
-            windows.WINHTTP_NO_REFERER,
-            windows.WINHTTP_DEFAULT_ACCEPT_TYPES, // bad bad bad
-            flags,
-        ),
+    const req = try windows.WinHttpOpenRequest(
+        conn,
+        methodName(method),
+        path,
+        null,
+        windows.WINHTTP_NO_REFERER,
+        windows.WINHTTP_DEFAULT_ACCEPT_TYPES, // bad bad bad
+        flags,
+    );
+    errdefer windows.WinHttpCloseHandle(req);
+
+    return .{
+        .handle = req,
         .server_header_buffer = options.server_header_buffer,
         .uri = valid_uri,
         .client = client,
@@ -458,43 +290,7 @@ pub fn open(
         },
         .headers = options.headers,
     };
-    errdefer req.deinit();
 
-    return req;
-}
-
-pub fn connect(
-    client: *Client,
-    host: []const u8,
-    port: u16,
-    protocol: Protocol,
-) !*Connection {
-    if (client.connection_pool.findConnection(.{
-        .host = host,
-        .port = port,
-        .protocol = protocol,
-    })) |node| return node;
-
-    const conn = try client.allocator.create(ConnectionPool.Node);
-    errdefer client.allocator.destroy(conn);
-
-    var wide_host: [256]u16 = undefined;
-    const len = try unicode.wtf8ToWtf16Le(&wide_host, host);
-    wide_host[len] = 0;
-
-    const session = try windows.WinHttpConnect(client.handle, wide_host[0..len :0], port);
-    errdefer windows.WinHttpCloseHandle(session);
-
-    conn.data = .{
-        .handle = session,
-        .protocol = protocol,
-        .host = try client.allocator.dupe(u8, host),
-        .port = port,
-    };
-
-    client.connection_pool.addUsed(conn);
-
-    return &conn.data;
 }
 
 pub const RequestOptions = struct {
