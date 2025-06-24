@@ -195,7 +195,7 @@ pub const Request = struct {
             else => |e| return e,
         };
 
-        const header = try arena.alloc(u16, header_len);
+        const header = try arena.alloc(u16, header_len >> 1);
 
         windows.WinHttpQueryHeaders(
             req.handle,
@@ -205,17 +205,15 @@ pub const Request = struct {
             &header_len,
             windows.WINHTTP_NO_HEADER_INDEX,
         ) catch |err| return switch(err) {
-            error.NoSpaceLeft => undefined,
+            error.NoSpaceLeft => unreachable,
             error.HeaderNotFound => unreachable,
             else => |e| e,
         };
 
-        assert(header_len == header.len);
-
         const out = std.mem.sliceAsBytes(header);
         const len = unicode.wtf16LeToWtf8(out, header);
 
-        return out[0..len];
+        return out[0..len - 1];
     }
 
     pub const ReadError = error{Unexpected};
