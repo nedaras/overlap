@@ -9,6 +9,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const stb = b.dependency("stb", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const lib_mod = b.createModule(.{
         .root_source_file = b.path("src/dllmain.zig"),
         .target = target,
@@ -22,6 +27,7 @@ pub fn build(b: *std.Build) void {
 
     lib.linkLibC();
     lib.addIncludePath(minhook.path("include"));
+    lib.addIncludePath(stb.path(""));
 
     lib.addCSourceFiles(.{
         .root = minhook.path("src"),
@@ -33,6 +39,8 @@ pub fn build(b: *std.Build) void {
             "trampoline.c",
         },
     });
+
+    lib.addCSourceFile(.{ .file = b.path("src/stb.c") });
 
     b.installArtifact(lib);
 

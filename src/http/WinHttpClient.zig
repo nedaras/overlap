@@ -180,7 +180,7 @@ pub const Request = struct {
         if (try req.quearyHeader(server_header.allocator(), windows.WINHTTP_QUERY_CONTENT_LENGTH)) |content_lengt| {
             defer server_header.allocator().free(content_lengt);
 
-            req.response.content_length = try std.fmt.parseInt(u64, content_lengt, 10);
+            req.response.content_length = std.fmt.parseInt(u64, content_lengt, 10) catch return error.InvalidContentLength;
         }
     }
 
@@ -244,6 +244,17 @@ pub const Request = struct {
 
         return amt;
         // need to handle trailing headers maybe
+    }
+
+    /// Reads data from the response body. Must be called after `wait`.
+    pub fn readAll(req: *Request, buffer: []u8) !usize {
+        var index: usize = 0;
+        while (index < buffer.len) {
+            const amt = try read(req, buffer[index..]);
+            if (amt == 0) break;
+            index += amt;
+        }
+        return index;
     }
 
     fn innerWriteAll(self: Request, bytes: []const u8) !void {

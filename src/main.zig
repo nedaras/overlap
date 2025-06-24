@@ -2,6 +2,18 @@ const std = @import("std");
 const Client = @import("http.zig").Client;
 const Spotify = @import("Spotify.zig");
 const Hook = @import("Hook.zig");
+const assert = std.debug.assert;
+
+extern fn stbi_load_from_memory(
+    buffer: [*]const u8,
+    len: c_int,
+    x: *c_int,
+    y: *c_int,
+    channels_in_file: *c_int,
+    desired_channels: c_int,
+) callconv(.C) ?[*]u8;
+
+extern fn stbi_image_free(retval_from_stbi_load: [*]u8) callconv(.C) void;
 
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{}){};
@@ -38,7 +50,22 @@ pub fn main() !void {
 
     try req.wait();
 
-    std.debug.print("{any}\n", .{req.response.content_length});
+    const image_buf = try allocator.alloc(u8, req.response.content_length.?);
+    defer allocator.free(image_buf);
+
+    assert(try req.readAll(image_buf) == image_buf.len);
+
+    var w: c_int = 0;
+    var h: c_int = 0;
+    var c: c_int = 0;
+
+    if (stbi_load_from_memory(image_buf.ptr, @intCast(image_buf.len), &w, &h, &c, 0)) |ptr| {
+        defer stbi_image_free(ptr);
+
+        std.debug.print("{d}x{d}: {d}\n", .{w, h, c});
+    } else {
+        std.debug.print("stbi_load_from_memory failed!\n", .{});
+    }
 
     var hook: Hook = .init;
 
