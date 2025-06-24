@@ -9,6 +9,8 @@ const Uri = std.Uri;
 const RequestTransfer = http.Client.RequestTransfer;
 const assert = std.debug.assert;
 
+// WinHttp handles pooling by it self.
+
 allocator: Allocator,
 
 handle: windows.HINTERNET,
@@ -178,7 +180,6 @@ pub const Request = struct {
 
     pub fn read(req: *Request, buffer: []u8) ReadError!usize {
         if (req.response.skip) {
-            // winhttp will reuse a connection only if full body was read
             var buf: [8192]u8 = undefined;
             while (try windows.WinHttpReadData(req.handle, &buf) != 0) {}
 
@@ -242,6 +243,7 @@ pub fn init(allocator: Allocator) !Client {
 }
 
 pub fn deinit(client: Client) void {
+    // For some reason it does not close pooled connections
     windows.WinHttpCloseHandle(client.handle);
 }
 
@@ -290,7 +292,6 @@ pub fn open(
         },
         .headers = options.headers,
     };
-
 }
 
 pub const RequestOptions = struct {

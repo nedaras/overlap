@@ -22,25 +22,27 @@ pub fn main() !void {
     const track = try spotify.getCurrentlyPlayingTrack();
     defer track.deinit();
 
-    for (track.value.item.album.images) |image| {
-        std.debug.print("{d}x{d}: '{s}'\n", .{ image.width, image.height, image.url });
+    std.debug.print("{d}ms\n", .{track.value.progress_ms});
+
+    var hook: Hook = .init;
+
+    try hook.attach();
+    defer hook.detach();
+
+    const image = track.value.item.album.images[2];
+    std.debug.print("{s}\n", .{image.url});
+    // download image
+
+    const gui = hook.gui();
+
+    const font = try hook.loadFont(allocator, "font.fat");
+    defer font.deinit(allocator);
+
+    while (true) {
+        try hook.newFrame();
+        defer hook.endFrame();
+
+        gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
+        gui.text(.{ 200.0, 200.0 }, "Helogjk", 0xFFFFFFFF, font);
     }
-
-    //var hook: Hook = .init;
-
-    //try hook.attach();
-    //defer hook.detach();
-
-    //const gui = hook.gui();
-
-    //const font = try hook.loadFont(allocator, "font.fat");
-    //defer font.deinit(allocator);
-
-    //while (true) {
-    //try hook.newFrame();
-    //defer hook.endFrame();
-
-    //gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-    //gui.text(.{ 200.0, 200.0 }, "Helo", 0xFFFFFFFF, font);
-    //}
 }
