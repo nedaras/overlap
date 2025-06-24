@@ -1,19 +1,9 @@
 const std = @import("std");
+const stb = @import("stb.zig");
 const Client = @import("http.zig").Client;
 const Spotify = @import("Spotify.zig");
 const Hook = @import("Hook.zig");
 const assert = std.debug.assert;
-
-extern fn stbi_load_from_memory(
-    buffer: [*]const u8,
-    len: c_int,
-    x: *c_int,
-    y: *c_int,
-    channels_in_file: *c_int,
-    desired_channels: c_int,
-) callconv(.C) ?[*]u8;
-
-extern fn stbi_image_free(retval_from_stbi_load: [*]u8) callconv(.C) void;
 
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{}){};
@@ -55,14 +45,8 @@ pub fn main() !void {
 
     assert(try req.readAll(image_buf) == image_buf.len);
 
-    var w: c_int = 0;
-    var h: c_int = 0;
-    var c: c_int = 0;
-
-    const img_ptr = stbi_load_from_memory(image_buf.ptr, @intCast(image_buf.len), &w, &h, &c, 4).?;
-    defer stbi_image_free(img_ptr);
-
-    std.debug.print("{d}x{d}: {d}\n", .{w, h, c});
+    const stb_image = try stb.loadImageFromMemory(image_buf, .{ .channels = .RGBA });
+    defer stb_image.deinit();
 
     var hook: Hook = .init;
 
@@ -71,9 +55,9 @@ pub fn main() !void {
 
     const img = try hook.loadImage(allocator, .{
         .format = .RGBA,
-        .data = img_ptr[0..@intCast(w * h * c)],
-        .width = @intCast(w),
-        .height = @intCast(h),
+        .data = stb_image.data,
+        .width = stb_image.width,
+        .height = stb_image.height,
     });
     defer img.deinit(allocator);
 
@@ -87,7 +71,7 @@ pub fn main() !void {
         defer hook.endFrame();
 
         gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(w), @floatFromInt(h) }, img);
+        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(img.width), @floatFromInt(img.height) }, img);
 
         gui.text(.{ 200.0, 200.0 }, "Helogjk", 0xFFFFFFFF, font);
     }

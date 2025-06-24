@@ -193,7 +193,7 @@ pub const Request = struct {
             null,
             &header_len,
             windows.WINHTTP_NO_HEADER_INDEX,
-        ) catch |err| switch(err) {
+        ) catch |err| switch (err) {
             error.NoSpaceLeft => {},
             error.HeaderNotFound => return null,
             else => |e| return e,
@@ -208,7 +208,7 @@ pub const Request = struct {
             header.ptr,
             &header_len,
             windows.WINHTTP_NO_HEADER_INDEX,
-        ) catch |err| return switch(err) {
+        ) catch |err| return switch (err) {
             error.NoSpaceLeft => unreachable,
             error.HeaderNotFound => unreachable,
             else => |e| e,

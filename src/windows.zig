@@ -286,11 +286,7 @@ pub fn WinHttpReceiveResponse(hRequest: HINTERNET) WinHttpOpenRequestError!void 
     }
 }
 
-pub const WinHttpQueryHeadersError = error{
-    NoSpaceLeft,
-    HeaderNotFound,
-    Unexpected
-};
+pub const WinHttpQueryHeadersError = error{ NoSpaceLeft, HeaderNotFound, Unexpected };
 
 pub fn WinHttpQueryHeaders(
     hRequest: HINTERNET,
