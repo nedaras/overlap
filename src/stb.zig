@@ -14,13 +14,13 @@ extern fn stbi_image_free(retval_from_stbi_load: [*]u8) callconv(.C) void;
 
 extern fn stbi_failure_reason() callconv(.C) [*:0]const u8;
 
-pub const StbImage = struct {
+pub const Image = struct {
     data: []u8,
     width: u32,
     height: u32,
     channels: Channel,
 
-    pub fn deinit(self: StbImage) void {
+    pub fn deinit(self: Image) void {
         stbi_image_free(self.data.ptr);
     }
 };
@@ -41,7 +41,7 @@ pub const LoadImageFromMemoryError = error{
     Unexpected,
 };
 
-pub fn loadImageFromMemory(bytes: []const u8, options: ImageOptions) LoadImageFromMemoryError!StbImage {
+pub fn loadImageFromMemory(bytes: []const u8, options: ImageOptions) LoadImageFromMemoryError!Image {
     if (bytes.len > std.math.maxInt(c_int)) {
         return error.ImageTooBig;
     }

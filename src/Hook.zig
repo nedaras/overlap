@@ -5,7 +5,7 @@ const fat = @import("fat.zig");
 const Gui = @import("Gui.zig");
 const Backend = @import("gui/Backend.zig");
 const D3D11Hook = @import("hooks/D3D11Hook.zig");
-const Image = @import("gui/Image.zig");
+pub const Image = @import("gui/Image.zig");
 const Font = @import("gui/Font.zig");
 const mem = std.mem;
 const fs = std.fs;
@@ -89,6 +89,11 @@ pub fn endFrame(self: *Self) void {
 pub inline fn loadImage(self: *Self, allocator: Allocator, desc: Image.Desc) Image.Error!Image {
     // todo: idk???
     return self.d3d11_hook.?.backend.?.backend().loadImage(allocator, desc);
+}
+
+pub inline fn updateImage(self: *Self, image: Image, bytes: []const u8) void {
+    // todo: idk???
+    self.d3d11_hook.?.backend.?.backend().updateImage(image, bytes);
 }
 
 pub fn loadFont(self: *Self, allocator: Allocator, sub_path: []const u8) !Font {

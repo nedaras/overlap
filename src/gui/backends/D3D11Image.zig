@@ -13,7 +13,7 @@ resource: *d3d11.ID3D11ShaderResourceView,
 
 const Self = @This();
 
-pub fn init(device: *d3d11.ID3D11Device, allocator: Allocator, desc: Image.Desc) Image.Error!*Self {
+pub fn init(device: *d3d11.ID3D11Device, device_context: *d3d11.ID3D11DeviceContext, allocator: Allocator, desc: Image.Desc) Image.Error!*Self {
     assert(desc.width * desc.height * @intFromEnum(desc.format) == desc.data.len);
 
     var result = try allocator.create(Self);
@@ -57,11 +57,7 @@ pub fn init(device: *d3d11.ID3D11Device, allocator: Allocator, desc: Image.Desc)
             try device.CreateTexture2D(&texture_desc, null, &result.texture);
             errdefer result.texture.Release();
 
-            var device_context: *d3d11.ID3D11DeviceContext = undefined;
             var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
-
-            device.GetImmediateContext(&device_context);
-            defer device_context.Release();
 
             try device_context.Map(@ptrCast(result.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
             defer device_context.Unmap(@ptrCast(result.texture), 0);
