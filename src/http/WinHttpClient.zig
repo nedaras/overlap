@@ -217,7 +217,7 @@ pub const Request = struct {
         const out = std.mem.sliceAsBytes(header);
         const len = unicode.wtf16LeToWtf8(out, header);
 
-        return allocator.remap(out, len);
+        return allocator.remap(out, len - 1);
     }
 
     pub const ReadError = error{Unexpected};
