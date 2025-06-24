@@ -189,9 +189,10 @@ pub const Request = struct {
             null,
             &header_len,
             windows.WINHTTP_NO_HEADER_INDEX,
-        ) catch |err| return switch(err) {
-            error.HeaderNotFound => null,
-            else => |e| e,
+        ) catch |err| switch(err) {
+            error.NoSpaceLeft => {},
+            error.HeaderNotFound => return null,
+            else => |e| return e,
         };
 
         const header = try arena.alloc(u16, header_len);
@@ -204,6 +205,7 @@ pub const Request = struct {
             &header_len,
             windows.WINHTTP_NO_HEADER_INDEX,
         ) catch |err| return switch(err) {
+            error.NoSpaceLeft => undefined,
             error.HeaderNotFound => unreachable,
             else => |e| e,
         };

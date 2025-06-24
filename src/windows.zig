@@ -287,6 +287,7 @@ pub fn WinHttpReceiveResponse(hRequest: HINTERNET) WinHttpOpenRequestError!void 
 }
 
 pub const WinHttpQueryHeadersError = error{
+    NoSpaceLeft,
     HeaderNotFound,
     Unexpected
 };
@@ -303,6 +304,7 @@ pub fn WinHttpQueryHeaders(
 
     if (winhttp.WinHttpQueryHeaders(hRequest, dwInfoLevel, pwszName, lpBuffer, lpdwBufferLength, lpdwIndex) == FALSE) {
         return switch (windows.kernel32.GetLastError()) {
+            .INSUFFICIENT_BUFFER => error.NoSpaceLeft,
             @as(Win32Error, @enumFromInt(12150)) => error.HeaderNotFound,
             else => |err| windows.unexpectedError(err),
         };
