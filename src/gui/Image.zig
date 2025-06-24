@@ -6,9 +6,14 @@ pub const Error = error{
     Unexpected,
 };
 
-pub const Format = enum(u8) {
-    R = 1,
-    RGBA = 4,
+pub const Format = enum(u4) {
+    r = 1,
+    rgba = 4,
+};
+
+pub const Usage = enum (u4) {
+    static,
+    dynamic,
 };
 
 pub const Desc = struct {
@@ -16,6 +21,7 @@ pub const Desc = struct {
     height: u32,
     data: []const u8,
     format: Format,
+    usage: Usage = .static,
 };
 
 ptr: *anyopaque,

@@ -26,10 +26,10 @@ pub const StbImage = struct {
 };
 
 pub const Channel = enum(c_int) {
-    R = 1,
-    GB = 2,
-    RGB = 3,
-    RGBA = 4,
+    r = 1,
+    rg = 2,
+    rgb = 3,
+    rgba = 4,
 };
 
 pub const ImageOptions = struct {

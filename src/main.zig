@@ -45,7 +45,7 @@ pub fn main() !void {
 
     assert(try req.readAll(image_buf) == image_buf.len);
 
-    const stb_image = try stb.loadImageFromMemory(image_buf, .{ .channels = .RGBA });
+    const stb_image = try stb.loadImageFromMemory(image_buf, .{ .channels = .rgba });
     defer stb_image.deinit();
 
     var hook: Hook = .init;
@@ -54,10 +54,11 @@ pub fn main() !void {
     defer hook.detach();
 
     const img = try hook.loadImage(allocator, .{
-        .format = .RGBA,
+        .format = .rgba,
         .data = stb_image.data,
         .width = stb_image.width,
         .height = stb_image.height,
+        .usage = .dynamic,
     });
     defer img.deinit(allocator);
 

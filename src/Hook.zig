@@ -112,7 +112,7 @@ pub fn loadFont(self: *Self, allocator: Allocator, sub_path: []const u8) !Font {
     const image = try self.loadImage(allocator, .{
         .width = @intCast(head.tex_width),
         .height = @intCast(head.tex_height),
-        .format = .R,
+        .format = .r,
         .data = texure,
     });
     errdefer image.deinit();
