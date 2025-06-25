@@ -7,6 +7,45 @@ const Thread = std.Thread;
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 
+const Command = enum {
+    next,
+    previous,
+};
+
+fn sendCommand(allocator: Allocator, spotify: *Spotify, cmd: Command) !stb.Image {
+    _ = cmd;
+    //switch (cmd) {
+        //.next => try spotify.skipToNext(),
+        //.previous => try spotify.skipToPrevious(),
+    //}
+
+    const track = try spotify.getCurrentlyPlayingTrack();
+    defer track.deinit();
+
+    const uri = try std.Uri.parse(track.value.item.album.images[0].url);
+
+    var server_header: [256]u8 = undefined;
+
+    var req = try spotify.http_client.open(.GET, uri, .{
+        .server_header_buffer = &server_header,
+    });
+    defer req.deinit();
+
+    try req.send();
+    try req.finish();
+
+    try req.wait();
+
+    const image = try allocator.alloc(u8, req.response.content_length.?);
+    defer allocator.free(image);
+
+    try req.reader().readNoEof(image);
+
+    return stb.loadImageFromMemory(image, .{
+        .channels = .rgba,
+    });
+}
+
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{}){};
     defer _ = da.deinit();
@@ -22,12 +61,12 @@ pub fn main() !void {
         .authorization = "Bearer ...",
     };
 
-    var job_queue: JobQueue = undefined;
+    var jq : JobQueue = undefined;
 
-    try job_queue.init(allocator);
-    defer job_queue.deinit();
+    try jq.init(allocator);
+    defer jq.deinit();
 
-    var skip_job: JobQueue.Job(Spotify.skipToNext) = .{};
+    var cmd_job: JobQueue.Job(sendCommand) = .{};
 
     var hook: Hook = .init;
 
@@ -39,21 +78,39 @@ pub fn main() !void {
     const font = try hook.loadFont(allocator, "font.fat");
     defer font.deinit(allocator);
 
-    try job_queue.spawn(&skip_job, .{&spotify});
-
+    var i: u32 = 0;
+    var cover: ?Hook.Image = null;
     while (true) {
         try hook.newFrame();
         defer hook.endFrame();
 
-        if (skip_job.isCompleted()) |val| {
-            try val;
-            try job_queue.spawn(&skip_job, .{&spotify});
-        } else {
-            std.debug.print("waiting...\n", .{});
+        i +%= 1;
+
+        if (i % 1000 == 0) {
+            try jq.spawn(&cmd_job, .{allocator, &spotify, .next});
         }
 
-        gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-        //gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cover.image.width), @floatFromInt(cover.image.height) }, cover.image);
+        if (cmd_job.isCompleted()) {
+            const stb_image: stb.Image = try cmd_job.resolve();
+            defer stb_image.deinit();
+
+            if (cover) |img| {
+                hook.updateImage(img, stb_image.data);
+            } else {
+                cover = try hook.loadImage(allocator, .{
+                    .data = stb_image.data,
+                    .width = stb_image.width,
+                    .height = stb_image.height,
+                    .format = .rgba,
+                    .usage = .dynamic,
+                });
+            }
+        }
+
+        //gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
+        if (cover) |img| {
+            gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(img.width), @floatFromInt(img.height) }, img);
+        }
 
         gui.text(.{ 200.0, 200.0 }, "Helogjk", 0xFFFFFFFF, font);
     }
@@ -79,17 +136,20 @@ const JobQueue = struct {
         return struct {
             const ReturnType = @typeInfo(@TypeOf(Func)).@"fn".return_type.?;
 
-            value: ReturnType = undefined,
-            is_completed: std.atomic.Value(bool) = .init(false),
+            value: ?ReturnType = null,
+            is_completed: std.atomic.Value(bool) = .init(true),
 
             comptime func: @TypeOf(Func) = Func,
 
-            pub fn isCompleted(self: *@This()) ?ReturnType {
-                if (self.is_completed.load(.monotonic)) {
-                    return self.value;
-                } else {
-                    return null;
-                }
+            pub fn isCompleted(self: *@This()) bool {
+                return self.is_completed.load(.monotonic);
+            }
+
+            pub fn resolve(self: *@This()) ReturnType {
+                assert(isCompleted(self) == true);
+                const tmp = self.value.?;
+                self.value = null;
+                return tmp;
             }
         };
     }
@@ -118,7 +178,8 @@ const JobQueue = struct {
     }
 
     fn spawn(self: *JobQueue, job: anytype, args: anytype) !void {
-        job.is_completed.store(false, .monotonic);
+        assert(job.isCompleted() == true);
+        assert(job.value == null);
 
         const ArgsType = @TypeOf(args);
         const JobType = @TypeOf(job);
