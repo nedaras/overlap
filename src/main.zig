@@ -49,11 +49,6 @@ fn sendCommand(spotify: *Spotify, cmd: Command) !stb.Image {
     });
 }
 
-// Idea is simple
-// only one req at a time
-// if req was sent to skip music we cannot in that time interract with gui
-// and we will have idle coundown of like 20-30 seconds to sync
-
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
     defer _ = da.deinit();
@@ -84,6 +79,7 @@ pub fn main() !void {
     const font = try hook.loadFont(allocator, "font.fat");
     defer font.deinit(allocator);
 
+    // mb dont do it here
     const cover = blk: {
         const stb_image = try sendCommand(&spotify, .curr);
         defer stb_image.deinit();
@@ -97,6 +93,8 @@ pub fn main() !void {
         });
     };
     defer cover.deinit(allocator);
+
+    // Now we need to hook windoe proc and chill
 
     var i: u32 = 0;
     while (true) {
@@ -113,7 +111,7 @@ pub fn main() !void {
         }
 
         if (i % 1000 == 0) {
-            assert(action.busy() == false);
+            assert(action.dispatched() == true);
             try action.post(.{&spotify, .curr});
         }
 
@@ -204,22 +202,16 @@ fn SingleAction(comptime func: anytype) type {
 
                 fn runFn(runnable: *Runnable) void {
                     const closure: *@This() = @alignCast(@fieldParentPtr("run_node", runnable));
-                    { // move this to val if else stuff
+
+                    const is_running = blk: {
                         const mutex = &closure.action.mutex;
                         mutex.lock();
                         defer mutex.unlock();
 
-                        if (!closure.action.is_running) {
-                            closure.action.run_node = null;
-                            closure.action.value = null;
+                        break :blk closure.action.is_running;
+                    };
 
-                            closure.action.allocator.destroy(closure);
-
-                            return;
-                        }
-                    }
-
-                    const val = @call(.auto, func, closure.args);
+                    const val: ?ReturnType = if (is_running) @call(.auto, func, closure.args) else null;
 
                     const mutex = &closure.action.mutex;
                     mutex.lock();
