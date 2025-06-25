@@ -8,16 +8,17 @@ const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 
 const Command = enum {
+    curr,
     next,
     previous,
 };
 
 fn sendCommand(allocator: Allocator, spotify: *Spotify, cmd: Command) !stb.Image {
-    _ = cmd;
-    //switch (cmd) {
-        //.next => try spotify.skipToNext(),
-        //.previous => try spotify.skipToPrevious(),
-    //}
+    switch (cmd) {
+        .curr => {},
+        .next => try spotify.skipToNext(),
+        .previous => try spotify.skipToPrevious(),
+    }
 
     const track = try spotify.getCurrentlyPlayingTrack();
     defer track.deinit();
@@ -66,7 +67,8 @@ pub fn main() !void {
     try jq.init(allocator);
     defer jq.deinit();
 
-    var cmd_job: JobQueue.Job(sendCommand) = .{};
+    var task = try jq.spawn(sendCommand, .{allocator, &spotify, .curr});
+    defer task.deinit();
 
     var hook: Hook = .init;
 
@@ -78,41 +80,53 @@ pub fn main() !void {
     const font = try hook.loadFont(allocator, "font.fat");
     defer font.deinit(allocator);
 
+    while (!task.isCompleted()) {
+        std.debug.print("working\n", .{});
+    }
+
+    (try task.resolve()).deinit();
+
     var i: u32 = 0;
-    var cover: ?Hook.Image = null;
-    while (true) {
+
+    //var cover: ?Hook.Image = null;
+    //defer if (cover) |img| img.deinit(allocator);
+
+    while (i != 3000) {
         try hook.newFrame();
         defer hook.endFrame();
 
         i +%= 1;
 
-        if (cmd_job.isResolved()) {
-            if (i % 1000 == 0) {
-                try jq.spawn(&cmd_job, .{allocator, &spotify, .next});
-            }
-        }
+        // stupid we should be allowed to stack them
+        //if (cmd_job.isResolved()) {
+            //if (i % 1000 == 0) {
+                //try jq.spawn(&cmd_job, .{allocator, &spotify, .next});
+            //}
+        //}
 
-        if (cmd_job.isCompleted()) {
-            const stb_image: stb.Image = try cmd_job.resolve();
-            defer stb_image.deinit();
+        // isResolvable
 
-            if (cover) |img| {
-                hook.updateImage(img, stb_image.data);
-            } else {
-                cover = try hook.loadImage(allocator, .{
-                    .data = stb_image.data,
-                    .width = stb_image.width,
-                    .height = stb_image.height,
-                    .format = .rgba,
-                    .usage = .dynamic,
-                });
-            }
-        }
+        //if (cmd_job.isCompleted()) {
+            //const stb_image: stb.Image = try cmd_job.resolve();
+            //defer stb_image.deinit();
+
+            //if (cover) |img| {
+                //hook.updateImage(img, stb_image.data);
+            //} else {
+                //cover = try hook.loadImage(allocator, .{
+                    //.data = stb_image.data,
+                    //.width = stb_image.width,
+                    //.height = stb_image.height,
+                    //.format = .rgba,
+                    //.usage = .dynamic,
+                //});
+            //}
+        //}
 
         //gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-        if (cover) |img| {
-            gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(img.width), @floatFromInt(img.height) }, img);
-        }
+        //if (cover) |img| {
+            //gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(img.width), @floatFromInt(img.height) }, img);
+        //}
 
         gui.text(.{ 200.0, 200.0 }, "Helogjk", 0xFFFFFFFF, font);
     }
@@ -134,35 +148,33 @@ const JobQueue = struct {
         runFn: *const fn (*Runnable) void,
     };
 
-    fn Job(comptime Func: anytype) type {
+    fn Task(comptime Func: type) type {
         return struct {
-            const ReturnType = @typeInfo(@TypeOf(Func)).@"fn".return_type.?;
+            const ReturnType = @typeInfo(Func).@"fn".return_type.?;
 
-            value: ReturnType = undefined,
+            /// Should never be accessed without a `mutex`.
+            value: ?ReturnType = null,
+            deinitFn: *const fn(*@This()) void,
 
-            is_completed: std.atomic.Value(bool) = .init(true),
-            is_resolved: std.atomic.Value(bool) = .init(true),
+            mutex: Thread.Mutex = .{},
 
-            comptime func: @TypeOf(Func) = Func,
-
-            pub fn isCompleted(self: *@This()) bool {
-                return self.is_completed.load(.monotonic) and !isResolved(self);
+            pub inline fn deinit(task: *@This()) void {
+                task.deinitFn(task);
             }
 
-            pub fn isResolved(self: *@This()) bool {
-                return self.is_resolved.load(.monotonic);
+            pub fn isCompleted(task: *@This()) bool {
+                task.mutex.lock();
+                defer task.mutex.unlock();
+
+                return task.value != null;
             }
 
             pub fn resolve(self: *@This()) ReturnType {
-                assert(isCompleted(self) == true);
-                assert(isResolved(self) == false);
+                while (!isCompleted(self)) {
+                    std.atomic.spinLoopHint();
+                }
 
-                const tmp = self.value;
-
-                self.value = undefined;
-                self.is_resolved.store(true, .monotonic);
-
-                return tmp;
+                return self.value.?;
             }
         };
     }
@@ -190,53 +202,55 @@ const JobQueue = struct {
         self.* = undefined;
     }
 
-    fn spawn(self: *JobQueue, job: anytype, args: anytype) !void {
-        assert(job.isCompleted() == true);
-        assert(job.isResolved() == true);
-
-        const ArgsType = @TypeOf(args);
-        const JobType = @TypeOf(job);
+    fn spawn(self: *JobQueue, comptime func: anytype, args: anytype) !*Task(@TypeOf(func)) {
+        const Args = @TypeOf(args);
+        const Func = @TypeOf(func);
 
         const Closure = struct {
-            args: ArgsType,
-            job: JobType,
-            worker: *JobQueue,
+            args: Args,
+            job_queue: *JobQueue,
+            task: Task(Func) = .{ .deinitFn = deinitFn },
             node: Queue.Node = .{ .data = .{ .runFn = runFn } },
 
             fn runFn(runnable: *Runnable) void {
                 const node: *Queue.Node = @fieldParentPtr("data", runnable);
                 const closure: *@This() = @alignCast(@fieldParentPtr("node", node));
 
-                closure.job.value = @call(.auto, closure.job.func, closure.args);
-                closure.job.is_completed.store(true, .monotonic);
+                const val = @call(.auto, func, closure.args);
 
-                const mutex = &closure.worker.mutex;
+                const mutex = &closure.task.mutex;
                 mutex.lock();
                 defer mutex.unlock();
 
-                closure.worker.allocator.destroy(closure);
+                closure.task.value = val;
             }
 
+            fn deinitFn(task: *Task(Func)) void {
+                const closure: *@This() = @alignCast(@fieldParentPtr("task", task));
+
+                const mutex = &closure.job_queue.mutex;
+                mutex.lock();
+                defer mutex.unlock();
+
+                closure.job_queue.allocator.destroy(closure);
+            }
         }; 
 
-        {
-            self.mutex.lock();
-            defer self.mutex.unlock();
+        self.mutex.lock();
+        errdefer self.mutex.unlock();
 
-            const closure = try self.allocator.create(Closure);
-            closure.* = .{
-                .args = args,
-                .job = job,
-                .worker = self,
-            };
+        const closure = try self.allocator.create(Closure);
+        closure.* = .{
+            .args = args,
+            .job_queue = self,
+        };
 
-            self.tasks.append(&closure.node);
-        }
+        self.tasks.append(&closure.node);
 
-        job.is_completed.store(false, .monotonic);
-        job.is_resolved.store(false, .monotonic);
-
+        self.mutex.unlock();
         self.cond.signal();
+
+        return &closure.task;
     }
 
     fn worker(self: *JobQueue) void {

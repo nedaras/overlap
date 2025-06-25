@@ -14,7 +14,7 @@ const Spotify = @This();
 pub const Track = struct {
     timestamp: u64,
     progress_ms: u32,
-    item: struct { // can be null
+    item: struct { // can be null!!!
         album: struct {
             images: [3]struct {
                 url: []const u8,
