@@ -86,8 +86,10 @@ pub fn main() !void {
 
         i +%= 1;
 
-        if (i % 1000 == 0) {
-            try jq.spawn(&cmd_job, .{allocator, &spotify, .next});
+        if (cmd_job.isResolved()) {
+            if (i % 1000 == 0) {
+                try jq.spawn(&cmd_job, .{allocator, &spotify, .next});
+            }
         }
 
         if (cmd_job.isCompleted()) {
@@ -136,19 +138,30 @@ const JobQueue = struct {
         return struct {
             const ReturnType = @typeInfo(@TypeOf(Func)).@"fn".return_type.?;
 
-            value: ?ReturnType = null,
+            value: ReturnType = undefined,
+
             is_completed: std.atomic.Value(bool) = .init(true),
+            is_resolved: std.atomic.Value(bool) = .init(true),
 
             comptime func: @TypeOf(Func) = Func,
 
             pub fn isCompleted(self: *@This()) bool {
-                return self.is_completed.load(.monotonic);
+                return self.is_completed.load(.monotonic) and !isResolved(self);
+            }
+
+            pub fn isResolved(self: *@This()) bool {
+                return self.is_resolved.load(.monotonic);
             }
 
             pub fn resolve(self: *@This()) ReturnType {
                 assert(isCompleted(self) == true);
-                const tmp = self.value.?;
-                self.value = null;
+                assert(isResolved(self) == false);
+
+                const tmp = self.value;
+
+                self.value = undefined;
+                self.is_resolved.store(true, .monotonic);
+
                 return tmp;
             }
         };
@@ -179,7 +192,7 @@ const JobQueue = struct {
 
     fn spawn(self: *JobQueue, job: anytype, args: anytype) !void {
         assert(job.isCompleted() == true);
-        assert(job.value == null);
+        assert(job.isResolved() == true);
 
         const ArgsType = @TypeOf(args);
         const JobType = @TypeOf(job);
@@ -194,15 +207,12 @@ const JobQueue = struct {
                 const node: *Queue.Node = @fieldParentPtr("data", runnable);
                 const closure: *@This() = @alignCast(@fieldParentPtr("node", node));
 
-                const result = @call(.auto, closure.job.func, closure.args);
+                closure.job.value = @call(.auto, closure.job.func, closure.args);
+                closure.job.is_completed.store(true, .monotonic);
 
                 const mutex = &closure.worker.mutex;
                 mutex.lock();
                 defer mutex.unlock();
-
-
-                closure.job.value = result;
-                closure.job.is_completed.store(true, .monotonic);
 
                 closure.worker.allocator.destroy(closure);
             }
@@ -222,6 +232,9 @@ const JobQueue = struct {
 
             self.tasks.append(&closure.node);
         }
+
+        job.is_completed.store(false, .monotonic);
+        job.is_resolved.store(false, .monotonic);
 
         self.cond.signal();
     }
