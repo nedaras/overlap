@@ -47,6 +47,7 @@ pub fn main() !void {
 
         if (skip_job.isCompleted()) |val| {
             try val;
+            try job_queue.spawn(&skip_job, .{&spotify});
         } else {
             std.debug.print("waiting...\n", .{});
         }
@@ -78,19 +79,18 @@ const JobQueue = struct {
         return struct {
             const ReturnType = @typeInfo(@TypeOf(Func)).@"fn".return_type.?;
 
-            value: ?ReturnType  = null,
+            value: ReturnType = undefined,
             is_completed: std.atomic.Value(bool) = .init(false),
 
             comptime func: @TypeOf(Func) = Func,
 
             pub fn isCompleted(self: *@This()) ?ReturnType {
                 if (self.is_completed.load(.monotonic)) {
-                    return self.value.?;
+                    return self.value;
                 } else {
                     return null;
                 }
             }
-
         };
     }
 
@@ -118,8 +118,6 @@ const JobQueue = struct {
     }
 
     fn spawn(self: *JobQueue, job: anytype, args: anytype) !void {
-        assert(job.isCompleted() != null);
-        job.value = null;
         job.is_completed.store(false, .monotonic);
 
         const ArgsType = @TypeOf(args);
