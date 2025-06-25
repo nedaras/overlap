@@ -66,12 +66,16 @@ pub fn main() !void {
 
     var jq : JobQueue = undefined;
 
-
     try jq.init(allocator);
     defer jq.deinit();
 
-    // Now we are leaking mem hmmm
+    // Stupid
     var tasks: std.DoublyLinkedList(*JobQueue.Task(@TypeOf(sendCommand))) = .{};
+    defer while (tasks.popFirst()) |node| {
+        defer allocator.destroy(node);
+        const val = node.data.resolve() catch continue;
+        val.deinit();
+    };
 
     var hook: Hook = .init;
 
@@ -173,19 +177,23 @@ const JobQueue = struct {
         return struct {
             const ReturnType = @typeInfo(Func).@"fn".return_type.?;
 
+            job_queue: *JobQueue,
+
             /// Should never be accessed without a `mutex`.
             value: ?ReturnType = null,
-            deinitFn: *const fn(*@This()) void,
-
-            mutex: Thread.Mutex = .{},
 
             pub inline fn deinit(task: *@This()) void {
-                task.deinitFn(task);
+                const mutex = &task.job_queue.mutex;
+                mutex.lock();
+                defer mutex.unlock();
+
+                task.job_queue.allocator.destroy(task);
             }
 
             pub fn isCompleted(task: *@This()) bool {
-                task.mutex.lock();
-                defer task.mutex.unlock();
+                const mutex = &task.job_queue.mutex;
+                mutex.lock();
+                defer mutex.unlock();
 
                 return task.value != null;
             }
@@ -235,7 +243,7 @@ const JobQueue = struct {
         const Closure = struct {
             args: Args,
             job_queue: *JobQueue,
-            task: Task(Func) = .{ .deinitFn = deinitFn },
+            task: *Task(Func),
             node: Queue.Node = .{ .data = .{ .runFn = runFn } },
 
             fn runFn(runnable: *Runnable) void {
@@ -244,39 +252,34 @@ const JobQueue = struct {
 
                 const val = @call(.auto, func, closure.args);
 
-                const mutex = &closure.task.mutex;
-                mutex.lock();
-                defer mutex.unlock();
-
-                closure.task.value = val;
-            }
-
-            fn deinitFn(task: *Task(Func)) void {
-                const closure: *@This() = @alignCast(@fieldParentPtr("task", task));
-
                 const mutex = &closure.job_queue.mutex;
                 mutex.lock();
                 defer mutex.unlock();
 
+                closure.task.value = val;
                 closure.job_queue.allocator.destroy(closure);
             }
         }; 
 
-        self.mutex.lock();
-        errdefer self.mutex.unlock();
+        const task = try self.allocator.create(Task(Func));
+        errdefer self.allocator.destroy(task);
 
-        const closure = try self.allocator.create(Closure);
-        closure.* = .{
-            .args = args,
-            .job_queue = self,
-        };
+        {
+            self.mutex.lock();
+            defer self.mutex.unlock();
 
-        self.tasks.append(&closure.node);
+            const closure = try self.allocator.create(Closure);
+            closure.* = .{
+                .args = args,
+                .job_queue = self,
+                .task = task,
+            };
 
-        self.mutex.unlock();
+            self.tasks.append(&closure.node);
+        }
+
         self.cond.signal();
-
-        return &closure.task;
+        return task;
     }
 
     fn worker(self: *JobQueue) void {
