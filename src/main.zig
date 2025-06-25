@@ -13,8 +13,8 @@ const Command = enum {
     previous,
 };
 
-fn sendCommand(allocator: Allocator, spotify: *Spotify, cmd: Command) !stb.Image {
-    std.debug.print("sending command...\n", .{});
+fn sendCommand(spotify: *Spotify, cmd: Command) !stb.Image {
+    const allocator = spotify.http_client.allocator;
 
     switch (cmd) {
         .curr => {},
@@ -49,6 +49,11 @@ fn sendCommand(allocator: Allocator, spotify: *Spotify, cmd: Command) !stb.Image
     });
 }
 
+// Idea is simple
+// only one req at a time
+// if req was sent to skip music we cannot in that time interract with gui
+// and we will have idle coundown of like 20-30 seconds to sync
+
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
     defer _ = da.deinit();
@@ -64,22 +69,10 @@ pub fn main() !void {
         .authorization = "Bearer ...",
     };
 
-    var jq : JobQueue = undefined;
-
-    try jq.init(allocator);
-    defer jq.deinit();
-
-    // Stupid why are we resolving on defer we should just kill it
-    var tasks: std.DoublyLinkedList(*JobQueue.Task(@TypeOf(sendCommand))) = .{};
-    defer while (tasks.popFirst()) |node| {
-        defer allocator.destroy(node);
-
-        const task = node.data;
-        defer task.deinit();
-
-        const val = task.resolve() catch continue;
-        val.deinit();
-    };
+    var action: SingleAction(sendCommand) = undefined;
+    
+    try action.init(allocator);
+    defer action.deinit();
 
     var hook: Hook = .init;
 
@@ -92,7 +85,7 @@ pub fn main() !void {
     defer font.deinit(allocator);
 
     const cover = blk: {
-        const stb_image = try sendCommand(allocator, &spotify, .curr);
+        const stb_image = try sendCommand(&spotify, .curr);
         defer stb_image.deinit();
 
         break :blk try hook.loadImage(allocator, .{
@@ -112,103 +105,54 @@ pub fn main() !void {
 
         defer i +%= 1;
 
-        // dispatch events
-        while (tasks.first != null and tasks.first.?.data.isCompleted()) {
-            const node = tasks.popFirst().?;
-            defer allocator.destroy(node);
-
-            const task = node.data;
-            defer task.deinit();
-
-            const stb_image: stb.Image = try task.resolveNow();
+        if (action.dispatch()) |x| {
+            const stb_image: stb.Image = try x;
             defer stb_image.deinit();
 
             hook.updateImage(cover, stb_image.data);
         }
 
         if (i % 1000 == 0) {
-            // We could use mem pool
-            const node = try allocator.create(std.DoublyLinkedList(*JobQueue.Task(@TypeOf(sendCommand))).Node);
-            errdefer allocator.destroy(node);
-
-            node.* = .{
-                .data = try jq.spawn(sendCommand, .{allocator, &spotify, .curr}),
-            };
-
-            tasks.append(node);
+            assert(action.busy() == false);
+            try action.post(.{&spotify, .curr});
         }
 
-        //gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
         gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cover.width), @floatFromInt(cover.height) }, cover);
+        if (action.busy()) {
+            gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
+        }
         gui.text(.{ 200.0, 200.0 }, "Helogjk", 0xFFFFFFFF, font);
     }
 }
 
-const JobQueue = struct {
-    allocator: Allocator,
+fn SingleAction(comptime func: anytype) type {
+    return struct {
+        allocator: Allocator,
 
-    mutex: std.Thread.Mutex = .{},
-    cond: std.Thread.Condition = .{},
-    thread: ?std.Thread = null,
+        mutex: Thread.Mutex = .{},
+        cond: Thread.Condition = .{},
 
-    tasks: Queue = .{},
+        thread: Thread,
+        is_running: bool = true,
 
-    is_running: bool = true,
+        run_node: ?*Runnable = null,
+        value: ?ReturnType = null,
 
-    const Queue = std.DoublyLinkedList(Runnable);
-    const Runnable = struct {
-        runFn: *const fn (*Runnable) void,
-    };
-
-    fn Task(comptime Func: type) type {
-        return struct {
-            const ReturnType = @typeInfo(Func).@"fn".return_type.?;
-
-            job_queue: *JobQueue,
-
-            /// Should never be accessed without a `mutex`.
-            value: ?ReturnType = null,
-
-            pub fn deinit(task: *@This()) void {
-                const mutex = &task.job_queue.mutex;
-                mutex.lock();
-                defer mutex.unlock();
-
-                task.job_queue.allocator.destroy(task);
-            }
-
-            pub fn isCompleted(task: *@This()) bool {
-                const mutex = &task.job_queue.mutex;
-                mutex.lock();
-                defer mutex.unlock();
-
-                return task.value != null;
-            }
-
-            pub fn resolve(self: *@This()) ReturnType {
-                while (!isCompleted(self)) {
-                    std.atomic.spinLoopHint();
-                }
-
-                return self.value.?;
-            }
-
-            pub fn resolveNow(self: *@This()) ReturnType {
-                assert(isCompleted(self) == true);
-                return self.value.?;
-            }
+        const Runnable = struct {
+            runFn: *const fn (*Runnable) void,
         };
-    }
 
-    fn init(self: *JobQueue, allocator: Allocator) !void {
-        self.* = .{
-            .allocator = allocator,
-            .thread = try std.Thread.spawn(.{}, worker, .{self}),
-        };
-    }
+        const ReturnType = @typeInfo(@TypeOf(func)).@"fn".return_type.?;
+        const Self = @This();
 
-    fn deinit(self: *JobQueue) void {
-        if (self.thread) |thread| {
+        pub fn init(self: *Self, allocator: Allocator) !void {
+            self.* = .{
+                .allocator = allocator,
+                .thread = try Thread.spawn(.{}, worker, .{self}),
+            };
+        }
+
+        pub fn deinit(self: *Self) void {
             {
                 self.mutex.lock();
                 defer self.mutex.unlock();
@@ -217,80 +161,114 @@ const JobQueue = struct {
             }
 
             self.cond.broadcast();
-            thread.join();
+            self.thread.join();
         }
 
-        self.* = undefined;
-    }
-
-    fn spawn(self: *JobQueue, comptime func: anytype, args: anytype) !*Task(@TypeOf(func)) {
-        const Args = @TypeOf(args);
-        const Func = @TypeOf(func);
-
-        const Closure = struct {
-            args: Args,
-            job_queue: *JobQueue,
-            task: *Task(Func),
-            node: Queue.Node = .{ .data = .{ .runFn = runFn } },
-
-            fn runFn(runnable: *Runnable) void {
-                const node: *Queue.Node = @fieldParentPtr("data", runnable);
-                const closure: *@This() = @alignCast(@fieldParentPtr("node", node));
-
-                const val = @call(.auto, func, closure.args);
-
-                const mutex = &closure.job_queue.mutex;
-                mutex.lock();
-                defer mutex.unlock();
-
-                closure.task.value = val;
-                closure.job_queue.allocator.destroy(closure);
-            }
-        }; 
-
-        const task = try self.allocator.create(Task(Func));
-        errdefer self.allocator.destroy(task);
-
-        task.* = .{
-            .job_queue = self,
-        };
-
-        {
+        pub fn busy(self: *Self) bool {
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            const closure = try self.allocator.create(Closure);
-            closure.* = .{
-                .args = args,
-                .job_queue = self,
-                .task = task,
+            return self.run_node != null and self.value == null;
+        }
+
+        pub fn dispatched(self: *Self) bool {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
+            return self.run_node == null and self.value == null;
+        }
+
+        pub fn dispatch(self: *Self) ?ReturnType {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
+            if (self.run_node != null) {
+                return null;
+            }
+
+            if (self.value == null) {
+                return null;
+            }
+
+            const tmp = self.value.?;
+            self.value = null;
+            return tmp;
+        }
+
+        pub fn post(self: *Self, args: anytype) Allocator.Error!void {
+            const Args = @TypeOf(args);
+            const Closure = struct {
+                args: Args,
+                action: *Self,
+                run_node: Runnable = .{ .runFn = runFn },
+
+                fn runFn(runnable: *Runnable) void {
+                    const closure: *@This() = @alignCast(@fieldParentPtr("run_node", runnable));
+                    { // move this to val if else stuff
+                        const mutex = &closure.action.mutex;
+                        mutex.lock();
+                        defer mutex.unlock();
+
+                        if (!closure.action.is_running) {
+                            closure.action.run_node = null;
+                            closure.action.value = null;
+
+                            closure.action.allocator.destroy(closure);
+
+                            return;
+                        }
+                    }
+
+                    const val = @call(.auto, func, closure.args);
+
+                    const mutex = &closure.action.mutex;
+                    mutex.lock();
+                    defer mutex.unlock();
+
+                    closure.action.run_node = null;
+                    closure.action.value = val;
+
+                    closure.action.allocator.destroy(closure);
+                }
             };
 
-            self.tasks.append(&closure.node);
-        }
+            {
+                self.mutex.lock();
+                defer self.mutex.unlock();
 
-        self.cond.signal();
-        return task;
-    }
+                assert(self.run_node == null);
+                assert(self.value == null);
 
-    fn worker(self: *JobQueue) void {
-        self.mutex.lock();
-        defer self.mutex.unlock();
+                const closure = try self.allocator.create(Closure);
+                closure.* = .{
+                    .args = args,
+                    .action = self,
+                };
 
-        while (true) {
-            while (self.tasks.popFirst()) |node| {
-                self.mutex.unlock();
-                defer self.mutex.lock();
-
-                node.data.runFn(&node.data);
+                self.run_node = &closure.run_node;
             }
 
-            if (self.is_running) {
-                self.cond.wait(&self.mutex);
-            } else {
-                break;
+            self.cond.signal();
+        }
+
+        fn worker(self: *Self) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
+            while (true) {
+                if (self.run_node) |run_node| {
+                    self.mutex.unlock();
+                    defer self.mutex.lock();
+
+                    run_node.runFn(self.run_node.?);
+                }
+
+                if (self.is_running) {
+                    self.cond.wait(&self.mutex);
+                } else {
+                    break;
+                }
             }
         }
-    }
-
-};
+    };
+}
