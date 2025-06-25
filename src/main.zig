@@ -73,7 +73,11 @@ pub fn main() !void {
     var tasks: std.DoublyLinkedList(*JobQueue.Task(@TypeOf(sendCommand))) = .{};
     defer while (tasks.popFirst()) |node| {
         defer allocator.destroy(node);
-        const val = node.data.resolve() catch continue;
+
+        const task = node.data;
+        defer task.deinit();
+
+        const val = task.resolve() catch continue;
         val.deinit();
     };
 
@@ -182,7 +186,7 @@ const JobQueue = struct {
             /// Should never be accessed without a `mutex`.
             value: ?ReturnType = null,
 
-            pub inline fn deinit(task: *@This()) void {
+            pub fn deinit(task: *@This()) void {
                 const mutex = &task.job_queue.mutex;
                 mutex.lock();
                 defer mutex.unlock();
@@ -263,6 +267,10 @@ const JobQueue = struct {
 
         const task = try self.allocator.create(Task(Func));
         errdefer self.allocator.destroy(task);
+
+        task.* = .{
+            .job_queue = self,
+        };
 
         {
             self.mutex.lock();
