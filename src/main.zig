@@ -14,6 +14,8 @@ const Command = enum {
 };
 
 fn sendCommand(allocator: Allocator, spotify: *Spotify, cmd: Command) !stb.Image {
+    std.debug.print("sending command...\n", .{});
+
     switch (cmd) {
         .curr => {},
         .next => try spotify.skipToNext(),
@@ -64,11 +66,12 @@ pub fn main() !void {
 
     var jq : JobQueue = undefined;
 
+
     try jq.init(allocator);
     defer jq.deinit();
 
-    var task = try jq.spawn(sendCommand, .{allocator, &spotify, .curr});
-    defer task.deinit();
+    // Now we are leaking mem hmmm
+    var tasks: std.DoublyLinkedList(*JobQueue.Task(@TypeOf(sendCommand))) = .{};
 
     var hook: Hook = .init;
 
@@ -80,22 +83,40 @@ pub fn main() !void {
     const font = try hook.loadFont(allocator, "font.fat");
     defer font.deinit(allocator);
 
-    while (!task.isCompleted()) {
-        std.debug.print("working\n", .{});
-    }
-
-    (try task.resolve()).deinit();
-
-    var i: u32 = 0;
-
     //var cover: ?Hook.Image = null;
     //defer if (cover) |img| img.deinit(allocator);
 
-    while (i != 3000) {
+    var i: u32 = 0;
+    while (true) {
         try hook.newFrame();
         defer hook.endFrame();
 
-        i +%= 1;
+        defer i +%= 1;
+
+        // dispatch events
+        while (tasks.first != null and tasks.first.?.data.isCompleted()) {
+            const node = tasks.popFirst().?;
+            defer allocator.destroy(node);
+
+            const task = node.data;
+            defer task.deinit();
+
+            const stb_image = try task.resolveNow();
+            defer stb_image.deinit();
+
+            std.debug.print("{d}x{d}\n", .{stb_image.width, stb_image.height});
+        }
+
+        if (i % 1000 == 0) {
+            const node = try allocator.create(std.DoublyLinkedList(*JobQueue.Task(@TypeOf(sendCommand))).Node);
+            errdefer allocator.destroy(node);
+
+            node.* = .{
+                .data = try jq.spawn(sendCommand, .{allocator, &spotify, .curr}),
+            };
+
+            tasks.append(node);
+        }
 
         // stupid we should be allowed to stack them
         //if (cmd_job.isResolved()) {
@@ -174,6 +195,11 @@ const JobQueue = struct {
                     std.atomic.spinLoopHint();
                 }
 
+                return self.value.?;
+            }
+
+            pub fn resolveNow(self: *@This()) ReturnType {
+                assert(isCompleted(self) == true);
                 return self.value.?;
             }
         };
@@ -258,7 +284,7 @@ const JobQueue = struct {
         defer self.mutex.unlock();
 
         while (true) {
-            if (self.tasks.popFirst()) |node| {
+            while (self.tasks.popFirst()) |node| {
                 self.mutex.unlock();
                 defer self.mutex.lock();
 
