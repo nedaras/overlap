@@ -1,3 +1,4 @@
+//! NOT!!! Threadsafe
 const std = @import("std");
 const windows = @import("../windows.zig");
 const http = std.http;

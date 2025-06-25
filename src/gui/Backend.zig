@@ -27,6 +27,7 @@ pub inline fn loadImage(self: Backend, allocator: Allocator, desc: Image.Desc) I
     return self.vtable.loadImage(self.ptr, allocator, desc);
 }
 
+// todo Errrrrrrrrrrrrrrrrrrrr
 pub inline fn updateImage(self: Backend, image: Image, bytes: []const u8) void {
     self.vtable.updateImage(self.ptr, image, bytes);
 }

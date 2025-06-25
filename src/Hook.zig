@@ -60,7 +60,7 @@ pub fn attach(self: *Self) !void {
 
 pub fn detach(self: *Self) void {
     self.gateway.exiting = true;
-    self.gateway.main_reset_event.set();
+    self.gateway.hooked_reset_event.set();
 
     // this line will bring some problems
     self.d3d11_hook.?.deinit();
@@ -150,12 +150,12 @@ fn frame(context: *anyopaque, backend: Backend) bool {
     assert(self.gateway.err == null);
     self.gateway.main_reset_event.set();
 
+    self.gateway.hooked_reset_event.wait();
+    self.gateway.hooked_reset_event.reset();
+
     if (self.gateway.exiting) {
         return false;
     }
-
-    self.gateway.hooked_reset_event.wait();
-    self.gateway.hooked_reset_event.reset();
 
     const shared_gui = self.gui();
     defer shared_gui.clear();
