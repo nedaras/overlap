@@ -50,7 +50,7 @@ fn sendCommand(allocator: Allocator, spotify: *Spotify, cmd: Command) !stb.Image
 }
 
 pub fn main() !void {
-    var da = std.heap.DebugAllocator(.{}){};
+    var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
     defer _ = da.deinit();
 
     const allocator = da.allocator();
@@ -69,7 +69,7 @@ pub fn main() !void {
     try jq.init(allocator);
     defer jq.deinit();
 
-    // Stupid
+    // Stupid why are we resolving on defer we should just kill it
     var tasks: std.DoublyLinkedList(*JobQueue.Task(@TypeOf(sendCommand))) = .{};
     defer while (tasks.popFirst()) |node| {
         defer allocator.destroy(node);
@@ -91,8 +91,19 @@ pub fn main() !void {
     const font = try hook.loadFont(allocator, "font.fat");
     defer font.deinit(allocator);
 
-    //var cover: ?Hook.Image = null;
-    //defer if (cover) |img| img.deinit(allocator);
+    const cover = blk: {
+        const stb_image = try sendCommand(allocator, &spotify, .curr);
+        defer stb_image.deinit();
+
+        break :blk try hook.loadImage(allocator, .{
+            .data = stb_image.data,
+            .width = stb_image.width,
+            .height = stb_image.height,
+            .format = .rgba,
+            .usage = .dynamic,
+        });
+    };
+    defer cover.deinit(allocator);
 
     var i: u32 = 0;
     while (true) {
@@ -109,13 +120,14 @@ pub fn main() !void {
             const task = node.data;
             defer task.deinit();
 
-            const stb_image = try task.resolveNow();
+            const stb_image: stb.Image = try task.resolveNow();
             defer stb_image.deinit();
 
-            std.debug.print("{d}x{d}\n", .{stb_image.width, stb_image.height});
+            hook.updateImage(cover, stb_image.data);
         }
 
         if (i % 1000 == 0) {
+            // We could use mem pool
             const node = try allocator.create(std.DoublyLinkedList(*JobQueue.Task(@TypeOf(sendCommand))).Node);
             errdefer allocator.destroy(node);
 
@@ -126,37 +138,8 @@ pub fn main() !void {
             tasks.append(node);
         }
 
-        // stupid we should be allowed to stack them
-        //if (cmd_job.isResolved()) {
-            //if (i % 1000 == 0) {
-                //try jq.spawn(&cmd_job, .{allocator, &spotify, .next});
-            //}
-        //}
-
-        // isResolvable
-
-        //if (cmd_job.isCompleted()) {
-            //const stb_image: stb.Image = try cmd_job.resolve();
-            //defer stb_image.deinit();
-
-            //if (cover) |img| {
-                //hook.updateImage(img, stb_image.data);
-            //} else {
-                //cover = try hook.loadImage(allocator, .{
-                    //.data = stb_image.data,
-                    //.width = stb_image.width,
-                    //.height = stb_image.height,
-                    //.format = .rgba,
-                    //.usage = .dynamic,
-                //});
-            //}
-        //}
-
         //gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-        //if (cover) |img| {
-            //gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(img.width), @floatFromInt(img.height) }, img);
-        //}
-
+        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cover.width), @floatFromInt(cover.height) }, cover);
         gui.text(.{ 200.0, 200.0 }, "Helogjk", 0xFFFFFFFF, font);
     }
 }
