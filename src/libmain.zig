@@ -26,7 +26,7 @@ fn entry(instance: windows.HINSTANCE) void {
     windows.FreeLibraryAndExitThread(@ptrCast(instance), 0);
 }
 
-fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(windows.WINAPI) windows.BOOL {
+pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(windows.WINAPI) windows.BOOL {
     if (reason == windows.DLL_PROCESS_ATTACH) windows.AllocConsole() catch |err| switch (err) {
         error.AccessDenied => {},
         else => return windows.FALSE,
