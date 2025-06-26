@@ -70,7 +70,7 @@ pub fn main() !void {
             const stb_image: stb.Image = try x;
             defer stb_image.deinit();
 
-            hook.updateImage(cover, stb_image.data);
+            try hook.updateImage(cover, stb_image.data);
         }
 
         if (i % 1000 == 0) {

@@ -198,11 +198,10 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     try device.CreateBuffer(&constant_buffer_desc, null, &result.constant_buffer);
     errdefer result.constant_buffer.Release();
 
-    // tood: remove that 420
     var vertex_buffer_desc = mem.zeroes(d3d11.D3D11_BUFFER_DESC);
     vertex_buffer_desc.Usage = d3d11.D3D11_USAGE_DYNAMIC;
     vertex_buffer_desc.CPUAccessFlags = d3d11.D3D11_CPU_ACCESS_WRITE;
-    vertex_buffer_desc.ByteWidth = 420 * @sizeOf(shared.DrawVertex);
+    vertex_buffer_desc.ByteWidth = shared.max_verticies * @sizeOf(shared.DrawVertex);
     vertex_buffer_desc.BindFlags = d3d11.D3D11_BIND_VERTEX_BUFFER;
 
     try device.CreateBuffer(&vertex_buffer_desc, null, &result.vertex_buffer);
@@ -211,7 +210,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     var index_buffer_desc = mem.zeroes(d3d11.D3D11_BUFFER_DESC);
     index_buffer_desc.Usage = d3d11.D3D11_USAGE_DYNAMIC;
     index_buffer_desc.CPUAccessFlags = d3d11.D3D11_CPU_ACCESS_WRITE;
-    index_buffer_desc.ByteWidth = 420 * @sizeOf(shared.DrawIndex);
+    index_buffer_desc.ByteWidth = shared.max_indicies * @sizeOf(shared.DrawIndex);
     index_buffer_desc.BindFlags = d3d11.D3D11_BIND_INDEX_BUFFER;
 
     try device.CreateBuffer(&index_buffer_desc, null, &result.index_buffer);
@@ -305,7 +304,7 @@ const D3D11Backend = struct {
         verticies: []const shared.DrawVertex,
         indecies: []const shared.DrawIndex,
         draw_commands: []const shared.DrawCommand,
-    ) void {
+    ) Backend.Error!void {
         const self: *const Self = @ptrCast(@alignCast(context));
 
         var backup_state = DeviceContextState{};
@@ -320,7 +319,7 @@ const D3D11Backend = struct {
 
             var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
 
-            self.device_context.Map(@ptrCast(self.constant_buffer), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource) catch @panic("sad");
+            try self.device_context.Map(@ptrCast(self.constant_buffer), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
             defer self.device_context.Unmap(@ptrCast(self.constant_buffer), 0);
 
             const constant_buffer: *shared.ConstantBuffer = @ptrCast(@alignCast(mapped_resource.pData));
@@ -342,11 +341,10 @@ const D3D11Backend = struct {
             var vertex_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
             var index_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
 
-            // todo: make this func return errors
-            self.device_context.Map(@ptrCast(self.vertex_buffer), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &vertex_resource) catch @panic("sad");
+            try self.device_context.Map(@ptrCast(self.vertex_buffer), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &vertex_resource);
             defer self.device_context.Unmap(@ptrCast(self.vertex_buffer), 0);
 
-            self.device_context.Map(@ptrCast(self.index_buffer), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &index_resource) catch @panic("sad");
+            try self.device_context.Map(@ptrCast(self.index_buffer), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &index_resource);
             defer self.device_context.Unmap(@ptrCast(self.index_buffer), 0);
 
             vertex_resource.write(shared.DrawVertex, verticies);
@@ -361,13 +359,14 @@ const D3D11Backend = struct {
 
         self.device_context.IASetInputLayout(self.input_layout);
         self.device_context.IASetVertexBuffers(0, (&self.vertex_buffer)[0..1], (&stride)[0..1], (&offset)[0..1]);
-        self.device_context.IASetIndexBuffer(self.index_buffer, if (shared.DrawIndex == u16) dxgi.DXGI_FORMAT_R16_UINT else @compileError("sad"), 0);
+        self.device_context.IASetIndexBuffer(self.index_buffer, if (shared.DrawIndex == u16) dxgi.DXGI_FORMAT_R16_UINT else @compileError("no corresponding DXGI_FORMAT"), 0);
         self.device_context.VSSetConstantBuffers(0, (&self.constant_buffer)[0..1]);
         self.device_context.IASetPrimitiveTopology(d3d11.D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         self.device_context.VSSetShader(self.vertex_shader, null);
         self.device_context.PSSetShader(self.pixel_shader, null);
         self.device_context.PSSetSamplers(0, (&self.sampler)[0..1]);
 
+        var index_off: windows.UINT = 0;
         for (draw_commands) |cmd| {
             const srv = blk: {
                 if (cmd.image) |img| {
@@ -379,7 +378,9 @@ const D3D11Backend = struct {
             };
 
             self.device_context.PSSetShaderResources(0, (&srv)[0..1]);
-            self.device_context.DrawIndexed(@intCast(cmd.index_len), @intCast(cmd.index_off), 0);
+            self.device_context.DrawIndexed(@intCast(cmd.index_len), index_off, 0);
+
+            index_off += @intCast(cmd.index_len);
         }
     }
 
@@ -396,7 +397,7 @@ const D3D11Backend = struct {
         };
     }
 
-    fn updateImage(context: *const anyopaque, image: Image, bytes: []const u8) void {
+    fn updateImage(context: *const anyopaque, image: Image, bytes: []const u8) Backend.Error!void {
         assert(image.width * image.height * @intFromEnum(image.format) == bytes.len);
 
         const self: *const Self = @ptrCast(@alignCast(context));
@@ -404,7 +405,7 @@ const D3D11Backend = struct {
 
         var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
 
-        self.device_context.Map(@ptrCast(d3d11_image.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource) catch @panic("sad");
+        try self.device_context.Map(@ptrCast(d3d11_image.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
         defer self.device_context.Unmap(@ptrCast(d3d11_image.texture), 0);
 
         mapped_resource.write(u8, bytes);

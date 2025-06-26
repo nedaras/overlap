@@ -13,9 +13,9 @@ const Allocator = std.mem.Allocator;
 const x = 0;
 const y = 1;
 
-const DrawCommands = std.BoundedArray(shared.DrawCommand, 32);
-const DrawVerticies = std.BoundedArray(shared.DrawVertex, 128);
-const DrawIndecies = std.BoundedArray(shared.DrawIndex, 256);
+const DrawCommands = std.BoundedArray(shared.DrawCommand, shared.max_draw_commands);
+const DrawVerticies = std.BoundedArray(shared.DrawVertex, shared.max_verticies);
+const DrawIndecies = std.BoundedArray(shared.DrawIndex, shared.max_indicies);
 
 draw_commands: DrawCommands,
 
@@ -131,12 +131,13 @@ const DrawCommand = struct {
 // todo: on debug we can check if indecie are like in bounds
 fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
     const amt: u16 = @intCast(self.draw_verticies.len);
-    const index_off: u16 = @intCast(self.draw_indecies.len);
 
     self.draw_verticies.appendSlice(draw_cmd.verticies) catch unreachable;
 
     for (draw_cmd.indecies) |idx| {
-        // todo: check what compiler does here as we could simd this
+        // todo: add simd
+        // appendSlice
+        // and then in simd add do it amt
         self.draw_indecies.append(amt + idx) catch unreachable;
     }
 
@@ -151,7 +152,6 @@ fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
     self.draw_commands.append(.{
         .image = draw_cmd.image,
         .index_len = @intCast(draw_cmd.indecies.len),
-        .index_off = index_off, // todo: make backend calc this
     }) catch unreachable;
 }
 

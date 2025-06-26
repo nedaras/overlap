@@ -93,9 +93,9 @@ pub inline fn loadImage(self: *Self, allocator: Allocator, desc: Image.Desc) Ima
     return self.d3d11_hook.?.backend.?.backend().loadImage(allocator, desc);
 }
 
-pub inline fn updateImage(self: *Self, image: Image, bytes: []const u8) void {
+pub inline fn updateImage(self: *Self, image: Image, bytes: []const u8) Backend.Error!void {
     // todo: idk???
-    self.d3d11_hook.?.backend.?.backend().updateImage(image, bytes);
+    return self.d3d11_hook.?.backend.?.backend().updateImage(image, bytes);
 }
 
 pub fn loadFont(self: *Self, allocator: Allocator, sub_path: []const u8) !Font {
@@ -166,7 +166,10 @@ fn frame(context: *anyopaque, backend: Backend) bool {
         shared_gui.draw_verticies.constSlice(),
         shared_gui.draw_indecies.constSlice(),
         shared_gui.draw_commands.constSlice(),
-    );
+    ) catch |err| {
+        errored(context, err);
+        return false;
+    };
 
     return true;
 }

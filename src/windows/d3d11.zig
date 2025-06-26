@@ -524,7 +524,10 @@ pub const ID3D11DeviceContext = extern struct {
         draw(self, VertexCount, StartVertexLocation);
     }
 
-    pub const MapError = error{Unexpected};
+    pub const MapError = error{
+        OutOfMemory,
+        Unexpected,
+    };
 
     pub fn Map(
         self: *ID3D11DeviceContext,
@@ -540,6 +543,7 @@ pub const ID3D11DeviceContext = extern struct {
         const hr = map(self, pResource, Subresource, MapType, MapFlags, pMappedResource);
         return switch (D3D11_ERROR_CODE(hr)) {
             .S_OK => {},
+            .E_OUTOFMEMORY => error.OutOfMemory,
             else => |err| unexpectedError(err),
         };
     }

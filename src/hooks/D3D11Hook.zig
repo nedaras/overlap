@@ -9,10 +9,7 @@ const d3d11 = windows.d3d11;
 const d3dcommon = windows.d3dcommon;
 const assert = std.debug.assert;
 
-pub const Error = error{
-    OutOfMemory,
-    Unexpected,
-};
+pub const Error = Backend.Error;
 
 frame_cb: *const fn (context: *anyopaque, backend: Backend) bool,
 error_cb: *const fn (context: *anyopaque, err: Error) void,
