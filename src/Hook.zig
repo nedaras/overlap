@@ -13,6 +13,8 @@ const Thread = std.Thread;
 const Allocator = mem.Allocator;
 const assert = std.debug.assert;
 
+// todo: fix some race conditions
+
 const Gateway = struct {
     gui: Gui,
 

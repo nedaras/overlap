@@ -1,9 +1,32 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const windows = @import("windows.zig");
 const root = @import("main.zig");
 const Thread = std.Thread;
 
-pub export fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(windows.WINAPI) windows.BOOL {
+comptime {
+    if (!builtin.is_test) switch (builtin.os.tag) {
+        .windows => @export(&DllMain, .{ .name = "DllMain" }),
+        else => |os| @compileError("unsupported operating system: " ++ @tagName(os)),
+    };
+}
+
+fn entry(instance: windows.HINSTANCE) void {
+    root.main() catch |err| {
+        std.debug.print("error: {s}\n", .{@errorName(err)});
+        if (@errorReturnTrace()) |trace| {
+            std.debug.dumpStackTrace(trace.*);
+        }
+    };
+
+    const stdin = std.io.getStdIn();
+    _ = stdin.reader().readByte() catch {};
+
+    windows.FreeConsole() catch {};
+    windows.FreeLibraryAndExitThread(@ptrCast(instance), 0);
+}
+
+fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(windows.WINAPI) windows.BOOL {
     if (reason == windows.DLL_PROCESS_ATTACH) windows.AllocConsole() catch |err| switch (err) {
         error.AccessDenied => {},
         else => return windows.FALSE,
@@ -32,17 +55,6 @@ inline fn tracedDllMain(instance: windows.HINSTANCE, reason: windows.DWORD, _: w
     return windows.FALSE;
 }
 
-fn entry(instance: windows.HINSTANCE) void {
-    root.main() catch |err| {
-        std.debug.print("error: {s}\n", .{@errorName(err)});
-        if (@errorReturnTrace()) |trace| {
-            std.debug.dumpStackTrace(trace.*);
-        }
-    };
-
-    const stdin = std.io.getStdIn();
-    _ = stdin.reader().readByte() catch {};
-
-    windows.FreeConsole() catch {};
-    windows.FreeLibraryAndExitThread(@ptrCast(instance), 0);
+test {
+    _ = @import("actions.zig");
 }

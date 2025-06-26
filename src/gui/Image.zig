@@ -11,7 +11,7 @@ pub const Format = enum(u4) {
     rgba = 4,
 };
 
-pub const Usage = enum (u4) {
+pub const Usage = enum(u4) {
     static,
     dynamic,
 };

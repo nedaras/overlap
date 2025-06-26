@@ -22,7 +22,7 @@ pub fn init(device: *d3d11.ID3D11Device, device_context: *d3d11.ID3D11DeviceCont
         .r => dxgi.DXGI_FORMAT_R8_UNORM,
         .rgba => dxgi.DXGI_FORMAT_R8G8B8A8_UNORM,
     };
-    
+
     const usage: windows.INT = switch (desc.usage) {
         .static => d3d11.D3D11_USAGE_DEFAULT,
         .dynamic => d3d11.D3D11_USAGE_DYNAMIC,

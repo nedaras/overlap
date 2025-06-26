@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const lib_mod = b.createModule(.{
-        .root_source_file = b.path("src/dllmain.zig"),
+        .root_source_file = b.path("src/libmain.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -26,21 +26,25 @@ pub fn build(b: *std.Build) void {
     });
 
     lib.linkLibC();
-    lib.addIncludePath(minhook.path("include"));
     lib.addIncludePath(stb.path(""));
-
-    lib.addCSourceFiles(.{
-        .root = minhook.path("src"),
-        .files = &.{
-            "hook.c",
-            "buffer.c",
-            "hde/hde32.c",
-            "hde/hde64.c",
-            "trampoline.c",
-        },
-    });
-
     lib.addCSourceFile(.{ .file = b.path("src/stb.c") });
+
+    switch (target.result.os.tag) {
+        .windows => {
+            lib.addIncludePath(minhook.path("include"));
+            lib.addCSourceFiles(.{
+                .root = minhook.path("src"),
+                .files = &.{
+                    "hook.c",
+                    "buffer.c",
+                    "hde/hde32.c",
+                    "hde/hde64.c",
+                    "trampoline.c",
+                },
+            });
+        },
+        else => {},
+    }
 
     b.installArtifact(lib);
 

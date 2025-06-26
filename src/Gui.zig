@@ -108,7 +108,6 @@ pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, col: u32, font: Font) 
             0, 2, 3,
         };
 
-        // todo: reuze the image
         self.addDrawCommand(.{
             .image = font.image,
             .verticies = &verticies,
@@ -137,10 +136,18 @@ fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
     self.draw_verticies.appendSlice(draw_cmd.verticies) catch unreachable;
 
     for (draw_cmd.indecies) |idx| {
+        // todo: check what compiler does here as we could simd this
         self.draw_indecies.append(amt + idx) catch unreachable;
     }
 
-    // todo: optimize if curr draw cmd image is same as last draw cmd image
+    if (self.draw_commands.len > 0) blk: {
+        const last_draw_cmd = &self.draw_commands.slice()[self.draw_commands.len - 1];
+        if (!equalImages(last_draw_cmd.image, draw_cmd.image)) break :blk;
+
+        last_draw_cmd.index_len += @intCast(draw_cmd.indecies.len);
+        return;
+    }
+
     self.draw_commands.append(.{
         .image = draw_cmd.image,
         .index_len = @intCast(draw_cmd.indecies.len),
@@ -148,10 +155,10 @@ fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
     }) catch unreachable;
 }
 
-//fn equalImages(a: ?Image, b: ?Image) bool {
-//if (a != null and b != null) {
-//return a.?.ptr == b.?.ptr;
-//}
+fn equalImages(a: ?Image, b: ?Image) bool {
+    if (a != null and b != null) {
+        return a.?.ptr == b.?.ptr;
+    }
 
-//return a == b;
-//}
+    return a == null and b == null;
+}

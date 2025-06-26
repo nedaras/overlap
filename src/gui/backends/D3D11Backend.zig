@@ -396,7 +396,6 @@ const D3D11Backend = struct {
         };
     }
 
-
     fn updateImage(context: *const anyopaque, image: Image, bytes: []const u8) void {
         assert(image.width * image.height * @intFromEnum(image.format) == bytes.len);
 
@@ -413,7 +412,6 @@ const D3D11Backend = struct {
 };
 
 fn storeState(context: *d3d11.ID3D11DeviceContext, state: *DeviceContextState) void {
-    // todo: add OMGetRenderTargets
     state.scissor_rects_len = d3d11.D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
     state.viewports_len = d3d11.D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
     state.pixel_shader_ins_len = 256;
