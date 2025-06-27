@@ -5,6 +5,7 @@ const fat = @import("fat.zig");
 const Gui = @import("Gui.zig");
 const Backend = @import("gui/Backend.zig");
 const D3D11Hook = @import("hooks/D3D11Hook.zig");
+const Win32Hook = @import("hooks/Win32Hook.zig");
 pub const Image = @import("gui/Image.zig");
 const Font = @import("gui/Font.zig");
 const mem = std.mem;
@@ -46,6 +47,9 @@ pub fn attach(self: *Self) !void {
 
     try minhook.MH_Initialize();
     errdefer minhook.MH_Uninitialize() catch {};
+
+    const win32hook = try Win32Hook.init(window);
+    defer win32hook.deinit();
 
     var d3d11_hook = try D3D11Hook.init(window, .{
         .frame_cb = &frame,

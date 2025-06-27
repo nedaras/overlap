@@ -77,7 +77,7 @@ pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, col: u32, font: Font) 
 
     var advance: f32 = 0.0;
     while (it.nextCodepoint()) |unicode| {
-        // if no glyph render the missing char glyph or smth
+        // todo: if no glyph render the missing char glyph or smth
         const glyph = font.loadGlyph(unicode).?;
         defer advance += glyph.advance;
 

@@ -21,7 +21,6 @@ pub fn main() !void {
     var client = try Client.init(allocator);
     defer client.deinit();
 
-    // need to make this off main thread
     var spotify = Spotify{
         .http_client = &client,
         .authorization = "Bearer ...",

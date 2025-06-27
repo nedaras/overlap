@@ -14,20 +14,35 @@ pub const d3d11 = @import("windows/d3d11.zig");
 pub const d3dcommon = @import("windows/d3dcommon.zig");
 pub const d3dcompiler = @import("windows/d3dcompiler.zig");
 
+const UINT = windows.UINT;
+const WPARAM = windows.WPARAM;
+const LPARAM = windows.LPARAM;
 const TRUE = windows.TRUE;
+const HWND = windows.HWND;
 const FALSE = windows.FALSE;
 const ULONG = windows.ULONG;
 const DWORD = windows.DWORD;
 const WINAPI = windows.WINAPI;
+const LPDWORD = *windows.DWORD;
 const LPCWSTR = windows.LPCWSTR;
+const LRESULT = windows.LRESULT;
 const HRESULT = windows.HRESULT;
 const LPCVOID = windows.LPCVOID;
-const LPDWORD = *windows.DWORD;
+const LONG_PTR = windows.LONG_PTR;
 const Win32Error = windows.Win32Error;
 
 pub const REFIID = *const windows.GUID;
 pub const HINTERNET = winhttp.HINTERNET;
 pub const INTERNET_PORT = winhttp.INTERNET_PORT;
+
+pub const WNDPROC = *const fn (
+    hWnd: HWND,
+    uMsg: UINT,
+    wParam: WPARAM,
+    lParam: LPARAM,
+) LRESULT;
+
+pub const GWLP_WNDPROC = -4;
 
 pub const DLL_PROCESS_DETACH = 0;
 pub const DLL_PROCESS_ATTACH = 1;
@@ -347,4 +362,21 @@ pub fn WinHttpAddRequestHeaders(
             else => |err| windows.unexpectedError(err),
         };
     }
+}
+
+pub const SetWindowLongPtrError = error{Unexpected};
+
+pub fn SetWindowLongPtr(
+    hWnd: HWND,
+    nIndex: c_int,
+    dwNewLong: LONG_PTR,
+) SetWindowLongPtrError!LONG_PTR {
+    const res = user32.SetWindowLongPtrA(hWnd, nIndex, dwNewLong);
+    if (res == 0) {
+        return switch (windows.kernel32.GetLastError()) {
+            else => |err| windows.unexpectedError(err),
+        };
+    }
+
+    return res;
 }
