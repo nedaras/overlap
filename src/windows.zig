@@ -35,6 +35,8 @@ pub const REFIID = *const windows.GUID;
 pub const HINTERNET = winhttp.HINTERNET;
 pub const INTERNET_PORT = winhttp.INTERNET_PORT;
 
+pub const WM_MOUSEMOVE = 0x0200;
+
 pub const WNDPROC = *const fn (
     hWnd: HWND,
     uMsg: UINT,

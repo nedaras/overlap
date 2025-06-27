@@ -36,6 +36,14 @@ fn hkWNDPROC(
     lParam: windows.LPARAM,
 ) callconv(windows.WINAPI) windows.LRESULT {
     const self = zelf.?;
-    std.debug.print("event\n", .{});
+
+    if (uMsg == windows.WM_MOUSEMOVE) {
+        // todo: fix this for 32 bits
+        const x: i16 = @intCast(lParam & 0xFFFF);
+        const y: i16 = @intCast((lParam >> 16) & 0xFFFF);
+
+        std.debug.print("{d} {d}\n", .{x, y});
+    }
+
     return windows.user32.CallWindowProcA(self.o_wndproc, hWnd, uMsg, wParam, lParam);
 }
