@@ -5,9 +5,12 @@ const HWND = windows.HWND;
 const BOOL = windows.BOOL;
 const WINAPI = windows.WINAPI;
 const LPRECT = *windows.RECT;
+const LPCSTR = windows.LPCSTR;
 const LONG_PTR = windows.LONG_PTR;
 
 pub extern "user32" fn GetForegroundWindow() callconv(WINAPI) ?HWND;
+
+pub extern "user32" fn FindWindowA(lpClassName: ?LPCSTR, lpWindowName: ?LPCSTR) callconv(WINAPI) ?HWND;
 
 pub extern "user32" fn GetWindowRect(hWnd: HWND, lpRect: LPRECT) callconv(WINAPI) BOOL;
 

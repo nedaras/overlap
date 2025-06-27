@@ -190,6 +190,13 @@ pub inline fn GetForegroundWindow() ?windows.HWND {
     return user32.GetForegroundWindow();
 }
 
+pub fn FindWindow(ClassName: ?[:0]const u8, WindowName: ?[:0]const u8) ?windows.HWND {
+    const lpClassName = if (ClassName) |slice| slice.ptr else null;
+    const lpWindowName = if (WindowName) |slice| slice.ptr else null;
+
+    return user32.FindWindowA(lpClassName, lpWindowName);
+}
+
 pub const GetWindowRectError = error{Unexpected};
 
 pub fn GetWindowRect(hWnd: windows.HWND) GetWindowRectError!windows.RECT {
@@ -364,7 +371,10 @@ pub fn WinHttpAddRequestHeaders(
     }
 }
 
-pub const SetWindowLongPtrError = error{Unexpected};
+pub const SetWindowLongPtrError = error{
+    AccessDenied,
+    Unexpected,
+};
 
 pub fn SetWindowLongPtr(
     hWnd: HWND,
@@ -374,6 +384,7 @@ pub fn SetWindowLongPtr(
     const res = user32.SetWindowLongPtrA(hWnd, nIndex, dwNewLong);
     if (res == 0) {
         return switch (windows.kernel32.GetLastError()) {
+            .ACCESS_DENIED => error.AccessDenied,
             else => |err| windows.unexpectedError(err),
         };
     }

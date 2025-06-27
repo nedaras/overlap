@@ -43,7 +43,7 @@ pub const init = Self{
 };
 
 pub fn attach(self: *Self) !void {
-    const window = windows.GetForegroundWindow() orelse return error.NoWindow;
+    const window = windows.FindWindow(null, "...") orelse return error.NoWindow;
 
     try minhook.MH_Initialize();
     errdefer minhook.MH_Uninitialize() catch {};
