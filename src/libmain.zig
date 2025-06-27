@@ -19,18 +19,26 @@ fn entry(instance: windows.HINSTANCE) void {
         }
     };
 
-    const stdin = std.io.getStdIn();
-    _ = stdin.reader().readByte() catch {};
+    if (builtin.mode == .Debug) {
+        const stdin = std.io.getStdIn();
+        _ = stdin.reader().readByte() catch {};
+        windows.FreeConsole() catch {};
+    }
 
-    windows.FreeConsole() catch {};
     windows.FreeLibraryAndExitThread(@ptrCast(instance), 0);
 }
 
 pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(windows.WINAPI) windows.BOOL {
-    if (reason == windows.DLL_PROCESS_ATTACH) windows.AllocConsole() catch |err| switch (err) {
-        error.AccessDenied => {},
-        else => return windows.FALSE,
-    };
+    if (builtin.mode == .Debug) {
+        if (reason == windows.DLL_PROCESS_ATTACH) {
+            windows.AllocConsole() catch |err| switch (err) {
+                error.AccessDenied => {},
+                else => return windows.FALSE,
+            };
+
+            windows.SetConsoleTitle("overlap") catch return windows.FALSE;
+        }
+    }
 
     return tracedDllMain(instance, reason, reserved) catch |err| blk: {
         std.debug.print("error: {s}\n", .{@errorName(err)});

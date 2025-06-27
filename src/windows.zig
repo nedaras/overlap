@@ -1,14 +1,14 @@
 const std = @import("std");
-const kernel32 = @import("windows/kernel32.zig");
-const psapi = @import("windows/psapi.zig");
-const user32 = @import("windows/user32.zig");
-const winhttp = @import("windows/winhttp.zig");
 const windows = std.os.windows;
 const unicode = std.unicode;
 const assert = std.debug.assert;
+const kernel32 = @import("windows/kernel32.zig");
+const psapi = @import("windows/psapi.zig");
+const winhttp = @import("windows/winhttp.zig");
 
 pub usingnamespace windows;
 
+pub const user32 = @import("windows/user32.zig");
 pub const dxgi = @import("windows/dxgi.zig");
 pub const d3d11 = @import("windows/d3d11.zig");
 pub const d3dcommon = @import("windows/d3dcommon.zig");
@@ -40,7 +40,7 @@ pub const WNDPROC = *const fn (
     uMsg: UINT,
     wParam: WPARAM,
     lParam: LPARAM,
-) LRESULT;
+) callconv(WINAPI) LRESULT;
 
 pub const GWLP_WNDPROC = -4;
 
@@ -390,4 +390,14 @@ pub fn SetWindowLongPtr(
     }
 
     return res;
+}
+
+pub const SetConsoleTitleError = error{Unexpected};
+
+pub fn SetConsoleTitle(ConsoleTitle: [:0]const u8) SetConsoleTitleError!void {
+    if (kernel32.SetConsoleTitleA(ConsoleTitle.ptr) == FALSE) {
+        return switch (windows.kernel32.GetLastError()) {
+            else => |err| windows.unexpectedError(err),
+        };
+    }
 }

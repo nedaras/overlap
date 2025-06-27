@@ -27,6 +27,8 @@ const Gateway = struct {
 };
 
 d3d11_hook: ?*D3D11Hook = null,
+win32_hook: ?*Win32Hook = null,
+
 gateway: Gateway,
 
 const Self = @This();
@@ -48,8 +50,9 @@ pub fn attach(self: *Self) !void {
     try minhook.MH_Initialize();
     errdefer minhook.MH_Uninitialize() catch {};
 
-    const win32hook = try Win32Hook.init(window);
-    defer win32hook.deinit();
+    // todo: move d3d11_hook and all other win32 gfx hooks to win32hook
+    const win32_hook = try Win32Hook.init(window);
+    errdefer win32_hook.deinit();
 
     var d3d11_hook = try D3D11Hook.init(window, .{
         .frame_cb = &frame,
@@ -62,14 +65,23 @@ pub fn attach(self: *Self) !void {
     assert(d3d11_hook.backend != null);
 
     self.d3d11_hook = d3d11_hook;
+    self.win32_hook = win32_hook;
 }
 
 pub fn detach(self: *Self) void {
     self.gateway.exiting = true;
     self.gateway.hooked_reset_event.set();
 
-    // this line will bring some problems
-    self.d3d11_hook.?.deinit();
+    if (self.d3d11_hook) |d3d11_hook| {
+        d3d11_hook.deinit();
+        self.d3d11_hook = null;
+    }
+
+    if (self.win32_hook) |win32_hook| {
+        win32_hook.deinit();
+        self.win32_hook = null;
+    }
+
     minhook.MH_Uninitialize() catch {};
 }
 

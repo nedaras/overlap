@@ -19,3 +19,5 @@ pub extern "kernel32" fn FreeLibraryAndExitThread(hLibModule: HMODULE, dwExitCod
 pub extern "kernel32" fn GetModuleHandleA(lpModuleName: ?LPCSTR) callconv(WINAPI) ?HMODULE;
 
 pub extern "kernel32" fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) callconv(WINAPI) ?FARPROC;
+
+pub extern "kernel32" fn SetConsoleTitleA(lpConsoleTitle: LPCSTR) callconv(WINAPI) BOOL;

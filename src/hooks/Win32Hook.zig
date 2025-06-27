@@ -34,6 +34,8 @@ fn hkWNDPROC(
     uMsg: windows.UINT,
     wParam: windows.WPARAM,
     lParam: windows.LPARAM,
-) windows.LRESULT {
-    return zelf.?.o_wndproc(hWnd, uMsg, wParam, lParam);
+) callconv(windows.WINAPI) windows.LRESULT {
+    const self = zelf.?;
+    std.debug.print("event\n", .{});
+    return windows.user32.CallWindowProcA(self.o_wndproc, hWnd, uMsg, wParam, lParam);
 }
