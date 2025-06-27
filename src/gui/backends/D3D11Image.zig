@@ -57,7 +57,9 @@ pub fn init(device: *d3d11.ID3D11Device, device_context: *d3d11.ID3D11DeviceCont
             try device.CreateTexture2D(&texture_desc, null, &result.texture);
             errdefer result.texture.Release();
 
+            // todo: we need to fix them pitches here
             var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
+            // mapped_resource.RowPitch
 
             try device_context.Map(@ptrCast(result.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
             defer device_context.Unmap(@ptrCast(result.texture), 0);

@@ -79,7 +79,6 @@ pub fn main() !void {
             const click = !prev_mouse_ldown and input.mouse_ldown;
             const in_bounds = input.mouse_x <= cover.width and input.mouse_y <= cover.height;
             if (click and in_bounds) {
-                assert(action.dispatched() == true);
                 try action.post(.{ &spotify, .next });
             }
 
@@ -88,6 +87,9 @@ pub fn main() !void {
     }
 }
 
+// curr problems...
+// spotify width height for image can lie
+// and it seems getting curr track after skip sometimes just returnes same track
 fn sendCommand(spotify: *Spotify, cmd: Command) !stb.Image {
     const allocator = spotify.http_client.allocator;
 
