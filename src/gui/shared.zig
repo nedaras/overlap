@@ -22,3 +22,11 @@ pub const DrawVertex = extern struct {
 pub const ConstantBuffer = extern struct {
     mvp: [4][4]f32,
 };
+
+pub const Input = struct {
+    mouse_x: i16 = 0,
+    mouse_y: i16 = 0,
+
+    mouse_ldown: bool = false,
+    mouse_rdown: bool = false,
+};

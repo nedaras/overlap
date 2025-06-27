@@ -2,6 +2,7 @@ const std = @import("std");
 const windows = @import("windows.zig");
 const minhook = @import("minhook.zig");
 const fat = @import("fat.zig");
+const shared = @import("gui/shared.zig");
 const Gui = @import("Gui.zig");
 const Backend = @import("gui/Backend.zig");
 const D3D11Hook = @import("hooks/D3D11Hook.zig");
@@ -18,6 +19,9 @@ const assert = std.debug.assert;
 
 const Gateway = struct {
     gui: Gui,
+
+    input: shared.Input = .{},
+    mutex: Thread.Mutex = .{},
 
     main_reset_event: Thread.ResetEvent,
     hooked_reset_event: Thread.ResetEvent,
@@ -51,7 +55,7 @@ pub fn attach(self: *Self) !void {
     errdefer minhook.MH_Uninitialize() catch {};
 
     // todo: move d3d11_hook and all other win32 gfx hooks to win32hook
-    const win32_hook = try Win32Hook.init(window);
+    const win32_hook = try Win32Hook.init(window, self);
     errdefer win32_hook.deinit();
 
     var d3d11_hook = try D3D11Hook.init(window, .{
@@ -61,7 +65,11 @@ pub fn attach(self: *Self) !void {
     });
     errdefer d3d11_hook.deinit();
 
-    try newFrame(self);
+    self.gateway.main_reset_event.wait();
+    if (self.gateway.err) |err| {
+        @branchHint(.cold);
+        return err;
+    }
     assert(d3d11_hook.backend != null);
 
     self.d3d11_hook = d3d11_hook;
@@ -89,17 +97,23 @@ pub inline fn gui(self: *Self) *Gui {
     return &self.gateway.gui;
 }
 
+pub inline fn input(self: *Self) *shared.Input {
+    return &self.gateway.input;
+}
+
 pub const FrameError = D3D11Hook.Error;
 
 pub fn newFrame(self: *Self) FrameError!void {
-    self.gateway.main_reset_event.wait();
+    self.gateway.main_reset_event.wait(); // input mutex
     if (self.gateway.err) |err| {
         @branchHint(.cold);
         return err;
     }
+    self.gateway.mutex.lock();
 }
 
 pub fn endFrame(self: *Self) void {
+    self.gateway.mutex.unlock(); // input mutex
     self.gateway.main_reset_event.reset();
     self.gateway.hooked_reset_event.set();
 }

@@ -36,6 +36,10 @@ pub const HINTERNET = winhttp.HINTERNET;
 pub const INTERNET_PORT = winhttp.INTERNET_PORT;
 
 pub const WM_MOUSEMOVE = 0x0200;
+pub const WM_LBUTTONDOWN = 0x0201;
+pub const WM_LBUTTONUP = 0x0202;
+pub const WM_RBUTTONDOWN = 0x0204;
+pub const WM_RBUTTONUP = 0x0205;
 
 pub const WNDPROC = *const fn (
     hWnd: HWND,
