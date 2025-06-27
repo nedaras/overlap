@@ -21,10 +21,10 @@ pub fn main() !void {
     var client = try Client.init(allocator);
     defer client.deinit();
 
-    //var spotify = Spotify{
-        //.http_client = &client,
-        //.authorization = "Bearer ...",
-    //};
+    var spotify = Spotify{
+        .http_client = &client,
+        .authorization = "Bearer ...",
+    };
 
     var action: actions.SingleAction(sendCommand) = undefined;
 
@@ -43,46 +43,48 @@ pub fn main() !void {
     defer font.deinit(allocator);
 
     // mb dont do it here
-    //const cover = blk: {
-        //const stb_image = try sendCommand(&spotify, .curr);
-        //defer stb_image.deinit();
+    const cover = blk: {
+        const stb_image = try sendCommand(&spotify, .curr);
+        defer stb_image.deinit();
 
-        //break :blk try hook.loadImage(allocator, .{
-            //.data = stb_image.data,
-            //.width = stb_image.width,
-            //.height = stb_image.height,
-            //.format = .rgba,
-            //.usage = .dynamic,
-        //});
-    //};
-    //defer cover.deinit(allocator);
+        break :blk try hook.loadImage(allocator, .{
+            .data = stb_image.data,
+            .width = stb_image.width,
+            .height = stb_image.height,
+            .format = .rgba,
+            .usage = .dynamic,
+        });
+    };
+    defer cover.deinit(allocator);
 
-    // Now we need to hook windoe proc and chill
-
-    var i: u32 = 0;
+    var prev_mouse_ldown = false;
     while (true) {
         try hook.newFrame();
         defer hook.endFrame();
 
-        defer i +%= 1;
+        defer prev_mouse_ldown = input.mouse_ldown;
 
-        //if (action.dispatch()) |x| {
-            //const stb_image: stb.Image = try x;
-            //defer stb_image.deinit();
+        if (action.dispatch()) |x| {
+            const stb_image: stb.Image = try x;
+            defer stb_image.deinit();
 
-            //try hook.updateImage(cover, stb_image.data);
-        //}
+            try hook.updateImage(cover, stb_image.data);
+        }
 
-        //if (i % 1000 == 0) {
-            //assert(action.dispatched() == true);
-            //try action.post(.{ &spotify, .curr });
-        //}
-
-        //gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cover.width), @floatFromInt(cover.height) }, cover);
-        //if (action.busy()) {
+        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cover.width), @floatFromInt(cover.height) }, cover);
+        if (action.busy()) {
             //gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
-        //}
-        gui.text(.{ @floatFromInt(input.mouse_x), @floatFromInt(input.mouse_y) }, "Helogjk", 0xFFFFFFFF, font);
+            gui.text(.{ @floatFromInt(input.mouse_x), @floatFromInt(input.mouse_y) }, "Sending...", 0xFFFFFFFF, font);
+        } else {
+            const click = !prev_mouse_ldown and input.mouse_ldown;
+            const in_bounds = input.mouse_x <= cover.width and input.mouse_y <= cover.height;
+            if (click and in_bounds) {
+                assert(action.dispatched() == true);
+                try action.post(.{ &spotify, .next });
+            }
+
+            gui.text(.{ @floatFromInt(input.mouse_x), @floatFromInt(input.mouse_y) }, "Helo", 0xFFFFFFFF, font);
+        }
     }
 }
 
