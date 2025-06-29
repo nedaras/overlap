@@ -64,7 +64,7 @@ pub fn init(device: *d3d11.ID3D11Device, device_context: *d3d11.ID3D11DeviceCont
             try device_context.Map(@ptrCast(result.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
             defer device_context.Unmap(@ptrCast(result.texture), 0);
 
-            mapped_resource.write(u8, desc.data);
+            mapped_resource.write(u8, desc.data, desc.width * @intFromEnum(desc.format));
         },
     }
 

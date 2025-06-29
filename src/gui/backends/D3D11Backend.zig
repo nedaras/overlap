@@ -347,8 +347,8 @@ const D3D11Backend = struct {
             try self.device_context.Map(@ptrCast(self.index_buffer), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &index_resource);
             defer self.device_context.Unmap(@ptrCast(self.index_buffer), 0);
 
-            vertex_resource.write(shared.DrawVertex, verticies);
-            index_resource.write(shared.DrawIndex, indecies);
+            vertex_resource.write(shared.DrawVertex, verticies, shared.max_verticies * @sizeOf(shared.DrawVertex));
+            index_resource.write(shared.DrawIndex, indecies, shared.max_indicies * @sizeOf(shared.DrawIndex));
         }
 
         var offset: windows.UINT = 0;
@@ -408,7 +408,7 @@ const D3D11Backend = struct {
         try self.device_context.Map(@ptrCast(d3d11_image.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
         defer self.device_context.Unmap(@ptrCast(d3d11_image.texture), 0);
 
-        mapped_resource.write(u8, bytes);
+        mapped_resource.write(u8, bytes, image.width * @intFromEnum(image.format));
     }
 };
 

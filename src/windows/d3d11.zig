@@ -169,8 +169,26 @@ pub const D3D11_MAPPED_SUBRESOURCE = extern struct {
     RowPitch: UINT,
     DepthPitch: UINT,
 
-    pub inline fn write(self: D3D11_MAPPED_SUBRESOURCE, comptime T: type, slice: []const T) void {
+    pub inline fn write(
+        self: D3D11_MAPPED_SUBRESOURCE,
+        comptime T: type, 
+        slice: []const T,
+        pitch: u32,
+    ) void {
         const ptr: [*]T = @ptrCast(@alignCast(self.pData));
+        if (self.RowPitch != pitch) {
+            @branchHint(.unlikely);
+
+            const rows = (slice.len * @sizeOf(T)) / pitch;
+            for (0..rows) |y| {
+                const src_idx = y * pitch;
+                const dst_idx = y * self.RowPitch;
+
+                @memcpy(ptr[dst_idx..dst_idx + pitch], slice[src_idx..src_idx + pitch]);
+            }
+
+            return;
+        }
         @memcpy(ptr[0..slice.len], slice);
     }
 };
