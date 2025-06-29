@@ -124,12 +124,18 @@ const SendOptions = struct {
 };
 
 // curr problems...
+// after skipping from other device it f ups our timestamp state and again we're out of sync
+//     guess we could like get curr track before skip and then after skip, seems most simple way to handle this out of sync shit
+// crossfade as for now it can be set to 12 seconds soooo perhaps an idea is too idk make new req 12 seconds earlier and then
+//     do it every second we detect a change and by doing this we can actually get users crossfade and cache for overlays lifespan (wow)
+//     though this can bring us some problems as now sendCommand can take 12+ seconds
+//     we would need a way to cancel curr action so we could post another (maybe by having a fallback thread)
 // no actions are taken if spotify api returns errors we just panic by boubling errors
-
-// return progress
 fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { std.json.Parsed(Spotify.Track), stb.Image } {
     const allocator = spotify.http_client.allocator;
 
+    // todo: prefetch track before skip actions
+    // and fetch new track till timestamps changes
     switch (opts.cmd) {
         .curr => {},
         .next => try spotify.skipToNext(),
