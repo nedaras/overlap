@@ -63,6 +63,9 @@ pub fn loadImageFromMemory(bytes: []const u8, options: ImageOptions) LoadImageFr
         };
     }
 
+    // todo: i hate this stbi_failure stuff as we need to use strings
+    // add pr with enum codes if it gets rejected just idk in src ad stb_image.h and stb_image.c no biggies
+ 
     if (std.posix.unexpected_error_tracing) {
         std.debug.print("error.Unexpected: stbi_failure: {s}\n", .{stbi_failure_reason()});
     }

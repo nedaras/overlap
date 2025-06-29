@@ -18,8 +18,6 @@ pub const Track = struct {
         album: struct {
             images: [3]struct {
                 url: []const u8,
-                height: u16,
-                width: u16,
             },
         },
         name: []const u8,

@@ -42,20 +42,11 @@ pub fn main() !void {
     const font = try hook.loadFont(allocator, "font.fat");
     defer font.deinit(allocator);
 
-    // mb dont do it here
-    const cover = blk: {
-        const stb_image = try sendCommand(&spotify, .curr);
-        defer stb_image.deinit();
-
-        break :blk try hook.loadImage(allocator, .{
-            .data = stb_image.data,
-            .width = stb_image.width,
-            .height = stb_image.height,
-            .format = .rgba,
-            .usage = .dynamic,
-        });
+    var cover: ?Hook.Image = null;
+    defer if (cover) |cov| {
+        cov.deinit(allocator);
+        cover = null;
     };
-    defer cover.deinit(allocator);
 
     var prev_mouse_ldown = false;
     while (true) {
@@ -68,16 +59,36 @@ pub fn main() !void {
             const stb_image: stb.Image = try x;
             defer stb_image.deinit();
 
-            try hook.updateImage(cover, stb_image.data);
+            if (cover == null or cover.?.width != stb_image.width or cover.?.height != stb_image.height) {
+                @branchHint(.cold);
+
+                if (cover) |cov| {
+                    cov.deinit(allocator);
+                    cover = null;
+                }
+
+                cover = try hook.loadImage(allocator, .{
+                    .data = stb_image.data,
+                    .width = stb_image.width,
+                    .height = stb_image.height,
+                    .format = .rgba,
+                    .usage = .dynamic,
+                });
+            } else {
+                try hook.updateImage(cover.?, stb_image.data);
+            }
         }
 
-        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cover.width), @floatFromInt(cover.height) }, cover);
+        const cov = cover orelse continue;
+
+        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cov.width), @floatFromInt(cov.height) }, cov);
+
         if (action.busy()) {
             //gui.rect(.{ 100.0, 100.0 }, .{ 500.0, 500.0 }, 0x0F191EFF);
             gui.text(.{ @floatFromInt(input.mouse_x), @floatFromInt(input.mouse_y) }, "Sending...", 0xFFFFFFFF, font);
         } else {
             const click = !prev_mouse_ldown and input.mouse_ldown;
-            const in_bounds = input.mouse_x <= cover.width and input.mouse_y <= cover.height;
+            const in_bounds = input.mouse_x <= cov.width and input.mouse_y <= cov.height;
             if (click and in_bounds) {
                 try action.post(.{ &spotify, .next });
             }
@@ -88,7 +99,7 @@ pub fn main() !void {
 }
 
 // curr problems...
-// spotify width height for image can lie
+// no actions are taken if spotify api returns errors we just panic by boubling errors
 // and it seems getting curr track after skip sometimes just returnes same track
 fn sendCommand(spotify: *Spotify, cmd: Command) !stb.Image {
     const allocator = spotify.http_client.allocator;

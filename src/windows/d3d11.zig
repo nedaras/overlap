@@ -179,7 +179,7 @@ pub const D3D11_MAPPED_SUBRESOURCE = extern struct {
         if (self.RowPitch != pitch) {
             @branchHint(.unlikely);
 
-            const rows = (slice.len * @sizeOf(T)) / pitch;
+            const rows = @divExact(slice.len * @sizeOf(T), pitch);
             for (0..rows) |y| {
                 const src_idx = y * pitch;
                 const dst_idx = y * self.RowPitch;
