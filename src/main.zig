@@ -31,6 +31,8 @@ pub fn main() !void {
     try action.init(allocator);
     defer action.deinit();
 
+    try action.post(.{ &spotify, SendOptions{ .cmd = .curr }});
+
     var hook: Hook = .init;
 
     try hook.attach();
@@ -49,6 +51,8 @@ pub fn main() !void {
     };
 
     var prev_mouse_ldown = false;
+    var latest_timestamp: ?u64 = null;
+
     while (true) {
         try hook.newFrame();
         defer hook.endFrame();
@@ -56,8 +60,9 @@ pub fn main() !void {
         defer prev_mouse_ldown = input.mouse_ldown;
 
         if (action.dispatch()) |x| {
-            const stb_image: stb.Image = try x;
+            const timestamp: u64, const stb_image: stb.Image = try x;
             defer stb_image.deinit();
+            defer latest_timestamp = timestamp;
 
             if (cover == null or cover.?.width != stb_image.width or cover.?.height != stb_image.height) {
                 @branchHint(.cold);
@@ -90,7 +95,10 @@ pub fn main() !void {
             const click = !prev_mouse_ldown and input.mouse_ldown;
             const in_bounds = input.mouse_x <= cov.width and input.mouse_y <= cov.height;
             if (click and in_bounds) {
-                try action.post(.{ &spotify, .next });
+                try action.post(.{ &spotify, SendOptions{ 
+                    .cmd = .next,
+                    .timestamp = latest_timestamp
+                }});
             }
 
             gui.text(.{ @floatFromInt(input.mouse_x), @floatFromInt(input.mouse_y) }, "Helo", 0xFFFFFFFF, font);
@@ -98,19 +106,43 @@ pub fn main() !void {
     }
 }
 
+const SendOptions = struct {
+    cmd: Command,
+    timestamp: ?u64 = null,
+};
+
 // curr problems...
 // no actions are taken if spotify api returns errors we just panic by boubling errors
-// and it seems getting curr track after skip sometimes just returnes same track
-fn sendCommand(spotify: *Spotify, cmd: Command) !stb.Image {
+fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { u64, stb.Image } {
     const allocator = spotify.http_client.allocator;
 
-    switch (cmd) {
+    switch (opts.cmd) {
         .curr => {},
         .next => try spotify.skipToNext(),
         .previous => try spotify.skipToPrevious(),
     }
 
-    const track = try spotify.getCurrentlyPlayingTrack();
+    const track = init: {
+        if (opts.timestamp) |timestamp| {
+            var delay_idx: u8 = 0;
+            const delays = &[_]u8{ 0, 30, 30, 50, 50, 70, 70, 100 };
+
+            while (true) {
+                const delay: u64 = @intCast(delays[delay_idx]);
+                defer delay_idx = @min(delay_idx + 1, delays.len);
+
+                std.Thread.sleep(std.time.ns_per_ms * delay);
+
+                const tmp_track = try spotify.getCurrentlyPlayingTrack();
+                if (tmp_track.value.timestamp != timestamp) {
+                    break: init tmp_track;
+                }
+                tmp_track.deinit();
+            }
+        }
+
+        break :init try spotify.getCurrentlyPlayingTrack();
+    };
     defer track.deinit();
 
     const uri = try std.Uri.parse(track.value.item.album.images[0].url);
@@ -132,7 +164,10 @@ fn sendCommand(spotify: *Spotify, cmd: Command) !stb.Image {
 
     try req.reader().readNoEof(image);
 
-    return stb.loadImageFromMemory(image, .{
-        .channels = .rgba,
-    });
+    return .{
+        track.value.timestamp,
+        try stb.loadImageFromMemory(image, .{ 
+            .channels = .rgba,
+        }),
+    };
 }
