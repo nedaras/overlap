@@ -12,7 +12,7 @@ authorization: []const u8,
 const Spotify = @This();
 
 pub const Track = struct {
-    timestamp: u64,
+    timestamp: i64,
     progress_ms: u32,
     item: struct { // can be null!!!
         album: struct {
@@ -21,6 +21,7 @@ pub const Track = struct {
             },
         },
         name: []const u8,
+        duration_ms: u32,
     },
 };
 

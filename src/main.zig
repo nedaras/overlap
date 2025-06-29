@@ -51,7 +51,9 @@ pub fn main() !void {
     };
 
     var prev_mouse_ldown = false;
-    var latest_timestamp: ?u64 = null;
+
+    var latest_timestamp_ms: ?i64 = null;
+    var track_ends_ms: ?i64 = null;
 
     while (true) {
         try hook.newFrame();
@@ -60,9 +62,12 @@ pub fn main() !void {
         defer prev_mouse_ldown = input.mouse_ldown;
 
         if (action.dispatch()) |x| {
-            const timestamp: u64, const stb_image: stb.Image = try x;
+            const track: std.json.Parsed(Spotify.Track), const stb_image: stb.Image = try x;
+            defer track.deinit();
             defer stb_image.deinit();
-            defer latest_timestamp = timestamp;
+
+            latest_timestamp_ms = track.value.timestamp;
+            track_ends_ms = track.value.timestamp + track.value.item.duration_ms;
 
             if (cover == null or cover.?.width != stb_image.width or cover.?.height != stb_image.height) {
                 @branchHint(.cold);
@@ -94,10 +99,17 @@ pub fn main() !void {
         } else {
             const click = !prev_mouse_ldown and input.mouse_ldown;
             const in_bounds = input.mouse_x <= cov.width and input.mouse_y <= cov.height;
+
             if (click and in_bounds) {
                 try action.post(.{ &spotify, SendOptions{ 
                     .cmd = .next,
-                    .timestamp = latest_timestamp
+                    .timestamp = latest_timestamp_ms,
+                }});
+            } else if (track_ends_ms != null and std.time.milliTimestamp() >= track_ends_ms.?) {
+                track_ends_ms = null;
+                try action.post(.{ &spotify, SendOptions{
+                    .cmd = .curr,
+                    .timestamp = latest_timestamp_ms,
                 }});
             }
 
@@ -108,12 +120,14 @@ pub fn main() !void {
 
 const SendOptions = struct {
     cmd: Command,
-    timestamp: ?u64 = null,
+    timestamp: ?i64 = null,
 };
 
 // curr problems...
 // no actions are taken if spotify api returns errors we just panic by boubling errors
-fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { u64, stb.Image } {
+
+// return progress
+fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { std.json.Parsed(Spotify.Track), stb.Image } {
     const allocator = spotify.http_client.allocator;
 
     switch (opts.cmd) {
@@ -143,7 +157,7 @@ fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { u64, stb.Image } 
 
         break :init try spotify.getCurrentlyPlayingTrack();
     };
-    defer track.deinit();
+    errdefer track.deinit();
 
     const uri = try std.Uri.parse(track.value.item.album.images[0].url);
 
@@ -165,7 +179,7 @@ fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { u64, stb.Image } 
     try req.reader().readNoEof(image);
 
     return .{
-        track.value.timestamp,
+        track,
         try stb.loadImageFromMemory(image, .{ 
             .channels = .rgba,
         }),
