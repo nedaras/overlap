@@ -171,7 +171,7 @@ pub const D3D11_MAPPED_SUBRESOURCE = extern struct {
 
     pub inline fn write(
         self: D3D11_MAPPED_SUBRESOURCE,
-        comptime T: type, 
+        comptime T: type,
         slice: []const T,
         pitch: u32,
     ) void {
@@ -184,7 +184,7 @@ pub const D3D11_MAPPED_SUBRESOURCE = extern struct {
                 const src_idx = y * pitch;
                 const dst_idx = y * self.RowPitch;
 
-                @memcpy(ptr[dst_idx..dst_idx + pitch], slice[src_idx..src_idx + pitch]);
+                @memcpy(ptr[dst_idx .. dst_idx + pitch], slice[src_idx .. src_idx + pitch]);
             }
 
             return;

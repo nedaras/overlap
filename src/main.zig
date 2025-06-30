@@ -31,7 +31,7 @@ pub fn main() !void {
     try action.init(allocator);
     defer action.deinit();
 
-    try action.post(.{ &spotify, SendOptions{ .cmd = .curr }});
+    try action.post(.{ &spotify, SendOptions{ .cmd = .curr } });
 
     var hook: Hook = .init;
 
@@ -51,8 +51,6 @@ pub fn main() !void {
     };
 
     var prev_mouse_ldown = false;
-
-    var latest_timestamp_ms: ?i64 = null;
     var track_ends_ms: ?i64 = null;
 
     while (true) {
@@ -66,7 +64,6 @@ pub fn main() !void {
             defer track.deinit();
             defer stb_image.deinit();
 
-            latest_timestamp_ms = track.value.timestamp;
             track_ends_ms = track.value.timestamp + track.value.item.duration_ms;
 
             if (cover == null or cover.?.width != stb_image.width or cover.?.height != stb_image.height) {
@@ -101,16 +98,10 @@ pub fn main() !void {
             const in_bounds = input.mouse_x <= cov.width and input.mouse_y <= cov.height;
 
             if (click and in_bounds) {
-                try action.post(.{ &spotify, SendOptions{ 
-                    .cmd = .next,
-                    .timestamp = latest_timestamp_ms,
-                }});
+                try action.post(.{ &spotify, SendOptions{ .cmd = .next } });
             } else if (track_ends_ms != null and std.time.milliTimestamp() >= track_ends_ms.?) {
                 track_ends_ms = null;
-                try action.post(.{ &spotify, SendOptions{
-                    .cmd = .curr,
-                    .timestamp = latest_timestamp_ms,
-                }});
+                try action.post(.{ &spotify, SendOptions{ .cmd = .curr } });
             }
 
             gui.text(.{ @floatFromInt(input.mouse_x), @floatFromInt(input.mouse_y) }, "Helo", 0xFFFFFFFF, font);
@@ -120,7 +111,6 @@ pub fn main() !void {
 
 const SendOptions = struct {
     cmd: Command,
-    timestamp: ?i64 = null,
 };
 
 // curr problems...
@@ -130,22 +120,32 @@ const SendOptions = struct {
 //     do it every second we detect a change and by doing this we can actually get users crossfade and cache for overlays lifespan (wow)
 //     though this can bring us some problems as now sendCommand can take 12+ seconds
 //     we would need a way to cancel curr action so we could post another (maybe by having a fallback thread)
+//     and other problem we need to vallidate our crossfade if its correct as if an user skips in tose 12 seconds some weird stuff can happen
 // no actions are taken if spotify api returns errors we just panic by boubling errors
 fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { std.json.Parsed(Spotify.Track), stb.Image } {
     const allocator = spotify.http_client.allocator;
 
-    // todo: prefetch track before skip actions
-    // and fetch new track till timestamps changes
+    const timestamp = switch (opts.cmd) {
+        .curr => null,
+        else => blk: {
+            const tmp_track = try spotify.getCurrentlyPlayingTrack();
+            defer tmp_track.deinit();
+
+            break :blk tmp_track.value.timestamp;
+        },
+    };
+
     switch (opts.cmd) {
         .curr => {},
         .next => try spotify.skipToNext(),
         .previous => try spotify.skipToPrevious(),
     }
 
-    const track = init: {
-        if (opts.timestamp) |timestamp| {
+    const track = blk: {
+        if (timestamp) |prev_timestamp| {
+            // todo: average out delay_idx so we would not drain web api that much
             var delay_idx: u8 = 0;
-            const delays = &[_]u8{ 0, 30, 30, 50, 50, 70, 70, 100 };
+            const delays = &[_]u16{ 0, 30, 50, 70, 100, 1000 };
 
             while (true) {
                 const delay: u64 = @intCast(delays[delay_idx]);
@@ -154,14 +154,13 @@ fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { std.json.Parsed(S
                 std.Thread.sleep(std.time.ns_per_ms * delay);
 
                 const tmp_track = try spotify.getCurrentlyPlayingTrack();
-                if (tmp_track.value.timestamp != timestamp) {
-                    break: init tmp_track;
+                if (tmp_track.value.timestamp != prev_timestamp) {
+                    break :blk tmp_track;
                 }
                 tmp_track.deinit();
             }
         }
-
-        break :init try spotify.getCurrentlyPlayingTrack();
+        break :blk try spotify.getCurrentlyPlayingTrack();
     };
     errdefer track.deinit();
 
@@ -186,7 +185,7 @@ fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { std.json.Parsed(S
 
     return .{
         track,
-        try stb.loadImageFromMemory(image, .{ 
+        try stb.loadImageFromMemory(image, .{
             .channels = .rgba,
         }),
     };
