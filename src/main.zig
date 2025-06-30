@@ -31,8 +31,13 @@ pub fn main() !void {
     try action.init(allocator);
     defer action.deinit();
 
-    // cauzes leaks somehow
     try action.post(.{ &spotify, SendOptions{ .cmd = .curr } });
+    // still can leak say that work is only completed if deinit of acion is called
+    defer if (action.dispatch()) |x| blk: {
+        const track: std.json.Parsed(Spotify.Track), const stb_image: stb.Image = x catch break :blk;
+        track.deinit();
+        stb_image.deinit();
+    };
 
     var hook: Hook = .init;
 
@@ -69,7 +74,7 @@ pub fn main() !void {
 
             const padding = blk: {
                 if (track_ends_ms) |end_ms| {
-                    break :blk end_ms - track.value.item.duration_ms;
+                    break :blk @divFloor(end_ms - track.value.item.duration_ms, 1000) * 1000;
                 }
                 break :blk 12000; // max crossover is 12s
             };
@@ -77,7 +82,7 @@ pub fn main() !void {
             std.debug.print("crossover: {d}\n", .{padding});
 
             track_ends_ms = track.value.timestamp + track.value.item.duration_ms;
-            poll_track_ms = track.value.timestamp + track.value.item.duration_ms;
+            poll_track_ms = track.value.timestamp + track.value.item.duration_ms - padding;
 
             if (cover == null or cover.?.width != stb_image.width or cover.?.height != stb_image.height) {
                 @branchHint(.cold);
@@ -156,21 +161,16 @@ fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { std.json.Parsed(S
 
     const track = blk: {
         if (timestamp) |prev_timestamp| {
-            // todo: average out delay_idx so we would not drain web api that much
-            var delay_idx: u8 = 0;
-            const delays = &[_]u16{ 0, 30, 50, 70, 100, 1000 };
-
             while (true) {
-                const delay: u64 = @intCast(delays[delay_idx]);
-                defer delay_idx = @min(delay_idx + 1, delays.len);
-
-                std.Thread.sleep(std.time.ns_per_ms * delay);
-
                 const tmp_track = try spotify.getCurrentlyPlayingTrack();
                 if (tmp_track.value.timestamp != prev_timestamp) {
                     break :blk tmp_track;
                 }
+
+                std.debug.print("miss\n", .{});
+
                 tmp_track.deinit();
+                std.Thread.sleep(std.time.ns_per_ms * 1000);
             }
         }
         break :blk try spotify.getCurrentlyPlayingTrack();
