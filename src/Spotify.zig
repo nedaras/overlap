@@ -96,7 +96,7 @@ pub fn skipToNext(self: *Spotify) !void {
     defer req.deinit();
 
     try req.send();
-    try req.finish();
+    req.finish() catch unreachable;
 
     try req.wait();
 
@@ -111,7 +111,7 @@ pub fn skipToNext(self: *Spotify) !void {
         .not_found => error.DeviceNotFound,
         else => |x| {
             std.debug.print("{}\n", .{x});
-            return error.InvalidStatusCode;
+            return error.UnexpectedStatusCode;
         },
     };
 }
@@ -128,7 +128,7 @@ pub fn skipToPrevious(self: *Spotify) !void {
     defer req.deinit();
 
     try req.send();
-    try req.finish();
+    req.finish() catch unreachable;
 
     try req.wait();
 
@@ -143,7 +143,7 @@ pub fn skipToPrevious(self: *Spotify) !void {
         .not_found => error.DeviceNotFound,
         else => |x| {
             std.debug.print("{}\n", .{x});
-            return error.InvalidStatusCode;
+            return error.UnexpectedStatusCode;
         },
     };
 }

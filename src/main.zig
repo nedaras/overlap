@@ -55,9 +55,7 @@ pub fn main() !void {
         cover = null;
     };
 
-    var poll_track_ms: ?i64 = null;
     var track_ends_ms: ?i64 = null;
-
     while (true) {
         try hook.newFrame();
         defer hook.endFrame();
@@ -67,20 +65,15 @@ pub fn main() !void {
             defer track.deinit();
             defer image.deinit();
 
+            // todo: handle them fucking crossfades
+            // now our cover updates are delayed by crossfade and it even f with skip state
+            // perhaps an idea is like detect minimum track_left_ms and assume it our crossfade???
+            // track_left_ms seems best option, but how todo this nicely and with least error
+
             const timestamp_ms = time.milliTimestamp();
             const track_left_ms = track.value.item.duration_ms - track.value.progress_ms;
 
-            // tracks timestamp changes when u pause/play same track
-            // so it's useless we should use it as an uuid to check if we're sync
-
-            // there is is_playing flag in track...
-
-            defer poll_track_ms = timestamp_ms + track_left_ms;
             defer track_ends_ms = timestamp_ms + track_left_ms;
-
-            if (track_ends_ms) |ends_timestamp_ms| {
-                std.debug.print("{d}\n", .{ends_timestamp_ms - timestamp_ms});
-            }
 
             if (cover == null or cover.?.width != image.width or cover.?.height != image.height) {
                 @branchHint(.cold);
@@ -102,10 +95,10 @@ pub fn main() !void {
             }
         }
 
-        if (poll_track_ms) |timestamp| {
+        if (track_ends_ms) |timestamp| {
             if (time.milliTimestamp() >= timestamp) {
                 try action.post(sendCommand, .{ &spotify, SendCommandOptions{ .cmd = .curr } });
-                poll_track_ms = null;
+                track_ends_ms = null;
             }
         }
 
@@ -136,9 +129,43 @@ const SendCommandResponse = SendCommandError!struct {
 
 fn sendCommand(spotify: *Spotify, opts: SendCommandOptions) SendCommandResponse {
     const allocator = spotify.http_client.allocator;
-    _ = opts;
 
-    const track = try spotify.getCurrentlyPlayingTrack();
+    const timestamp = switch (opts.cmd) {
+        .curr => null,
+        .next, .previous => blk: {
+            const tmp_track = try spotify.getCurrentlyPlayingTrack();
+            defer tmp_track.deinit();
+
+            break :blk tmp_track.value.timestamp;
+        },
+    };
+
+    switch (opts.cmd) {
+        .curr => {},
+        .next => try spotify.skipToNext(),
+        .previous => try spotify.skipToPrevious(),
+    }
+
+    const track = blk: {
+        if (timestamp) |prev_timestamp| {
+            var delay_idx: u8 = 0;
+            const delays = &[_]u16{ 0, 30, 50, 70, 100, 1000 };
+
+            while (true) {
+                const delay: u64 = @intCast(delays[delay_idx]);
+                defer delay_idx = @min(delay_idx + 1, delays.len);
+
+                std.Thread.sleep(std.time.ns_per_ms * delay);
+
+                const tmp_track = try spotify.getCurrentlyPlayingTrack();
+                if (tmp_track.value.timestamp != prev_timestamp) {
+                    break :blk tmp_track;
+                }
+                tmp_track.deinit();
+            }
+        }
+        break :blk try spotify.getCurrentlyPlayingTrack();
+    };
     errdefer track.deinit();
 
     const uri = try Uri.parse(track.value.item.album.images[0].url);
