@@ -67,13 +67,19 @@ pub fn main() !void {
             defer track.deinit();
             defer image.deinit();
 
+            const timestamp_ms = time.milliTimestamp();
             const track_left_ms = track.value.item.duration_ms - track.value.progress_ms;
 
-            defer poll_track_ms = track.value.timestamp + track_left_ms;
-            defer track_ends_ms = track.value.timestamp + track_left_ms;
+            // tracks timestamp changes when u pause/play same track
+            // so it's useless we should use it as an uuid to check if we're sync
 
-            if (track_ends_ms) |timestamp| {
-                std.debug.print("{d}\n", .{timestamp - track.value.timestamp});
+            // there is is_playing flag in track...
+
+            defer poll_track_ms = timestamp_ms + track_left_ms;
+            defer track_ends_ms = timestamp_ms + track_left_ms;
+
+            if (track_ends_ms) |ends_timestamp_ms| {
+                std.debug.print("{d}\n", .{ends_timestamp_ms - timestamp_ms});
             }
 
             if (cover == null or cover.?.width != image.width or cover.?.height != image.height) {
