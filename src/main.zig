@@ -67,8 +67,10 @@ pub fn main() !void {
             defer track.deinit();
             defer image.deinit();
 
-            defer poll_track_ms = track.value.timestamp + track.value.item.duration_ms;
-            defer track_ends_ms = track.value.timestamp + track.value.item.duration_ms;
+            const track_left_ms = track.value.item.duration_ms - track.value.progress_ms;
+
+            defer poll_track_ms = track.value.timestamp + track_left_ms;
+            defer track_ends_ms = track.value.timestamp + track_left_ms;
 
             if (track_ends_ms) |timestamp| {
                 std.debug.print("{d}\n", .{timestamp - track.value.timestamp});
@@ -127,7 +129,6 @@ const SendCommandResponse = SendCommandError!struct {
 };
 
 fn sendCommand(spotify: *Spotify, opts: SendCommandOptions) SendCommandResponse {
-    @compileLog(SendCommandError);
     const allocator = spotify.http_client.allocator;
     _ = opts;
 
