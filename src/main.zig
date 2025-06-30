@@ -33,6 +33,7 @@ pub fn main() !void {
 
     try action.post(.{ &spotify, SendOptions{ .cmd = .curr } });
     // still can leak say that work is only completed if deinit of acion is called
+    // mb add like cleanup func in init so in deinit after joins if worker finished its job we can just clean it up
     defer if (action.dispatch()) |x| blk: {
         const track: std.json.Parsed(Spotify.Track), const stb_image: stb.Image = x catch break :blk;
         track.deinit();
@@ -72,6 +73,8 @@ pub fn main() !void {
             defer track.deinit();
             defer stb_image.deinit();
 
+            // will be a big problem if in a middle of a song someone skipped i guess we would need to add a check to know that we're even in sync
+            // before padding calculation
             const padding = blk: {
                 if (track_ends_ms) |end_ms| {
                     break :blk @divFloor(end_ms - track.value.item.duration_ms, 1000) * 1000;
@@ -132,13 +135,6 @@ const SendOptions = struct {
 };
 
 // curr problems...
-// after skipping from other device it f ups our timestamp state and again we're out of sync
-//     guess we could like get curr track before skip and then after skip, seems most simple way to handle this out of sync shit
-// crossfade as for now it can be set to 12 seconds soooo perhaps an idea is too idk make new req 12 seconds earlier and then
-//     do it every second we detect a change and by doing this we can actually get users crossfade and cache for overlays lifespan (wow)
-//     though this can bring us some problems as now sendCommand can take 12+ seconds
-//     we would need a way to cancel curr action so we could post another (maybe by having a fallback thread)
-//     and other problem we need to vallidate our crossfade if its correct as if an user skips in tose 12 seconds some weird stuff can happen
 // no actions are taken if spotify api returns errors we just panic by boubling errors
 fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { std.json.Parsed(Spotify.Track), stb.Image } {
     const allocator = spotify.http_client.allocator;
@@ -170,6 +166,7 @@ fn sendCommand(spotify: *Spotify, opts: SendOptions) !struct { std.json.Parsed(S
                 std.debug.print("miss\n", .{});
 
                 tmp_track.deinit();
+                // tofo: harsh if we're skipping, add like nullable delay option
                 std.Thread.sleep(std.time.ns_per_ms * 1000);
             }
         }
