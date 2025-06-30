@@ -5,7 +5,7 @@ const assert = std.debug.assert;
 
 // Todo: add some tests here
 
-pub fn SingleAction(comptime func: anytype) type {
+pub fn SingleAction(comptime T: type) type {
     return struct {
         allocator: Allocator,
 
@@ -16,13 +16,12 @@ pub fn SingleAction(comptime func: anytype) type {
         is_running: bool = true,
 
         run_node: ?*Runnable = null,
-        value: ?ReturnType = null,
+        value: ?T = null,
 
         const Runnable = struct {
             runFn: *const fn (*Runnable) void,
         };
 
-        const ReturnType = @typeInfo(@TypeOf(func)).@"fn".return_type.?;
         const Self = @This();
 
         pub fn init(self: *Self, allocator: Allocator) !void {
@@ -58,7 +57,7 @@ pub fn SingleAction(comptime func: anytype) type {
             return self.run_node == null and self.value == null;
         }
 
-        pub fn dispatch(self: *Self) ?ReturnType {
+        pub fn dispatch(self: *Self) ?T {
             self.mutex.lock();
             defer self.mutex.unlock();
 
@@ -75,7 +74,7 @@ pub fn SingleAction(comptime func: anytype) type {
             return tmp;
         }
 
-        pub fn post(self: *Self, args: anytype) Allocator.Error!void {
+        pub fn post(self: *Self, comptime func: anytype, args: anytype) Allocator.Error!void {
             const Args = @TypeOf(args);
             const Closure = struct {
                 args: Args,
@@ -93,7 +92,7 @@ pub fn SingleAction(comptime func: anytype) type {
                         break :blk closure.action.is_running;
                     };
 
-                    const val: ?ReturnType = if (is_running) @call(.auto, func, closure.args) else null;
+                    const val: ?T = if (is_running) @call(.auto, func, closure.args) else null;
 
                     const mutex = &closure.action.mutex;
                     mutex.lock();

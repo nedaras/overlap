@@ -68,7 +68,14 @@ pub const Request = struct {
         req.* = undefined;
     }
 
-    pub fn send(req: Request) !void {
+    pub const SendError = error{
+        NetworkUnreachable,
+        InvalidWtf8,
+        OutOfMemory,
+        Unexpected,
+    };
+
+    pub fn send(req: Request) SendError!void {
         _ = try emitOverridableHeader(
             req,
             unicode.wtf8ToWtf16LeStringLiteral("Authorization: "),
@@ -169,6 +176,7 @@ pub const Request = struct {
             &status_code_size,
             windows.WINHTTP_NO_HEADER_INDEX,
         ) catch |err| return switch (err) {
+            error.NoSpaceLeft => unreachable,
             error.HeaderNotFound => unreachable,
             else => |e| e,
         };
@@ -307,12 +315,20 @@ pub fn deinit(client: Client) void {
     windows.WinHttpCloseHandle(client.handle);
 }
 
+pub const OpenError = error{
+    UnsupportedUriScheme,
+    UriMissingHost,
+    OutOfMemory,
+    InvalidWtf8,
+    Unexpected,
+};
+
 pub fn open(
     client: *Client,
     method: http.Method,
     uri: Uri,
     options: RequestOptions,
-) !Request {
+) OpenError!Request {
     var server_header: std.heap.FixedBufferAllocator = .init(options.server_header_buffer);
 
     const protocol, const valid_uri = try validateUri(uri, server_header.allocator());

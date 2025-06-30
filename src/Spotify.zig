@@ -25,7 +25,17 @@ pub const Track = struct {
     },
 };
 
-pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
+pub const GetCurrentlyPlayingTrackError = Client.OpenError || Client.Request.SendError || json.Error || json.ParseFromValueError || error{
+    DeviceNotFound,
+    Unauthorized,
+    Forbiden,
+    RateLimited,
+    UnexpectedStatusCode,
+    ValueTooLong,
+    InvalidContentLength,
+};
+
+pub fn getCurrentlyPlayingTrack(self: *Spotify) GetCurrentlyPlayingTrackError!json.Parsed(Track) {
     const allocator = self.http_client.allocator;
     var header_buf: [4 * 1024]u8 = undefined;
 
@@ -38,7 +48,7 @@ pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
     defer req.deinit();
 
     try req.send();
-    try req.finish();
+    req.finish() catch unreachable;
 
     try req.wait();
 
@@ -54,7 +64,7 @@ pub fn getCurrentlyPlayingTrack(self: *Spotify) !json.Parsed(Track) {
             .too_many_requests => error.RateLimited, // this should be handled
             else => |x| {
                 std.debug.print("{}\n", .{x});
-                return error.InvalidStatusCode;
+                return error.UnexpectedStatusCode;
             },
         };
     }
