@@ -31,6 +31,7 @@ pub fn main() !void {
     try action.init(allocator);
     defer action.deinit();
 
+    // cauzes leaks somehow
     try action.post(.{ &spotify, SendOptions{ .cmd = .curr } });
 
     var hook: Hook = .init;
@@ -51,7 +52,9 @@ pub fn main() !void {
     };
 
     var prev_mouse_ldown = false;
+
     var track_ends_ms: ?i64 = null;
+    var poll_track_ms: ?i64 = null;
 
     while (true) {
         try hook.newFrame();
@@ -64,7 +67,17 @@ pub fn main() !void {
             defer track.deinit();
             defer stb_image.deinit();
 
+            const padding = blk: {
+                if (track_ends_ms) |end_ms| {
+                    break :blk end_ms - track.value.item.duration_ms;
+                }
+                break :blk 12000; // max crossover is 12s
+            };
+
+            std.debug.print("crossover: {d}\n", .{padding});
+
             track_ends_ms = track.value.timestamp + track.value.item.duration_ms;
+            poll_track_ms = track.value.timestamp + track.value.item.duration_ms;
 
             if (cover == null or cover.?.width != stb_image.width or cover.?.height != stb_image.height) {
                 @branchHint(.cold);
@@ -99,8 +112,8 @@ pub fn main() !void {
 
             if (click and in_bounds) {
                 try action.post(.{ &spotify, SendOptions{ .cmd = .next } });
-            } else if (track_ends_ms != null and std.time.milliTimestamp() >= track_ends_ms.?) {
-                track_ends_ms = null;
+            } else if (poll_track_ms != null and std.time.milliTimestamp() >= poll_track_ms.?) {
+                poll_track_ms = null;
                 try action.post(.{ &spotify, SendOptions{ .cmd = .curr } });
             }
 
