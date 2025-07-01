@@ -20,7 +20,7 @@ pub fn main() !void {
     defer windows.RoUninitialize();
 
     // todo: use WindowsCreateStringReference
-    // todo: we need to Release this stuff i think
+    // todo: we need to Release() this stuff
 
     const class = try windows.WindowsCreateString(
         unicode.wtf8ToWtf16LeStringLiteral("Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager"),
@@ -40,9 +40,14 @@ pub fn main() !void {
 
     try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
 
-    std.debug.print("{}\n", .{info.get_Status()});
-    std.Thread.sleep(time.ns_per_s * 10);
-    std.debug.print("{}\n", .{info.get_Status()});
+    // todo: we could simplify these interfaces like how cpp does it
+    // there is put_completed se we could get notified when we're done
+
+    while (info.get_Status() == .Started) {
+        std.debug.print("{}\n", .{info.get_Status()});
+        std.atomic.spinLoopHint();
+    }
+
     std.debug.print("{}\n", .{try future.GetResults()});
 
     var client = try Client.init(allocator);
