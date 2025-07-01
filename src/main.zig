@@ -19,6 +19,8 @@ pub fn main() !void {
     try windows.RoInitialize(windows.RO_INIT_MULTITHREADED);
     defer windows.RoUninitialize();
 
+    // todo: use WindowsCreateStringReference
+
     const class = try windows.WindowsCreateString(
         unicode.wtf8ToWtf16LeStringLiteral("Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager"),
     );
@@ -32,7 +34,10 @@ pub fn main() !void {
         @ptrCast(&manager),
     );
 
-    _ = try (try manager.RequestAsync()).GetResult();
+    const future = try manager.RequestAsync();
+    const res = try future.GetResults();
+
+    std.debug.print("{}\n", .{res});
 
     var client = try Client.init(allocator);
     defer client.deinit();
