@@ -32,6 +32,8 @@ pub fn main() !void {
         @ptrCast(&manager),
     );
 
+    _ = try (try manager.RequestAsync()).GetResult();
+
     var client = try Client.init(allocator);
     defer client.deinit();
 

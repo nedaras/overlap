@@ -6,6 +6,7 @@ const kernel32 = @import("windows/kernel32.zig");
 const psapi = @import("windows/psapi.zig");
 const winhttp = @import("windows/winhttp.zig");
 const combase = @import("windows/combase.zig");
+const winrt = @import("windows/winrt.zig");
 
 pub usingnamespace windows;
 
@@ -45,6 +46,7 @@ pub const PCNZWCH = windows.PCWSTR;
 pub const REFIID = *const windows.GUID;
 pub const HINTERNET = winhttp.HINTERNET;
 pub const INTERNET_PORT = winhttp.INTERNET_PORT;
+pub const IAsyncOperation = winrt.IAsyncOperation;
 
 pub const WM_MOUSEMOVE = 0x0200;
 pub const WM_LBUTTONDOWN = 0x0201;
