@@ -20,6 +20,7 @@ pub fn main() !void {
     defer windows.RoUninitialize();
 
     // todo: use WindowsCreateStringReference
+    // todo: we need to Release this stuff i think
 
     const class = try windows.WindowsCreateString(
         unicode.wtf8ToWtf16LeStringLiteral("Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager"),
@@ -34,11 +35,14 @@ pub fn main() !void {
         @ptrCast(&manager),
     );
 
+    var info: *windows.IAsyncInfo = undefined;
     const future = try manager.RequestAsync();
-    std.debug.print("{}\n", .{future.get_Status()});
-    std.Thread.sleep(time.ns_per_s * 10);
-    std.debug.print("{}\n", .{future.get_Status()});
 
+    try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
+
+    std.debug.print("{}\n", .{info.get_Status()});
+    std.Thread.sleep(time.ns_per_s * 10);
+    std.debug.print("{}\n", .{info.get_Status()});
     std.debug.print("{}\n", .{try future.GetResults()});
 
     var client = try Client.init(allocator);
