@@ -1,7 +1,17 @@
+const std = @import("std");
 const windows = @import("../windows.zig");
+const assert = std.debug.assert;
 
+const INT = windows.INT;
 const WINAPI = windows.WINAPI;
 const HRESULT = windows.HRESULT;
+
+pub const AsyncStatus = enum(INT) {
+    Started = 0,
+    Completed = 1,
+    Canceled = 2,
+    Error = 3,
+};
 
 pub fn IAsyncOperation(comptime T: type) type {
     return extern struct {
@@ -9,18 +19,16 @@ pub fn IAsyncOperation(comptime T: type) type {
 
         const Self = @This();
 
-        pub const StatusError = error{Unexpected};
+        // todo: make these funcs private and wrap them up as many stuff can happen here
 
-        pub fn Status(self: *Self) StatusError!windows.INT {
-            const FnType = fn (*Self, *windows.INT) callconv(WINAPI) HRESULT;
+        pub fn get_Status(self: *Self) AsyncStatus {
+            const FnType = fn (*Self, *AsyncStatus) callconv(WINAPI) HRESULT;
             const get_status: *const FnType = @ptrCast(self.vtable[7]);
 
-            var val: windows.INT = undefined;
-            const hr = get_status(self, &val);
-            return switch (hr) {
-                windows.S_OK => val,
-                else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
-            };
+            var val: AsyncStatus = undefined;
+            assert(get_status(self, &val) == windows.S_OK);
+
+            return val;
         }
 
         pub const GetResultsError = error{Unexpected};
