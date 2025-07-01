@@ -35,9 +35,10 @@ pub fn main() !void {
     );
 
     const future = try manager.RequestAsync();
-    const res = try future.GetResults();
+    // calling GetResults on not completed thingy throws OOM
+    // const res = try future.GetResults();
 
-    std.debug.print("{}\n", .{res});
+    std.debug.print("{}\n", .{try future.Status()});
 
     var client = try Client.init(allocator);
     defer client.deinit();
