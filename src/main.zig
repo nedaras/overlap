@@ -4,10 +4,11 @@ const actions = @import("actions.zig");
 const Client = @import("http.zig").Client;
 const Hook = @import("Hook.zig");
 const time = std.time;
+const unicode = std.unicode;
 const Uri = std.Uri;
 const assert = std.debug.assert;
 
-const combase = @import("windows/combase.zig");
+const windows = @import("windows.zig");
 
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
@@ -15,12 +16,21 @@ pub fn main() !void {
 
     const allocator = da.allocator();
 
-    //const str = std.unicode.wtf8ToWtf16LeStringLiteral("Hello!");
+    try windows.RoInitialize(windows.RO_INIT_MULTITHREADED);
+    defer windows.RoUninitialize();
 
-    var hstr: combase.HSTRING = undefined;
-    //_ = combase.WindowsCreateString(str, str.len, &hstr);
+    const class = try windows.WindowsCreateString(
+        unicode.wtf8ToWtf16LeStringLiteral("Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager"),
+    );
+    defer windows.WindowsDeleteString(class);
 
-    _ = combase.RoGetActivationFactory(hstr, @import("windows.zig").d3d11.ID3D11Device.UUID, &hstr);
+    var manager: *windows.media.IGlobalSystemMediaTransportControlsSessionManagerStatics = undefined;
+
+    try windows.RoGetActivationFactory(
+        class,
+        windows.media.IGlobalSystemMediaTransportControlsSessionManagerStatics.UUID,
+        @ptrCast(&manager),
+    );
 
     var client = try Client.init(allocator);
     defer client.deinit();

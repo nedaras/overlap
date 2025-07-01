@@ -1,20 +1,29 @@
 const windows = @import("../windows.zig");
 
+const UINT32 = windows.UINT32;
 const WINAPI = windows.WINAPI;
 const HRESULT = windows.HRESULT;
-pub const HSTRING = *opaque{};
-const REFID = windows.REFIID;
-const PCNZWCH = windows.PCWSTR;
-const UINT32 = u32;
+const REFIID = windows.REFIID;
+const PCNZWCH = windows.PCNZWCH;
+const HSTRING = windows.HSTRING;
+const RO_INIT_TYPE = windows.RO_INIT_TYPE;
 
-pub extern "combase" fn RoGetActivationFactory(
+pub extern fn RoInitialize(initType: RO_INIT_TYPE) callconv(WINAPI) HRESULT;
+
+pub extern fn RoUninitialize() void;
+
+pub extern fn RoGetActivationFactory(
     activatableClassId: HSTRING,
-    iid: REFID,
+    iid: REFIID,
     factory: **anyopaque,
 ) callconv(WINAPI) HRESULT;
 
-pub extern "combase" fn WindowsCreateString(
+pub extern fn WindowsCreateString(
     sourceString: PCNZWCH,
     length: UINT32,
     string: *HSTRING,
+) callconv(WINAPI) HRESULT;
+
+pub extern fn WindowsDeleteString(
+    string: HSTRING,
 ) callconv(WINAPI) HRESULT;

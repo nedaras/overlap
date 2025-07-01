@@ -5,16 +5,20 @@ const assert = std.debug.assert;
 const kernel32 = @import("windows/kernel32.zig");
 const psapi = @import("windows/psapi.zig");
 const winhttp = @import("windows/winhttp.zig");
+const combase = @import("windows/combase.zig");
 
 pub usingnamespace windows;
 
 pub const user32 = @import("windows/user32.zig");
+pub const media = @import("windows/media.zig");
 pub const dxgi = @import("windows/dxgi.zig");
 pub const d3d11 = @import("windows/d3d11.zig");
 pub const d3dcommon = @import("windows/d3dcommon.zig");
 pub const d3dcompiler = @import("windows/d3dcompiler.zig");
 
+const INT = windows.INT;
 const UINT = windows.UINT;
+const S_OK = windows.S_OK;
 const WPARAM = windows.WPARAM;
 const LPARAM = windows.LPARAM;
 const TRUE = windows.TRUE;
@@ -31,6 +35,13 @@ const LPCVOID = windows.LPCVOID;
 const LONG_PTR = windows.LONG_PTR;
 const Win32Error = windows.Win32Error;
 
+pub const RO_INIT_TYPE = INT;
+pub const RO_INIT_SINGLETHREADED = 0;
+pub const RO_INIT_MULTITHREADED = 1;
+
+pub const UINT32 = u32;
+pub const HSTRING = *opaque{};
+pub const PCNZWCH = windows.PCWSTR;
 pub const REFIID = *const windows.GUID;
 pub const HINTERNET = winhttp.HINTERNET;
 pub const INTERNET_PORT = winhttp.INTERNET_PORT;
@@ -93,7 +104,7 @@ pub const IUnknown = extern struct {
     pub fn QueryInterface(self: *IUnknown, riid: REFIID, ppvObject: **anyopaque) QueryInterfaceError!void {
         const hr = self.vtable.QueryInterface(self, riid, ppvObject);
         return switch (hr) {
-            windows.S_OK => void,
+            windows.S_OK => {},
             windows.E_NOINTERFACE => error.InterfaceNotFound,
             windows.E_POINTER => unreachable,
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
@@ -406,4 +417,48 @@ pub fn SetConsoleTitle(ConsoleTitle: [:0]const u8) SetConsoleTitleError!void {
             else => |err| windows.unexpectedError(err),
         };
     }
+}
+
+pub const RoInitializeError = error{Unexpected};
+
+pub fn RoInitialize(initType: RO_INIT_TYPE) RoInitializeError!void {
+    const hr = combase.RoInitialize(initType);
+    return switch (hr) {
+        windows.S_OK => {},
+        else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+    };
+}
+
+pub inline fn RoUninitialize() void {
+    combase.RoUninitialize();
+}
+
+pub const RoGetActivationFactoryError = error{Unexpected};
+
+pub fn RoGetActivationFactory(
+    activatableClassId: HSTRING,
+    iid: REFIID,
+    factory: **anyopaque,
+) RoGetActivationFactoryError!void {
+    const hr = combase.RoGetActivationFactory(activatableClassId, iid, factory);
+    return switch (hr) {
+        windows.S_OK => {},
+        else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+    };
+}
+
+pub const WindowsCreateStringError = error{Unexpected};
+
+pub fn WindowsCreateString(sourceString: [:0]const u16) WindowsCreateStringError!HSTRING {
+    var hstring: HSTRING = undefined;
+
+    const hr = combase.WindowsCreateString(sourceString.ptr, @intCast(sourceString.len), &hstring);
+    return switch (hr) {
+        windows.S_OK => hstring,
+        else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+    };
+}
+
+pub inline fn WindowsDeleteString(string: HSTRING) void {
+    assert(combase.WindowsDeleteString(string) == windows.S_OK);
 }
