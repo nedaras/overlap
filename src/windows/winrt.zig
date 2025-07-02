@@ -36,15 +36,17 @@ pub fn Callback(
         },
 
         allocator: Allocator,
-
         context: Context,
 
-        ref_count: std.atomic.Value(ULONG) = .init(1),
+        ref_count: std.atomic.Value(ULONG),
         
         pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
             const self: *@This() = @alignCast(@ptrCast(ctx));
 
-            std.debug.print("UUID: {}\n", .{riid});
+            // there are like runtime types GUIDs so we would like need to make IAsyncOperationCompletedHandler
+
+            const refs = self.ref_count.load(.acquire);
+            std.debug.print("refs: {d}, GUID: {x} {x} {x} {x}\n", .{refs, riid.Data1, riid.Data2, riid.Data3, riid.Data4});
 
             if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IUnknown.UUID))) {
                 _ = self.ref_count.fetchAdd(1, .release);
@@ -96,6 +98,7 @@ pub fn Callback(
     closure.* = .{
         .allocator = allocator,
         .context = context,
+        .ref_count = .init(1),
     };
 
     return @ptrCast(closure);

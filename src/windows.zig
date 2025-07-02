@@ -49,6 +49,8 @@ pub const HINTERNET = winhttp.HINTERNET;
 pub const INTERNET_PORT = winhttp.INTERNET_PORT;
 pub const IAsyncOperation = winrt.IAsyncOperation;
 pub const IAsyncInfo = winrt.IAsyncInfo;
+pub const AsyncStatus = winrt.AsyncStatus;
+pub const Callback = winrt.Callback;
 
 pub const WM_MOUSEMOVE = 0x0200;
 pub const WM_LBUTTONDOWN = 0x0201;

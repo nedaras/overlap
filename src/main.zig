@@ -45,14 +45,14 @@ pub fn main() !void {
     try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
     defer info.Release();
 
-    var cb: *@import("windows/winrt.zig").IAsyncOperationCompletedHandler = undefined;
+    const callback = try windows.Callback(allocator, {}, struct {
+        fn invoke(_: void, _: *windows.IAsyncInfo, status: windows.AsyncStatus) !void {
+            std.debug.print("{}\n", .{status});
+        }
+    }.invoke);
+    defer callback.Release();
 
-    try future.QueryInterface(&windows.GUID.parse("{00000036-0000-0000-C000-000000000046}"), @ptrCast(&cb));
-
-    //try future.put_Completed(cb);
-
-    // todo: we could simplify these interfaces like how cpp does it
-    // there is put_completed se we could get notified when we're done
+    try future.put_Completed(callback);
 
     while (info.get_Status() == .Started) {
         std.atomic.spinLoopHint();
