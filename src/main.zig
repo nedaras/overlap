@@ -45,7 +45,7 @@ pub fn main() !void {
     try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
     defer info.Release();
 
-    const cb = try @import("windows/winrt.zig").Callback(allocator, @ptrCast(future), {}, struct {
+    const cb = try @import("windows/winrt.zig").Callback(allocator, {}, struct {
         fn invoke(_: void, inf: *windows.IAsyncInfo, status: @import("windows/winrt.zig").AsyncStatus) !void {
              _ = inf;
              std.debug.print("done: {}\n", .{status});

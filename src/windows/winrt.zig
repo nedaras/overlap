@@ -22,7 +22,6 @@ pub const AsyncStatus = enum(INT) {
 // Expects allocator to be threadsafe
 pub fn Callback(
     allocator: Allocator,
-    implements: *IUnknown,
     context: anytype,
     comptime invokeFn: fn (@TypeOf(context), asyncInfo: *IAsyncInfo, status: AsyncStatus) IAsyncOperationCompletedHandler.InvokeError!void
 ) Allocator.Error!*IAsyncOperationCompletedHandler {
@@ -39,47 +38,46 @@ pub fn Callback(
         allocator: Allocator,
 
         context: Context,
-        implements: *IUnknown,
 
-        ref_count: std.atomic.Value(ULONG) = .init(0),
+        ref_count: std.atomic.Value(ULONG) = .init(1),
         
         pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
             const self: *@This() = @alignCast(@ptrCast(ctx));
-            return self.implements.vtable.QueryInterface(self.implements, riid, ppvObject);
+
+            std.debug.print("UUID: {}\n", .{riid});
+
+            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IUnknown.UUID))) {
+                _ = self.ref_count.fetchAdd(1, .release);
+
+                ppvObject.* = ctx;
+                return windows.S_OK;
+            }
+            return windows.E_NOINTERFACE;
         }
 
         pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
+            std.debug.print("AddRef\n", .{});
             const self: *@This() = @alignCast(@ptrCast(ctx));
-            
-            _ = self.implements.vtable.AddRef(self.implements);
 
             const prev = self.ref_count.fetchAdd(1, .release);
             return prev + 1;
         }
 
         fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
+            std.debug.print("Release\n", .{});
             const self: *@This() = @alignCast(@ptrCast(ctx));
-
-            if (self.implements.vtable.Release(self.implements) == 0) {
-                self.allocator.destroy(self);
-                self.* = undefined;
-
-                return 0;
-            }
 
             const prev = self.ref_count.fetchSub(1, .acquire);
 
             if (prev == 1) {
                 self.allocator.destroy(self);
-                self.* = undefined;
-
-                return 0;
             }
 
             return prev - 1;
         }
 
         pub fn Invoke(ctx: *anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT {
+            std.debug.print("Invoke\n", .{});
             const self: *@This() = @alignCast(@ptrCast(ctx));
             invokeFn(self.context, asyncInfo, status) catch |err| return switch (err) {
                 error.OutOfMemory => windows.E_OUTOFMEMORY,
@@ -98,10 +96,7 @@ pub fn Callback(
     closure.* = .{
         .allocator = allocator,
         .context = context,
-        .implements = implements,
     };
-
-    _ = closure.vtable.AddRef(closure);
 
     return @ptrCast(closure);
 }
