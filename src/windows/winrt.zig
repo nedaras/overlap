@@ -22,11 +22,7 @@ pub const AsyncStatus = enum(INT) {
 };
 
 // Expects allocator to be threadsafe
-pub fn Callback(
-    allocator: Allocator,
-    context: anytype,
-    comptime invokeFn: fn (@TypeOf(context), asyncInfo: *IAsyncInfo, status: AsyncStatus) IAsyncOperationCompletedHandler.InvokeError!void
-) Allocator.Error!*IAsyncOperationCompletedHandler {
+pub fn Callback(allocator: Allocator, context: anytype, comptime invokeFn: fn (@TypeOf(context), asyncInfo: *IAsyncInfo, status: AsyncStatus) IAsyncOperationCompletedHandler.InvokeError!void) Allocator.Error!*IAsyncOperationCompletedHandler {
     const Context = @TypeOf(context);
 
     const Closure = struct {
@@ -41,7 +37,7 @@ pub fn Callback(
         context: Context,
 
         ref_count: std.atomic.Value(ULONG),
-        
+
         pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
             const self: *@This() = @alignCast(@ptrCast(ctx));
 
@@ -49,7 +45,7 @@ pub fn Callback(
             const guids = &[_]windows.REFIID{
                 tmp_uuid,
                 IUnknown.UUID,
-                IMarshal.UUID,
+                IAgileObject.UUID,
             };
 
             if (windows.eqlGuids(riid, guids)) {

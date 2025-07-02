@@ -43,7 +43,7 @@ pub const RO_INIT_SINGLETHREADED = 0;
 pub const RO_INIT_MULTITHREADED = 1;
 
 pub const UINT32 = u32;
-pub const HSTRING = *opaque{};
+pub const HSTRING = *opaque {};
 pub const PCNZWCH = windows.PCWSTR;
 pub const REFIID = *const windows.GUID;
 pub const HINTERNET = winhttp.HINTERNET;
@@ -502,7 +502,7 @@ pub fn WindowsGetStringRawBuffer(string: HSTRING) [:0]const u16 {
     var len: UINT32 = undefined;
     const source_string = combase.WindowsGetStringRawBuffer(string, &len);
 
-    return if (source_string) |str| str[0..len:0] else std.unicode.wtf8ToWtf16LeStringLiteral("");
+    return if (source_string) |str| str[0..len :0] else std.unicode.wtf8ToWtf16LeStringLiteral("");
 }
 
 pub const CoCreateFreeThreadedMarshalerError = error{

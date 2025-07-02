@@ -23,7 +23,6 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
-
 };
 
 pub const IGlobalSystemMediaTransportControlsSession = extern struct {
@@ -38,14 +37,13 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         const request_async: *const FnType = @ptrCast(self.vtable[7]);
 
         var operation: *IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionMediaProperties) = undefined;
-        
+
         const hr = request_async(self, &operation);
         return switch (hr) {
             windows.S_OK => operation,
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
-
 };
 
 pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
@@ -65,7 +63,6 @@ pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
-
 };
 
 pub const IGlobalSystemMediaTransportControlsSessionManagerStatics = extern struct {
@@ -93,7 +90,7 @@ pub const IGlobalSystemMediaTransportControlsSessionManagerStatics = extern stru
         const request_async: *const FnType = @ptrCast(self.vtable[6]);
 
         var operation: *IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionManager) = undefined;
-        
+
         const hr = request_async(self, &operation);
         return switch (hr) {
             windows.S_OK => operation,

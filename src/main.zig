@@ -55,6 +55,7 @@ pub fn main() !void {
 
     var info: *windows.IAsyncInfo = undefined;
     const future = try manager.RequestAsync();
+    // need to close all async stuff
 
     try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
     defer info.Release();
@@ -62,12 +63,11 @@ pub fn main() !void {
     try future.put_Completed(callback);
 
     r_ev.wait();
-    r_ev.reset();
 
     std.debug.print("done!\n", .{});
 
     //while (info.get_Status() == .Started) {
-        //std.atomic.spinLoopHint();
+    //std.atomic.spinLoopHint();
     //}
 
     //std.debug.print("{}\n", .{info.get_Status()});
@@ -79,7 +79,7 @@ pub fn main() !void {
     //try future2.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info2));
 
     //while (info2.get_Status() == .Started) {
-        //std.atomic.spinLoopHint();
+    //std.atomic.spinLoopHint();
     //}
 
     //std.debug.print("{}\n", .{info2.get_Status()});
@@ -102,7 +102,7 @@ pub fn main() !void {
     //defer font.deinit(allocator);
 
     //while (true) {
-        //try hook.newFrame();
-        //defer hook.endFrame();
+    //try hook.newFrame();
+    //defer hook.endFrame();
     //}
 }
