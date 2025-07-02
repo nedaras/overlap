@@ -10,6 +10,10 @@ const assert = std.debug.assert;
 
 const windows = @import("windows.zig");
 
+// idk seems so many async stuff can happen here these controls then winhttp stuff
+// I do not rly see a point for multiple threads perhaps single thread can handle this all
+// except if that jpeg to img will be cpu intensive then yee...
+
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
     defer _ = da.deinit();
@@ -39,16 +43,33 @@ pub fn main() !void {
     const future = try manager.RequestAsync();
 
     try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
+    defer info.Release();
 
     // todo: we could simplify these interfaces like how cpp does it
     // there is put_completed se we could get notified when we're done
 
     while (info.get_Status() == .Started) {
-        std.debug.print("{}\n", .{info.get_Status()});
         std.atomic.spinLoopHint();
     }
 
-    std.debug.print("{}\n", .{try future.GetResults()});
+    std.debug.print("{}\n", .{info.get_Status()});
+    const session = try (try future.GetResults()).GetCurrentSession(); // unsafe as maybe its canceled or stauts is err
+
+    var info2: *windows.IAsyncInfo = undefined;
+    const future2 = try session.TryGetMediaPropertiesAsync();
+
+    try future2.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info2));
+
+    while (info2.get_Status() == .Started) {
+        std.atomic.spinLoopHint();
+    }
+
+    std.debug.print("{}\n", .{info2.get_Status()});
+
+    const props = try future2.GetResults();
+    const title = try props.get_Title();
+
+    std.debug.print("{d}\n", .{windows.WindowsGetStringRawBuffer(title)});
 
     var client = try Client.init(allocator);
     defer client.deinit();

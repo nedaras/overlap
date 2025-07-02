@@ -465,3 +465,10 @@ pub fn WindowsCreateString(sourceString: [:0]const u16) WindowsCreateStringError
 pub inline fn WindowsDeleteString(string: HSTRING) void {
     assert(combase.WindowsDeleteString(string) == windows.S_OK);
 }
+
+pub fn WindowsGetStringRawBuffer(string: HSTRING) [:0]const u16 {
+    var len: UINT32 = undefined;
+    const source_string = combase.WindowsGetStringRawBuffer(string, &len);
+
+    return if (source_string) |str| str[0..len:0] else std.unicode.wtf8ToWtf16LeStringLiteral("");
+}

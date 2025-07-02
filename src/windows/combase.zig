@@ -7,6 +7,7 @@ const REFIID = windows.REFIID;
 const PCNZWCH = windows.PCNZWCH;
 const HSTRING = windows.HSTRING;
 const RO_INIT_TYPE = windows.RO_INIT_TYPE;
+const PCWSTR = windows.PCWSTR;
 
 pub extern fn RoInitialize(initType: RO_INIT_TYPE) callconv(WINAPI) HRESULT;
 
@@ -27,3 +28,8 @@ pub extern fn WindowsCreateString(
 pub extern fn WindowsDeleteString(
     string: HSTRING,
 ) callconv(WINAPI) HRESULT;
+
+pub extern fn WindowsGetStringRawBuffer(
+    string: HSTRING,
+    length: *UINT32,
+) callconv(WINAPI) ?PCWSTR;

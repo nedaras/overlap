@@ -32,6 +32,10 @@ pub const IAsyncInfo = extern struct {
         },
     };
 
+    pub inline fn Release(self: *IAsyncInfo) void {
+        IUnknown.Release(@ptrCast(self));
+    }
+
     pub fn get_Status(self: *IAsyncInfo) AsyncStatus {
         const FnType = fn (*IAsyncInfo, *AsyncStatus) callconv(WINAPI) HRESULT;
         const get_status: *const FnType = @ptrCast(self.vtable[7]);
