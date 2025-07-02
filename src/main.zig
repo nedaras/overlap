@@ -39,11 +39,18 @@ pub fn main() !void {
         @ptrCast(&manager),
     );
 
-    const callback = try windows.Callback(allocator, {}, struct {
-        fn invoke(_: void, _: *windows.IAsyncInfo, status: windows.AsyncStatus) !void {
-            std.debug.print("{}\n", .{status});
+    var r_ev: std.Thread.ResetEvent = .{};
+
+    const Context = struct {
+        r_ev: *std.Thread.ResetEvent,
+
+        fn invoke(ctx: @This(), _: *windows.IAsyncInfo, status: windows.AsyncStatus) !void {
+            _ = status;
+            ctx.r_ev.set();
         }
-    }.invoke);
+    };
+
+    const callback = try windows.Callback(allocator, Context{ .r_ev = &r_ev }, Context.invoke);
     defer callback.Release();
 
     var info: *windows.IAsyncInfo = undefined;
@@ -54,7 +61,10 @@ pub fn main() !void {
 
     try future.put_Completed(callback);
 
-    std.Thread.sleep(time.ns_per_s * 3);
+    r_ev.wait();
+    r_ev.reset();
+
+    std.debug.print("done!\n", .{});
 
     //while (info.get_Status() == .Started) {
         //std.atomic.spinLoopHint();

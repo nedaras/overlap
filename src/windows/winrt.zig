@@ -46,10 +46,6 @@ pub fn Callback(
             const self: *@This() = @alignCast(@ptrCast(ctx));
 
             const tmp_uuid = comptime &GUID.parse("{10f0074e-923d-5510-8f4a-dde37754ca0e}");
-
-            const refs = self.ref_count.load(.acquire);
-            std.debug.print("refs: {d}, GUID: {x} {x} {x} {x}\n", .{refs, riid.Data1, riid.Data2, riid.Data3, riid.Data4});
-
             const guids = &[_]windows.REFIID{
                 tmp_uuid,
                 IUnknown.UUID,
@@ -71,7 +67,6 @@ pub fn Callback(
         }
 
         pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
-            std.debug.print("AddRef\n", .{});
             const self: *@This() = @alignCast(@ptrCast(ctx));
 
             const prev = self.ref_count.fetchAdd(1, .release);
@@ -79,11 +74,9 @@ pub fn Callback(
         }
 
         fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
-            std.debug.print("Release\n", .{});
             const self: *@This() = @alignCast(@ptrCast(ctx));
 
             const prev = self.ref_count.fetchSub(1, .acquire);
-
             if (prev == 1) {
                 self.allocator.destroy(self);
             }
@@ -92,7 +85,6 @@ pub fn Callback(
         }
 
         pub fn Invoke(ctx: *anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT {
-            std.debug.print("Invoke\n", .{});
             const self: *@This() = @alignCast(@ptrCast(ctx));
             invokeFn(self.context, asyncInfo, status) catch |err| return switch (err) {
                 error.OutOfMemory => windows.E_OUTOFMEMORY,
