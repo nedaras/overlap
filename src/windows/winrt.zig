@@ -22,6 +22,7 @@ pub const AsyncStatus = enum(INT) {
 // Expects allocator to be threadsafe
 pub fn Callback(
     allocator: Allocator,
+    implements: *IUnknown,
     context: anytype,
     comptime invokeFn: fn (@TypeOf(context), asyncInfo: *IAsyncInfo, status: AsyncStatus) IAsyncOperationCompletedHandler.InvokeError!void
 ) Allocator.Error!*IAsyncOperationCompletedHandler {
@@ -38,18 +39,19 @@ pub fn Callback(
         allocator: Allocator,
 
         context: Context,
-        ref_count: std.atomic.Value(ULONG) = .init(1),
+        implements: *IUnknown,
+
+        ref_count: std.atomic.Value(ULONG) = .init(0),
         
         pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
-            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IUnknown.UUID))) {
-                ppvObject.* = ctx;
-                return windows.S_OK;
-            }
-            return windows.E_NOINTERFACE;
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+            return self.implements.vtable.QueryInterface(self.implements, riid, ppvObject);
         }
 
         pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
             const self: *@This() = @alignCast(@ptrCast(ctx));
+            
+            _ = self.implements.vtable.AddRef(self.implements);
 
             const prev = self.ref_count.fetchAdd(1, .release);
             return prev + 1;
@@ -58,10 +60,20 @@ pub fn Callback(
         fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
             const self: *@This() = @alignCast(@ptrCast(ctx));
 
+            if (self.implements.vtable.Release(self.implements) == 0) {
+                self.allocator.destroy(self);
+                self.* = undefined;
+
+                return 0;
+            }
+
             const prev = self.ref_count.fetchSub(1, .acquire);
 
             if (prev == 1) {
                 self.allocator.destroy(self);
+                self.* = undefined;
+
+                return 0;
             }
 
             return prev - 1;
@@ -86,7 +98,10 @@ pub fn Callback(
     closure.* = .{
         .allocator = allocator,
         .context = context,
+        .implements = implements,
     };
+
+    _ = closure.vtable.AddRef(closure);
 
     return @ptrCast(closure);
 }
