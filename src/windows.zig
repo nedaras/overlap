@@ -24,6 +24,7 @@ const WPARAM = windows.WPARAM;
 const LPARAM = windows.LPARAM;
 const TRUE = windows.TRUE;
 const HWND = windows.HWND;
+const GUID = windows.GUID;
 const FALSE = windows.FALSE;
 const ULONG = windows.ULONG;
 const DWORD = windows.DWORD;
@@ -98,6 +99,19 @@ pub const WINHTTP_QUERY_FLAG_NUMBER = 0x20000000;
 
 pub const IUnknown = extern struct {
     vtable: *const IUnknownVTable,
+
+    /// __uuidof(IUnknown) = `"00000000-0000-0000-C000-000000000046"`
+    pub const UUID = &GUID{
+        .Data1 = 0x00000000,
+        .Data2 = 0x0000,
+        .Data3 = 0x0000,
+        .Data4 = .{
+            0xC0, 0x00,
+            0x00, 0x00,
+            0x00, 0x00,
+            0x00, 0x46,
+        },
+    };
 
     pub const QueryInterfaceError = error{
         InterfaceNotFound,

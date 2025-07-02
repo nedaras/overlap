@@ -45,6 +45,16 @@ pub fn main() !void {
     try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
     defer info.Release();
 
+    const cb = try @import("windows/winrt.zig").Callback(allocator, {}, struct {
+        fn invoke(_: void, inf: *windows.IAsyncInfo, status: @import("windows/winrt.zig").AsyncStatus) !void {
+             _ = inf;
+             std.debug.print("done: {}\n", .{status});
+        }
+    }.invoke);
+    defer cb.Release();
+
+    try future.put_Completed(cb);
+
     // todo: we could simplify these interfaces like how cpp does it
     // there is put_completed se we could get notified when we're done
 
@@ -56,7 +66,7 @@ pub fn main() !void {
     const session = try (try future.GetResults()).GetCurrentSession(); // unsafe as maybe its canceled or stauts is err
 
     var info2: *windows.IAsyncInfo = undefined;
-    const future2 = try session.TryGetMediaPropertiesAsync();
+    const future2 = try session.?.TryGetMediaPropertiesAsync();
 
     try future2.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info2));
 

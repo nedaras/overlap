@@ -53,11 +53,11 @@ pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
 
     pub const GetCurrentSessionError = error{Unexpected};
 
-    pub fn GetCurrentSession(self: *IGlobalSystemMediaTransportControlsSessionManager) GetCurrentSessionError!*IGlobalSystemMediaTransportControlsSession {
-        const FnType = fn (*IGlobalSystemMediaTransportControlsSessionManager, **IGlobalSystemMediaTransportControlsSession) callconv(WINAPI) HRESULT;
+    pub fn GetCurrentSession(self: *IGlobalSystemMediaTransportControlsSessionManager) GetCurrentSessionError!?*IGlobalSystemMediaTransportControlsSession {
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSessionManager, *?*IGlobalSystemMediaTransportControlsSession) callconv(WINAPI) HRESULT;
         const get_current_session: *const FnType = @ptrCast(self.vtable[6]);
 
-        var val: *IGlobalSystemMediaTransportControlsSession = undefined;
+        var val: ?*IGlobalSystemMediaTransportControlsSession = undefined;
 
         const hr = get_current_session(self, &val);
         return switch (hr) {

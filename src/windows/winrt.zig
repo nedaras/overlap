@@ -1,10 +1,13 @@
 const std = @import("std");
 const windows = @import("../windows.zig");
+const mem = std.mem;
+const Allocator = mem.Allocator;
 const assert = std.debug.assert;
 
 const INT = windows.INT;
-const REFIID = windows.REFIID;
 const GUID = windows.GUID;
+const ULONG = windows.ULONG;
+const REFIID = windows.REFIID;
 const WINAPI = windows.WINAPI;
 const HRESULT = windows.HRESULT;
 const IUnknown = windows.IUnknown;
@@ -14,6 +17,98 @@ pub const AsyncStatus = enum(INT) {
     Completed = 1,
     Canceled = 2,
     Error = 3,
+};
+
+// Expects allocator to be threadsafe
+pub fn Callback(
+    allocator: Allocator,
+    context: anytype,
+    comptime invokeFn: fn (@TypeOf(context), asyncInfo: *IAsyncInfo, status: AsyncStatus) IAsyncOperationCompletedHandler.InvokeError!void
+) Allocator.Error!*IAsyncOperationCompletedHandler {
+    const Context = @TypeOf(context);
+
+    const Closure = struct {
+        vtable: *const IAsyncOperationCompletedHandlerVTable = &.{
+            .QueryInterface = &QueryInterface,
+            .AddRef = &AddRef,
+            .Release = &Release,
+            .Invoke = &Invoke,
+        },
+
+        allocator: Allocator,
+
+        context: Context,
+        ref_count: std.atomic.Value(ULONG) = .init(1),
+        
+        pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
+            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IUnknown.UUID))) {
+                ppvObject.* = ctx;
+                return windows.S_OK;
+            }
+            return windows.E_NOINTERFACE;
+        }
+
+        pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+
+            const prev = self.ref_count.fetchAdd(1, .release);
+            return prev + 1;
+        }
+
+        fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+
+            const prev = self.ref_count.fetchSub(1, .acquire);
+
+            if (prev == 1) {
+                self.allocator.destroy(self);
+            }
+
+            return prev - 1;
+        }
+
+        pub fn Invoke(ctx: *anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+            invokeFn(self.context, asyncInfo, status) catch |err| return switch (err) {
+                error.OutOfMemory => windows.E_OUTOFMEMORY,
+                error.Unexpected => windows.E_UNEXPECTED,
+            };
+
+            return windows.S_OK;
+        }
+    };
+
+    if (@offsetOf(Closure, "vtable") != 0) {
+        @compileError("COM interfaces 'vtable' argument must be set first");
+    }
+
+    const closure = try allocator.create(Closure);
+    closure.* = .{
+        .allocator = allocator,
+        .context = context,
+    };
+
+    return @ptrCast(closure);
+}
+
+pub const IAsyncOperationCompletedHandler = extern struct {
+    vtable: *const IAsyncOperationCompletedHandlerVTable,
+
+    pub inline fn Release(self: *IAsyncOperationCompletedHandler) void {
+        _ = self.vtable.Release(self);
+    }
+
+    pub const InvokeError = error{
+        OutOfMemory,
+        Unexpected,
+    };
+};
+
+pub const IAsyncOperationCompletedHandlerVTable = extern struct {
+    QueryInterface: *const fn (*anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT,
+    AddRef: *const fn (*anyopaque) callconv(WINAPI) ULONG,
+    Release: *const fn (*anyopaque) callconv(WINAPI) ULONG,
+    Invoke: *const fn (*anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT,
 };
 
 pub const IAsyncInfo = extern struct {
@@ -55,6 +150,19 @@ pub fn IAsyncOperation(comptime T: type) type {
 
         pub inline fn QueryInterface(self: *Self, riid: REFIID, ppvObject: **anyopaque) IUnknown.QueryInterfaceError!void {
             return IUnknown.QueryInterface(@ptrCast(self), riid, ppvObject);
+        }
+
+        pub const PutCompletedError = error{Unexpected};
+
+        pub fn put_Completed(self: *Self, handler: *IAsyncOperationCompletedHandler) PutCompletedError!void {
+            const FnType = fn (*Self, *IAsyncOperationCompletedHandler) callconv(WINAPI) HRESULT;
+            const put_completed: *const FnType = @ptrCast(self.vtable[6]);
+
+            const hr = put_completed(self, handler);
+            return switch (hr) {
+                windows.S_OK => {},
+                else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+            };
         }
 
         pub const GetResultsError = error{Unexpected};
