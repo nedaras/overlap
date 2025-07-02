@@ -193,5 +193,40 @@ pub fn IAsyncOperation(comptime T: type) type {
                 else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
             };
         }
+
+        pub fn get(self: *Self) !T {
+            var async_info: *IAsyncInfo = undefined;
+
+            try self.QueryInterface(IAsyncInfo.UUID, @ptrCast(&async_info));
+            defer async_info.Release();
+
+            if (async_info.get_Status() == .Completed) {
+                return self.GetResults();
+            }
+
+            var reset_event: std.Thread.ResetEvent = .{};
+
+            const Context = struct {
+                reset_event: *std.Thread.ResetEvent,
+
+                pub fn invoke(ctx: @This(), _: *IAsyncInfo, _: AsyncStatus) !void {
+                    ctx.reset_event.set();
+                }
+            };
+
+            // todo: idk get size of CLosure or idk
+            var buf: [40]u8 = undefined;
+            var fba = std.heap.FixedBufferAllocator.init(&buf);
+
+            try self.put_Completed(Callback(fba.allocator(), Context{ .reset_event = &reset_event }, Context.invoke) catch unreachable);
+            reset_event.wait();
+
+            return switch (async_info.get_Status()) {
+                .Started => unreachable,
+                .Completed => self.GetResults(),
+                .Error => error.UnhandledError,
+                .Canceled => error.Canceled,
+            };
+        }
     };
 }

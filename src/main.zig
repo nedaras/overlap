@@ -23,6 +23,8 @@ pub fn main() !void {
     try windows.RoInitialize(windows.RO_INIT_MULTITHREADED);
     defer windows.RoUninitialize();
 
+    _ = allocator;
+
     // todo: use WindowsCreateStringReference
     // todo: we need to Release() this stuff
 
@@ -39,20 +41,6 @@ pub fn main() !void {
         @ptrCast(&manager),
     );
 
-    var r_ev: std.Thread.ResetEvent = .{};
-
-    const Context = struct {
-        r_ev: *std.Thread.ResetEvent,
-
-        fn invoke(ctx: @This(), _: *windows.IAsyncInfo, status: windows.AsyncStatus) !void {
-            _ = status;
-            ctx.r_ev.set();
-        }
-    };
-
-    const callback = try windows.Callback(allocator, Context{ .r_ev = &r_ev }, Context.invoke);
-    defer callback.Release();
-
     var info: *windows.IAsyncInfo = undefined;
     const future = try manager.RequestAsync();
     // need to close all async stuff
@@ -60,11 +48,7 @@ pub fn main() !void {
     try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
     defer info.Release();
 
-    try future.put_Completed(callback);
-
-    r_ev.wait();
-
-    std.debug.print("done!\n", .{});
+    std.debug.print("done: {}\n", .{try future.get()});
 
     //while (info.get_Status() == .Started) {
     //std.atomic.spinLoopHint();
