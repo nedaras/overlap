@@ -5,11 +5,11 @@ const assert = std.debug.assert;
 const kernel32 = @import("windows/kernel32.zig");
 const psapi = @import("windows/psapi.zig");
 const winhttp = @import("windows/winhttp.zig");
-const combase = @import("windows/combase.zig");
 const winrt = @import("windows/winrt.zig");
 
 pub usingnamespace windows;
 
+pub const combase = @import("windows/combase.zig");
 pub const user32 = @import("windows/user32.zig");
 pub const media = @import("windows/media.zig");
 pub const dxgi = @import("windows/dxgi.zig");
@@ -51,6 +51,7 @@ pub const IAsyncOperation = winrt.IAsyncOperation;
 pub const IAsyncInfo = winrt.IAsyncInfo;
 pub const AsyncStatus = winrt.AsyncStatus;
 pub const Callback = winrt.Callback;
+pub const LPUNKNOWN = **IUnknown;
 
 pub const WM_MOUSEMOVE = 0x0200;
 pub const WM_LBUTTONDOWN = 0x0201;
@@ -99,6 +100,18 @@ pub const WINHTTP_QUERY_CONTENT_LENGTH = 5;
 pub const WINHTTP_QUERY_STATUS_CODE = 19;
 pub const WINHTTP_QUERY_FLAG_NUMBER = 0x20000000;
 
+pub const IAgileObject = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const UUID = &GUID.parse("{94ea2b94-e9cc-49e0-c0ff-ee64ca8f5b90}");
+};
+
+pub const IMarshal = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const UUID = &GUID.parse("{00000003-0000-0000-C000-000000000046}");
+};
+
 pub const IUnknown = extern struct {
     vtable: *const IUnknownVTable,
 
@@ -117,6 +130,7 @@ pub const IUnknown = extern struct {
 
     pub const QueryInterfaceError = error{
         InterfaceNotFound,
+        OutOfMemory,
         Unexpected,
     };
 
@@ -124,6 +138,7 @@ pub const IUnknown = extern struct {
         const hr = self.vtable.QueryInterface(self, riid, ppvObject);
         return switch (hr) {
             windows.S_OK => {},
+            windows.E_OUTOFMEMORY => error.OutOfMemory,
             windows.E_NOINTERFACE => error.InterfaceNotFound,
             windows.E_POINTER => unreachable,
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
@@ -487,4 +502,21 @@ pub fn WindowsGetStringRawBuffer(string: HSTRING) [:0]const u16 {
     const source_string = combase.WindowsGetStringRawBuffer(string, &len);
 
     return if (source_string) |str| str[0..len:0] else std.unicode.wtf8ToWtf16LeStringLiteral("");
+}
+
+pub const CoCreateFreeThreadedMarshalerError = error{
+    OutOfMemory,
+    Unexpected,
+};
+
+pub fn CoCreateFreeThreadedMarshaler(
+    punkOuter: ?LPUNKNOWN,
+    ppunkMarshal: LPUNKNOWN,
+) CoCreateFreeThreadedMarshalerError!void {
+    const hr = combase.CoCreateFreeThreadedMarshaler(punkOuter, ppunkMarshal);
+    return switch (hr) {
+        windows.S_OK => {},
+        windows.E_OUTOFMEMORY => error.OutOfMemory,
+        else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+    };
 }

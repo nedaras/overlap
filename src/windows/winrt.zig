@@ -11,6 +11,8 @@ const REFIID = windows.REFIID;
 const WINAPI = windows.WINAPI;
 const HRESULT = windows.HRESULT;
 const IUnknown = windows.IUnknown;
+const IMarshal = windows.IMarshal;
+const IAgileObject = windows.IAgileObject;
 
 pub const AsyncStatus = enum(INT) {
     Started = 0,
@@ -48,12 +50,39 @@ pub fn Callback(
             const refs = self.ref_count.load(.acquire);
             std.debug.print("refs: {d}, GUID: {x} {x} {x} {x}\n", .{refs, riid.Data1, riid.Data2, riid.Data3, riid.Data4});
 
-            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IUnknown.UUID))) {
+            if (refs == 1) { // it gives like GUID to IAsyncOperationCompletedHandler+KResult idk how to handle that now
                 _ = self.ref_count.fetchAdd(1, .release);
 
                 ppvObject.* = ctx;
                 return windows.S_OK;
             }
+
+            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IUnknown.UUID)) or mem.eql(u8, mem.asBytes(riid), mem.asBytes(IAgileObject.UUID))) {
+                _ = self.ref_count.fetchAdd(1, .release);
+
+                ppvObject.* = ctx;
+                return windows.S_OK;
+            }
+
+            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IMarshal.UUID))) {
+                var unk_marshal: *windows.IUnknown = undefined;
+                var marshal: *windows.IMarshal = undefined;
+
+                const hr_a = windows.combase.CoCreateFreeThreadedMarshaler(null, &unk_marshal);
+                if (hr_a != windows.S_OK) {
+                    return hr_a;
+                }
+                defer unk_marshal.Release();
+
+                const hr_b = unk_marshal.vtable.QueryInterface(unk_marshal, windows.IMarshal.UUID, @ptrCast(&marshal));
+                if (hr_b != windows.S_OK) {
+                    return hr_a;
+                }
+
+                ppvObject.* = marshal;
+                return windows.S_OK;
+            }
+
             return windows.E_NOINTERFACE;
         }
 

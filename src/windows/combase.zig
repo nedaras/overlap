@@ -6,8 +6,9 @@ const HRESULT = windows.HRESULT;
 const REFIID = windows.REFIID;
 const PCNZWCH = windows.PCNZWCH;
 const HSTRING = windows.HSTRING;
-const RO_INIT_TYPE = windows.RO_INIT_TYPE;
 const PCWSTR = windows.PCWSTR;
+const LPUNKNOWN = windows.LPUNKNOWN;
+const RO_INIT_TYPE = windows.RO_INIT_TYPE;
 
 pub extern fn RoInitialize(initType: RO_INIT_TYPE) callconv(WINAPI) HRESULT;
 
@@ -33,3 +34,8 @@ pub extern fn WindowsGetStringRawBuffer(
     string: HSTRING,
     length: *UINT32,
 ) callconv(WINAPI) ?PCWSTR;
+
+pub extern fn CoCreateFreeThreadedMarshaler(
+    punkOuter: ?LPUNKNOWN,
+    ppunkMarshal: LPUNKNOWN,
+) callconv(WINAPI) HRESULT;
