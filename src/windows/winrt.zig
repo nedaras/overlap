@@ -105,6 +105,82 @@ pub fn Callback(allocator: Allocator, context: anytype, comptime invokeFn: fn (@
     return @ptrCast(closure);
 }
 
+pub fn Callback2(
+    comptime UUID: REFIID,
+    comptime Context: type,
+    comptime invokeFn: fn (Context, asyncInfo: *IAsyncInfo, status: AsyncStatus) IAsyncOperationCompletedHandler.InvokeError!void,
+) type {
+    return struct {
+        vtable: *const IAsyncOperationCompletedHandlerVTable = &.{
+            .QueryInterface = &QueryInterface,
+            .AddRef = &AddRef,
+            .Release = &Release,
+            .Invoke = &Invoke,
+        },
+
+        context: Context,
+        ref_count: std.atomic.Value(ULONG) = .init(0),
+
+        const Self = @This();
+
+        pub fn init(ctx: Context) Self {
+            return .{ .context = ctx };
+        }
+
+        pub fn handler(self: *Self) *IAsyncOperationCompletedHandler {
+            _ = AddRef(self);
+            return @alignCast(@ptrCast(self));
+        }
+
+        pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+
+            const guids = &[_]windows.REFIID{
+                UUID,
+                IUnknown.UUID,
+                IAgileObject.UUID,
+            };
+
+            if (windows.eqlGuids(riid, guids)) {
+                _ = self.ref_count.fetchAdd(1, .release);
+
+                ppvObject.* = ctx;
+                return windows.S_OK;
+            }
+
+            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IMarshal.UUID))) {
+                @panic("marshal requested!");
+            }
+
+            return windows.E_NOINTERFACE;
+        }
+
+        pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+
+            const prev = self.ref_count.fetchAdd(1, .release);
+            return prev + 1;
+        }
+
+        fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+
+            const prev = self.ref_count.fetchSub(1, .acquire);
+            return prev - 1;
+        }
+
+        pub fn Invoke(ctx: *anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+            invokeFn(self.context, asyncInfo, status) catch |err| return switch (err) {
+                error.OutOfMemory => windows.E_OUTOFMEMORY,
+                error.Unexpected => windows.E_UNEXPECTED,
+            };
+
+            return windows.S_OK;
+        }
+    };
+}
+
 pub const IAsyncOperationCompletedHandler = extern struct {
     vtable: *const IAsyncOperationCompletedHandlerVTable,
 
@@ -214,17 +290,20 @@ pub fn IAsyncOperation(comptime T: type) type {
                 }
             };
 
-            // todo: idk get size of CLosure or idk
-            var buf: [40]u8 = undefined;
-            var fba = std.heap.FixedBufferAllocator.init(&buf);
+            var callback: Callback2(
+                // todo: pass in T and calc GUID that way
+                &GUID.parse("{10f0074e-923d-5510-8f4a-dde37754ca0e}"),
+                Context,
+                Context.invoke,
+            ) = .init(.{ .reset_event = &reset_event });
 
-            try self.put_Completed(Callback(fba.allocator(), Context{ .reset_event = &reset_event }, Context.invoke) catch unreachable);
+            try self.put_Completed(callback.handler());
             reset_event.wait();
 
             return switch (async_info.get_Status()) {
                 .Started => unreachable,
                 .Completed => self.GetResults(),
-                .Error => error.UnhandledError,
+                .Error => error.UnhandledError, // todo: get error stuff from info
                 .Canceled => error.Canceled,
             };
         }
