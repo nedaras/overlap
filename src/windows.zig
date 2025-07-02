@@ -3,6 +3,7 @@ const windows = std.os.windows;
 const unicode = std.unicode;
 const assert = std.debug.assert;
 const kernel32 = @import("windows/kernel32.zig");
+const mem = std.mem;
 const psapi = @import("windows/psapi.zig");
 const winhttp = @import("windows/winhttp.zig");
 const winrt = @import("windows/winrt.zig");
@@ -519,4 +520,13 @@ pub fn CoCreateFreeThreadedMarshaler(
         windows.E_OUTOFMEMORY => error.OutOfMemory,
         else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
     };
+}
+
+pub inline fn eqlGuids(guid: *const GUID, comptime guids: []const *const GUID) bool {
+    inline for (guids) |tmp| {
+        if (mem.eql(u8, mem.asBytes(guid), mem.asBytes(tmp))) {
+            return true;
+        }
+    }
+    return false;
 }

@@ -39,12 +39,6 @@ pub fn main() !void {
         @ptrCast(&manager),
     );
 
-    var info: *windows.IAsyncInfo = undefined;
-    const future = try manager.RequestAsync();
-
-    try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
-    defer info.Release();
-
     const callback = try windows.Callback(allocator, {}, struct {
         fn invoke(_: void, _: *windows.IAsyncInfo, status: windows.AsyncStatus) !void {
             std.debug.print("{}\n", .{status});
@@ -52,48 +46,53 @@ pub fn main() !void {
     }.invoke);
     defer callback.Release();
 
+    var info: *windows.IAsyncInfo = undefined;
+    const future = try manager.RequestAsync();
+
+    try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
+    defer info.Release();
+
     try future.put_Completed(callback);
 
-    while (info.get_Status() == .Started) {
-        std.atomic.spinLoopHint();
-    }
+    std.Thread.sleep(time.ns_per_s * 3);
 
-    std.debug.print("{}\n", .{info.get_Status()});
-    const session = try (try future.GetResults()).GetCurrentSession(); // unsafe as maybe its canceled or stauts is err
+    //while (info.get_Status() == .Started) {
+        //std.atomic.spinLoopHint();
+    //}
 
-    var info2: *windows.IAsyncInfo = undefined;
-    const future2 = try session.?.TryGetMediaPropertiesAsync();
+    //std.debug.print("{}\n", .{info.get_Status()});
+    //const session = try (try future.GetResults()).GetCurrentSession(); // unsafe as maybe its canceled or stauts is err
 
-    try future2.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info2));
+    //var info2: *windows.IAsyncInfo = undefined;
+    //const future2 = try session.?.TryGetMediaPropertiesAsync();
 
-    while (info2.get_Status() == .Started) {
-        std.atomic.spinLoopHint();
-    }
+    //try future2.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info2));
 
-    std.debug.print("{}\n", .{info2.get_Status()});
+    //while (info2.get_Status() == .Started) {
+        //std.atomic.spinLoopHint();
+    //}
 
-    const props = try future2.GetResults();
-    const title = try props.get_Title();
+    //std.debug.print("{}\n", .{info2.get_Status()});
 
-    const wstr = windows.WindowsGetStringRawBuffer(title);
-    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(wstr)});
+    //const props = try future2.GetResults();
+    //const title = try props.get_Title();
 
-    var client = try Client.init(allocator);
-    defer client.deinit();
+    //const wstr = windows.WindowsGetStringRawBuffer(title);
+    //std.debug.print("{s}\n", .{std.mem.sliceAsBytes(wstr)});
 
-    var hook: Hook = .init;
+    //var hook: Hook = .init;
 
-    try hook.attach();
-    defer hook.detach();
+    //try hook.attach();
+    //defer hook.detach();
 
     //const gui = hook.gui();
     //const input = hook.input();
 
-    const font = try hook.loadFont(allocator, "font.fat");
-    defer font.deinit(allocator);
+    //const font = try hook.loadFont(allocator, "font.fat");
+    //defer font.deinit(allocator);
 
-    while (true) {
-        try hook.newFrame();
-        defer hook.endFrame();
-    }
+    //while (true) {
+        //try hook.newFrame();
+        //defer hook.endFrame();
+    //}
 }

@@ -45,19 +45,18 @@ pub fn Callback(
         pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
             const self: *@This() = @alignCast(@ptrCast(ctx));
 
-            // there are like runtime types GUIDs so we would like need to make IAsyncOperationCompletedHandler
+            const tmp_uuid = comptime &GUID.parse("{10f0074e-923d-5510-8f4a-dde37754ca0e}");
 
             const refs = self.ref_count.load(.acquire);
             std.debug.print("refs: {d}, GUID: {x} {x} {x} {x}\n", .{refs, riid.Data1, riid.Data2, riid.Data3, riid.Data4});
 
-            if (refs == 1) { // it gives like GUID to IAsyncOperationCompletedHandler+KResult idk how to handle that now
-                _ = self.ref_count.fetchAdd(1, .release);
+            const guids = &[_]windows.REFIID{
+                tmp_uuid,
+                IUnknown.UUID,
+                IMarshal.UUID,
+            };
 
-                ppvObject.* = ctx;
-                return windows.S_OK;
-            }
-
-            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IUnknown.UUID)) or mem.eql(u8, mem.asBytes(riid), mem.asBytes(IAgileObject.UUID))) {
+            if (windows.eqlGuids(riid, guids)) {
                 _ = self.ref_count.fetchAdd(1, .release);
 
                 ppvObject.* = ctx;
@@ -65,22 +64,7 @@ pub fn Callback(
             }
 
             if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IMarshal.UUID))) {
-                var unk_marshal: *windows.IUnknown = undefined;
-                var marshal: *windows.IMarshal = undefined;
-
-                const hr_a = windows.combase.CoCreateFreeThreadedMarshaler(null, &unk_marshal);
-                if (hr_a != windows.S_OK) {
-                    return hr_a;
-                }
-                defer unk_marshal.Release();
-
-                const hr_b = unk_marshal.vtable.QueryInterface(unk_marshal, windows.IMarshal.UUID, @ptrCast(&marshal));
-                if (hr_b != windows.S_OK) {
-                    return hr_a;
-                }
-
-                ppvObject.* = marshal;
-                return windows.S_OK;
+                @panic("marshal requested!");
             }
 
             return windows.E_NOINTERFACE;
