@@ -69,7 +69,8 @@ pub fn main() !void {
     const props = try future2.GetResults();
     const title = try props.get_Title();
 
-    std.debug.print("{d}\n", .{windows.WindowsGetStringRawBuffer(title)});
+    const wstr = windows.WindowsGetStringRawBuffer(title);
+    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(wstr)});
 
     var client = try Client.init(allocator);
     defer client.deinit();
