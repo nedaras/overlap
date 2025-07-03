@@ -44,8 +44,8 @@ pub fn main() !void {
     defer s_manager.Release();
 
     const a_manager = try s_manager.RequestAsync();
-    defer a_manager.Close();
     defer a_manager.Release();
+    defer a_manager.Close();
 
     const manager = try a_manager.get();
     defer manager.Release();
@@ -54,8 +54,8 @@ pub fn main() !void {
     defer session.Release();
 
     const a_sesion = try session.TryGetMediaPropertiesAsync();
-    defer a_sesion.Close();
     defer a_sesion.Release();
+    defer a_sesion.Close();
 
     const props = try a_sesion.get();
     defer props.Release();
