@@ -28,6 +28,7 @@ pub fn main() !void {
     // todo: use WindowsCreateStringReference
     // todo: we need to Release() this stuff
 
+    // we could hide all of this in my own like GlobalSystemMediaTransportControlsSessionManager zig friendly class as cpp does
     const class = try windows.WindowsCreateString(
         unicode.wtf8ToWtf16LeStringLiteral("Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager"),
     );
@@ -41,19 +42,16 @@ pub fn main() !void {
         @ptrCast(&manager),
     );
 
-    const future1 = try manager.RequestAsync();
-    // need to close all async stuff
+    const future1 = try manager.RequestAsync(); // need to close all async stuff
     const mngr = try future1.get();
 
-    //std.debug.print("done: {}\n", .{try future1.get()});
-
     const session = try mngr.GetCurrentSession();
-    const future2 = try session.?.TryGetMediaPropertiesAsync();
-
-    std.debug.print("bef failure\n", .{});
+    const future2 = try session.?.TryGetMediaPropertiesAsync(); // need to close all async stuff
 
     const props = try future2.get();
-    std.debug.print("{}\n", .{props});
+    const title = windows.WindowsGetStringRawBuffer(try props.get_Title());
+
+    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(title)});
 
     //while (info.get_Status() == .Started) {
     //std.atomic.spinLoopHint();

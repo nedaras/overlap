@@ -9,6 +9,12 @@ const IAsyncOperation = windows.IAsyncOperation;
 pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern struct {
     vtable: [*]const *const anyopaque,
 
+    pub const NAME = "Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties";
+
+    pub const SIGNATURE = "rc(" ++ NAME ++ ";{68856cf6-adb4-54b2-ac16-05837907acb6})";
+
+    pub const UUID = &GUID.parse("{68856cf6-adb4-54b2-ac16-05837907acb6}");
+
     pub const GetTitleError = error{Unexpected};
 
     pub fn get_Title(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) GetTitleError!HSTRING {
@@ -46,8 +52,13 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
     }
 };
 
+// prob add those GlobalSystemMediaTransportControlsSessionManager classes for general use
 pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
     vtable: [*]const *const anyopaque,
+
+    pub const NAME = "Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager";
+
+    pub const SIGNATURE = "rc(" ++ NAME ++ ";{cace8eac-e86e-504a-ab31-5ff8ff1bce49})";
 
     pub const UUID = &GUID.parse("{cace8eac-e86e-504a-ab31-5ff8ff1bce49}");
 

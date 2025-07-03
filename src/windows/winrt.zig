@@ -227,29 +227,36 @@ pub fn IAsyncOperation(comptime T: type) type {
                 }
             };
 
-            //  why not working hmm
-            // `pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};{cace8eac-e86e-504a-ab31-5ff8ff1bce49})` -> `{10f0074e-923d-5510-8f4a-dde37754ca0e}`
-            comptime {
-                //@setEvalBranchQuota(10_000);
-                //const prefix = &[_]u8{0x11, 0xf4, 0x7a, 0xd5, 0x7b, 0x73, 0x42, 0xc0, 0xab, 0xae, 0x87, 0x8b, 0x1e, 0x16, 0xad, 0xee};
-                //const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};{cace8eac-e86e-504a-ab31-5ff8ff1bce49})";
-                //const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};{cace8eac-e86e-504a-ab31-5ff8ff1bce49})";
+            const UUID = comptime blk: {
+                @setEvalBranchQuota(10_000);
+                const prefix = &[_]u8{0x11, 0xf4, 0x7a, 0xd5, 0x7b, 0x73, 0x42, 0xc0, 0xab, 0xae, 0x87, 0x8b, 0x1e, 0x16, 0xad, 0xee};
 
-                //const expected = &GUID.parse("{10f0074e-923d-5510-8f4a-dde37754ca0e}");
+                //const sign = @import("./media.zig").IGlobalSystemMediaTransportControlsSessionManager.SIGNATURE;
+                const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};" ++ std.meta.Child(T).SIGNATURE ++ ")";
 
-                //const data = prefix ++ signature;
+                const data = prefix ++ signature;
 
-                //var hashed: [20]u8 = undefined;
-                //std.crypto.hash.Sha1.hash(data, &hashed, .{});
+                var hashed: [20]u8 = undefined;
+                std.crypto.hash.Sha1.hash(data, &hashed, .{});
 
-                //@compileLog(std.fmt.comptimePrint("{x}", .{std.mem.readInt(u32, hashed[0..4], .big)}));
-                //@compileLog(std.fmt.comptimePrint("{x}", .{expected.Data1}));
+                const data1 = mem.readInt(u32, hashed[0..4], .big);
+                const data2 = mem.readInt(u16, hashed[4..6], .big);
 
-            }
+                const data3 = (mem.readInt(u16, hashed[6..8], .big) & 0x0fff) | (5 << 12);
+                const data4 = ([1]u8{(hashed[8] & 0x3f) | 0x80} ++ hashed[9..16]).*;
+
+                break :blk &GUID{
+                    .Data1 = data1,
+                    .Data2 = data2,
+                    .Data3 = data3,
+                    .Data4 = data4,
+                };
+            };
+
+            //@compileLog(std.fmt.comptimePrint("{x}", .{UUID.Data1}));
 
             var callback: Callback(
-                // todo: pass in T and calc GUID that way
-                &GUID.parse("{10f0074e-923d-5510-8f4a-dde37754ca0e}"),
+                UUID,
                 Context,
                 Context.invoke,
             ) = .init(.{ .reset_event = &reset_event });

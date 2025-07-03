@@ -223,6 +223,7 @@ pub const Request = struct {
         };
 
         const out = std.mem.sliceAsBytes(header);
+        // this is just incorrect, but winhttp will soon be removed soo see no point to fixing this stuff
         const len = unicode.wtf16LeToWtf8(out, header);
 
         return allocator.remap(out, len - 1);
