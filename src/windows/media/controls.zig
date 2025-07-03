@@ -34,11 +34,11 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         self: *IGlobalSystemMediaTransportControlsSession,
     ) TryGetMediaPropertiesAsyncError!*IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionMediaProperties) {
         const FnType = fn (*IGlobalSystemMediaTransportControlsSession, **IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionMediaProperties)) callconv(WINAPI) HRESULT;
-        const request_async: *const FnType = @ptrCast(self.vtable[7]);
+        const try_get_media_properties_async: *const FnType = @ptrCast(self.vtable[7]);
 
         var operation: *IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionMediaProperties) = undefined;
 
-        const hr = request_async(self, &operation);
+        const hr = try_get_media_properties_async(self, &operation);
         return switch (hr) {
             windows.S_OK => operation,
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
@@ -48,6 +48,8 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
 
 pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
     vtable: [*]const *const anyopaque,
+
+    pub const UUID = &GUID.parse("{cace8eac-e86e-504a-ab31-5ff8ff1bce49}");
 
     pub const GetCurrentSessionError = error{Unexpected};
 

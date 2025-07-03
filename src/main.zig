@@ -41,14 +41,19 @@ pub fn main() !void {
         @ptrCast(&manager),
     );
 
-    var info: *windows.IAsyncInfo = undefined;
-    const future = try manager.RequestAsync();
+    const future1 = try manager.RequestAsync();
     // need to close all async stuff
+    const mngr = try future1.get();
 
-    try future.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info));
-    defer info.Release();
+    //std.debug.print("done: {}\n", .{try future1.get()});
 
-    std.debug.print("done: {}\n", .{try future.get()});
+    const session = try mngr.GetCurrentSession();
+    const future2 = try session.?.TryGetMediaPropertiesAsync();
+
+    std.debug.print("bef failure\n", .{});
+
+    const props = try future2.get();
+    std.debug.print("{}\n", .{props});
 
     //while (info.get_Status() == .Started) {
     //std.atomic.spinLoopHint();

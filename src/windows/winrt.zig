@@ -21,91 +21,7 @@ pub const AsyncStatus = enum(INT) {
     Error = 3,
 };
 
-// Expects allocator to be threadsafe
-pub fn Callback(allocator: Allocator, context: anytype, comptime invokeFn: fn (@TypeOf(context), asyncInfo: *IAsyncInfo, status: AsyncStatus) IAsyncOperationCompletedHandler.InvokeError!void) Allocator.Error!*IAsyncOperationCompletedHandler {
-    const Context = @TypeOf(context);
-
-    const Closure = struct {
-        vtable: *const IAsyncOperationCompletedHandlerVTable = &.{
-            .QueryInterface = &QueryInterface,
-            .AddRef = &AddRef,
-            .Release = &Release,
-            .Invoke = &Invoke,
-        },
-
-        allocator: Allocator,
-        context: Context,
-
-        ref_count: std.atomic.Value(ULONG),
-
-        pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
-            const self: *@This() = @alignCast(@ptrCast(ctx));
-
-            const tmp_uuid = comptime &GUID.parse("{10f0074e-923d-5510-8f4a-dde37754ca0e}");
-            const guids = &[_]windows.REFIID{
-                tmp_uuid,
-                IUnknown.UUID,
-                IAgileObject.UUID,
-            };
-
-            if (windows.eqlGuids(riid, guids)) {
-                _ = self.ref_count.fetchAdd(1, .release);
-
-                ppvObject.* = ctx;
-                return windows.S_OK;
-            }
-
-            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IMarshal.UUID))) {
-                @panic("marshal requested!");
-            }
-
-            return windows.E_NOINTERFACE;
-        }
-
-        pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
-            const self: *@This() = @alignCast(@ptrCast(ctx));
-
-            const prev = self.ref_count.fetchAdd(1, .release);
-            return prev + 1;
-        }
-
-        fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
-            const self: *@This() = @alignCast(@ptrCast(ctx));
-
-            const prev = self.ref_count.fetchSub(1, .acquire);
-            if (prev == 1) {
-                self.allocator.destroy(self);
-            }
-
-            return prev - 1;
-        }
-
-        pub fn Invoke(ctx: *anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT {
-            const self: *@This() = @alignCast(@ptrCast(ctx));
-            invokeFn(self.context, asyncInfo, status) catch |err| return switch (err) {
-                error.OutOfMemory => windows.E_OUTOFMEMORY,
-                error.Unexpected => windows.E_UNEXPECTED,
-            };
-
-            return windows.S_OK;
-        }
-    };
-
-    if (@offsetOf(Closure, "vtable") != 0) {
-        @compileError("COM interfaces 'vtable' argument must be set first");
-    }
-
-    const closure = try allocator.create(Closure);
-    closure.* = .{
-        .allocator = allocator,
-        .context = context,
-        .ref_count = .init(1),
-    };
-
-    return @ptrCast(closure);
-}
-
-pub fn Callback2(
+pub fn Callback(
     comptime UUID: REFIID,
     comptime Context: type,
     comptime invokeFn: fn (Context, asyncInfo: *IAsyncInfo, status: AsyncStatus) IAsyncOperationCompletedHandler.InvokeError!void,
@@ -118,10 +34,27 @@ pub fn Callback2(
             .Invoke = &Invoke,
         },
 
-        context: Context,
         ref_count: std.atomic.Value(ULONG) = .init(0),
 
+        context: Context,
+
         const Self = @This();
+
+        // tbf we rly dont need to make new vtables for each subtype of Callback
+        // check what zig does if it does not optimize this, we should just push our generic CallbackVTable
+
+        comptime {
+            if (@offsetOf(Self, "vtable") != 0) {
+                @compileError("Callback's 'vtable' argument must be set to first");
+            }
+
+            //@compileLog(@offsetOf(Self, "ref_count"));
+            //@compileLog(@sizeOf(std.atomic.Value(ULONG)));
+
+            //if (@offsetOf(Self, "ref_count") != 4) {
+                //@compileError("Callback's 'ref_count' argument must be set to second");
+            //}
+        }
 
         pub fn init(ctx: Context) Self {
             return .{ .context = ctx };
@@ -134,6 +67,8 @@ pub fn Callback2(
 
         pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
             const self: *@This() = @alignCast(@ptrCast(ctx));
+
+            std.debug.print("{x}-{x}-{x}-{x}\n", .{riid.Data1, riid.Data2, riid.Data3, riid.Data4});
 
             const guids = &[_]windows.REFIID{
                 UUID,
@@ -183,6 +118,8 @@ pub fn Callback2(
 
 pub const IAsyncOperationCompletedHandler = extern struct {
     vtable: *const IAsyncOperationCompletedHandlerVTable,
+
+    pub const UUID = &GUID.parse("{fcdcf02c-e5d8-4478-915a-4d90b74b83a5}");
 
     pub inline fn Release(self: *IAsyncOperationCompletedHandler) void {
         _ = self.vtable.Release(self);
@@ -290,7 +227,27 @@ pub fn IAsyncOperation(comptime T: type) type {
                 }
             };
 
-            var callback: Callback2(
+            //  why not working hmm
+            // `pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};{cace8eac-e86e-504a-ab31-5ff8ff1bce49})` -> `{10f0074e-923d-5510-8f4a-dde37754ca0e}`
+            comptime {
+                //@setEvalBranchQuota(10_000);
+                //const prefix = &[_]u8{0x11, 0xf4, 0x7a, 0xd5, 0x7b, 0x73, 0x42, 0xc0, 0xab, 0xae, 0x87, 0x8b, 0x1e, 0x16, 0xad, 0xee};
+                //const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};{cace8eac-e86e-504a-ab31-5ff8ff1bce49})";
+                //const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};{cace8eac-e86e-504a-ab31-5ff8ff1bce49})";
+
+                //const expected = &GUID.parse("{10f0074e-923d-5510-8f4a-dde37754ca0e}");
+
+                //const data = prefix ++ signature;
+
+                //var hashed: [20]u8 = undefined;
+                //std.crypto.hash.Sha1.hash(data, &hashed, .{});
+
+                //@compileLog(std.fmt.comptimePrint("{x}", .{std.mem.readInt(u32, hashed[0..4], .big)}));
+                //@compileLog(std.fmt.comptimePrint("{x}", .{expected.Data1}));
+
+            }
+
+            var callback: Callback(
                 // todo: pass in T and calc GUID that way
                 &GUID.parse("{10f0074e-923d-5510-8f4a-dde37754ca0e}"),
                 Context,
