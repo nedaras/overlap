@@ -10,32 +10,27 @@ const PCWSTR = windows.PCWSTR;
 const LPUNKNOWN = windows.LPUNKNOWN;
 const RO_INIT_TYPE = windows.RO_INIT_TYPE;
 
-pub extern fn RoInitialize(initType: RO_INIT_TYPE) callconv(WINAPI) HRESULT;
+pub extern "api-ms-win-core-winrt-l1-1-0" fn RoInitialize(initType: RO_INIT_TYPE) callconv(WINAPI) HRESULT;
 
-pub extern fn RoUninitialize() void;
+pub extern "api-ms-win-core-winrt-l1-1-0" fn RoUninitialize() void;
 
-pub extern fn RoGetActivationFactory(
+pub extern "api-ms-win-core-winrt-l1-1-0" fn RoGetActivationFactory(
     activatableClassId: HSTRING,
     iid: REFIID,
     factory: **anyopaque,
 ) callconv(WINAPI) HRESULT;
 
-pub extern fn WindowsCreateString(
+pub extern "api-ms-win-core-winrt-string-l1-1-0" fn WindowsCreateString(
     sourceString: PCNZWCH,
     length: UINT32,
     string: *HSTRING,
 ) callconv(WINAPI) HRESULT;
 
-pub extern fn WindowsDeleteString(
+pub extern "api-ms-win-core-winrt-string-l1-1-0" fn WindowsDeleteString(
     string: HSTRING,
 ) callconv(WINAPI) HRESULT;
 
-pub extern fn WindowsGetStringRawBuffer(
+pub extern "api-ms-win-core-winrt-string-l1-1-0" fn WindowsGetStringRawBuffer(
     string: HSTRING,
     length: *UINT32,
 ) callconv(WINAPI) ?PCWSTR;
-
-pub extern fn CoCreateFreeThreadedMarshaler(
-    punkOuter: ?LPUNKNOWN,
-    ppunkMarshal: LPUNKNOWN,
-) callconv(WINAPI) HRESULT;

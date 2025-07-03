@@ -5,14 +5,13 @@ const Client = @import("http.zig").Client;
 const Hook = @import("Hook.zig");
 const time = std.time;
 const unicode = std.unicode;
+const windows = @import("windows.zig");
 const Uri = std.Uri;
 const assert = std.debug.assert;
 
-const windows = @import("windows.zig");
-
-// idk seems so many async stuff can happen here these controls then winhttp stuff
-// I do not rly see a point for multiple threads perhaps single thread can handle this all
-// except if that jpeg to img will be cpu intensive then yee...
+// todos: Make Player class so i would not need to look at windows
+//        Read album image
+//        hook to track change and session chnage events
 
 pub fn main() !void {
     var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
@@ -66,32 +65,10 @@ pub fn main() !void {
     const artist = try unicode.wtf16LeToWtf8Alloc(allocator, w_artist);
     defer allocator.free(artist);
 
+    // for thumbnail we can use BitmapDecoder will not even need stb
+
     std.debug.print("title: {s}\n", .{title});
     std.debug.print("artist: {s}\n", .{artist});
-
-    //while (info.get_Status() == .Started) {
-    //std.atomic.spinLoopHint();
-    //}
-
-    //std.debug.print("{}\n", .{info.get_Status()});
-    //const session = try (try future.GetResults()).GetCurrentSession(); // unsafe as maybe its canceled or stauts is err
-
-    //var info2: *windows.IAsyncInfo = undefined;
-    //const future2 = try session.?.TryGetMediaPropertiesAsync();
-
-    //try future2.QueryInterface(windows.IAsyncInfo.UUID, @ptrCast(&info2));
-
-    //while (info2.get_Status() == .Started) {
-    //std.atomic.spinLoopHint();
-    //}
-
-    //std.debug.print("{}\n", .{info2.get_Status()});
-
-    //const props = try future2.GetResults();
-    //const title = try props.get_Title();
-
-    //const wstr = windows.WindowsGetStringRawBuffer(title);
-    //std.debug.print("{s}\n", .{std.mem.sliceAsBytes(wstr)});
 
     //var hook: Hook = .init;
 

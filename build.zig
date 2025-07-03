@@ -31,12 +31,6 @@ pub fn build(b: *std.Build) void {
 
     switch (target.result.os.tag) {
         .windows => {
-            // todo: idk handle this stuff better
-            lib.addLibraryPath(.{ .cwd_relative = "C:\\Windows\\System32" });
-            lib.addLibraryPath(.{ .cwd_relative = "/home/nedas/Downloads" });
-
-            lib.linkSystemLibrary("combase");
-
             lib.addIncludePath(minhook.path("include"));
             lib.addCSourceFiles(.{
                 .root = minhook.path("src"),
