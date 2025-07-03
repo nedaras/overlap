@@ -34,6 +34,21 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
+
+    pub const GetArtistError = error{Unexpected};
+
+    pub fn get_Artist(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) GetArtistError!HSTRING {
+        const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, *HSTRING) callconv(WINAPI) HRESULT;
+        const get_artist: *const FnType = @ptrCast(self.vtable[9]);
+
+        var value: HSTRING = undefined;
+
+        const hr = get_artist(self, &value);
+        return switch (hr) {
+            windows.S_OK => value,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
 };
 
 pub const IGlobalSystemMediaTransportControlsSession = extern struct {

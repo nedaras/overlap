@@ -23,10 +23,7 @@ pub fn main() !void {
     try windows.RoInitialize(windows.RO_INIT_MULTITHREADED);
     defer windows.RoUninitialize();
 
-    _ = allocator;
-
     // todo: use WindowsCreateStringReference
-    // todo: we need to Release() this stuff
 
     // we could hide all of this in my own like GlobalSystemMediaTransportControlsSessionManager zig friendly class as cpp does
     const class = try windows.WindowsCreateString(
@@ -60,9 +57,17 @@ pub fn main() !void {
     const props = try a_sesion.get();
     defer props.Release();
 
-    const title = windows.WindowsGetStringRawBuffer(try props.get_Title());
+    const w_title = windows.WindowsGetStringRawBuffer(try props.get_Title());
+    const w_artist = windows.WindowsGetStringRawBuffer(try props.get_Artist());
 
-    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(title)});
+    const title = try unicode.wtf16LeToWtf8Alloc(allocator, w_title);
+    defer allocator.free(title);
+
+    const artist = try unicode.wtf16LeToWtf8Alloc(allocator, w_artist);
+    defer allocator.free(artist);
+
+    std.debug.print("title: {s}\n", .{title});
+    std.debug.print("artist: {s}\n", .{artist});
 
     //while (info.get_Status() == .Started) {
     //std.atomic.spinLoopHint();

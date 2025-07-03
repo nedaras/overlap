@@ -195,7 +195,7 @@ pub fn IAsyncOperation(comptime T: type) type {
         pub fn Close(self: *Self) void {
             var async_info: *IAsyncInfo = undefined;
 
-            self.QueryInterface(IAsyncInfo.UUID, @ptrCast(&async_info)) catch return;
+            self.QueryInterface(IAsyncInfo.UUID, @ptrCast(&async_info)) catch unreachable;
             defer async_info.Release();
 
             async_info.Close();
