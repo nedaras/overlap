@@ -52,7 +52,7 @@ pub fn Callback(
             //@compileLog(@sizeOf(std.atomic.Value(ULONG)));
 
             //if (@offsetOf(Self, "ref_count") != 4) {
-                //@compileError("Callback's 'ref_count' argument must be set to second");
+            //@compileError("Callback's 'ref_count' argument must be set to second");
             //}
         }
 
@@ -67,8 +67,6 @@ pub fn Callback(
 
         pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
             const self: *@This() = @alignCast(@ptrCast(ctx));
-
-            std.debug.print("{x}-{x}-{x}-{x}\n", .{riid.Data1, riid.Data2, riid.Data3, riid.Data4});
 
             const guids = &[_]windows.REFIID{
                 UUID,
@@ -90,6 +88,7 @@ pub fn Callback(
             return windows.E_NOINTERFACE;
         }
 
+        // todo: reusize this
         pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
             const self: *@This() = @alignCast(@ptrCast(ctx));
 
@@ -97,6 +96,7 @@ pub fn Callback(
             return prev + 1;
         }
 
+        // todo: reusize this
         fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
             const self: *@This() = @alignCast(@ptrCast(ctx));
 
@@ -167,6 +167,13 @@ pub const IAsyncInfo = extern struct {
 
         return val;
     }
+
+    pub fn Close(self: *IAsyncInfo) void {
+        const FnType = fn (*IAsyncInfo) callconv(WINAPI) HRESULT;
+        const close: *const FnType = @ptrCast(self.vtable[10]);
+
+        assert(close(self) == windows.S_OK);
+    }
 };
 
 pub fn IAsyncOperation(comptime T: type) type {
@@ -180,6 +187,19 @@ pub fn IAsyncOperation(comptime T: type) type {
         }
 
         pub const PutCompletedError = error{Unexpected};
+
+        pub inline fn Release(self: *Self) void {
+            IUnknown.Release(@ptrCast(self));
+        }
+
+        pub fn Close(self: *Self) void {
+            var async_info: *IAsyncInfo = undefined;
+
+            self.QueryInterface(IAsyncInfo.UUID, @ptrCast(&async_info)) catch return;
+            defer async_info.Release();
+
+            async_info.Close();
+        }
 
         pub fn put_Completed(self: *Self, handler: *IAsyncOperationCompletedHandler) PutCompletedError!void {
             const FnType = fn (*Self, *IAsyncOperationCompletedHandler) callconv(WINAPI) HRESULT;
@@ -229,9 +249,7 @@ pub fn IAsyncOperation(comptime T: type) type {
 
             const UUID = comptime blk: {
                 @setEvalBranchQuota(10_000);
-                const prefix = &[_]u8{0x11, 0xf4, 0x7a, 0xd5, 0x7b, 0x73, 0x42, 0xc0, 0xab, 0xae, 0x87, 0x8b, 0x1e, 0x16, 0xad, 0xee};
-
-                //const sign = @import("./media.zig").IGlobalSystemMediaTransportControlsSessionManager.SIGNATURE;
+                const prefix = &[_]u8{ 0x11, 0xf4, 0x7a, 0xd5, 0x7b, 0x73, 0x42, 0xc0, 0xab, 0xae, 0x87, 0x8b, 0x1e, 0x16, 0xad, 0xee };
                 const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};" ++ std.meta.Child(T).SIGNATURE ++ ")";
 
                 const data = prefix ++ signature;

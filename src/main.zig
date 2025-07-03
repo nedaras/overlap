@@ -34,21 +34,32 @@ pub fn main() !void {
     );
     defer windows.WindowsDeleteString(class);
 
-    var manager: *windows.media.IGlobalSystemMediaTransportControlsSessionManagerStatics = undefined;
+    var s_manager: *windows.media.IGlobalSystemMediaTransportControlsSessionManagerStatics = undefined;
 
     try windows.RoGetActivationFactory(
         class,
         windows.media.IGlobalSystemMediaTransportControlsSessionManagerStatics.UUID,
-        @ptrCast(&manager),
+        @ptrCast(&s_manager),
     );
+    defer s_manager.Release();
 
-    const future1 = try manager.RequestAsync(); // need to close all async stuff
-    const mngr = try future1.get();
+    const a_manager = try s_manager.RequestAsync();
+    defer a_manager.Close();
+    defer a_manager.Release();
 
-    const session = try mngr.GetCurrentSession();
-    const future2 = try session.?.TryGetMediaPropertiesAsync(); // need to close all async stuff
+    const manager = try a_manager.get();
+    defer manager.Release();
 
-    const props = try future2.get();
+    const session = (try manager.GetCurrentSession()).?;
+    defer session.Release();
+
+    const a_sesion = try session.TryGetMediaPropertiesAsync();
+    defer a_sesion.Close();
+    defer a_sesion.Release();
+
+    const props = try a_sesion.get();
+    defer props.Release();
+
     const title = windows.WindowsGetStringRawBuffer(try props.get_Title());
 
     std.debug.print("{s}\n", .{std.mem.sliceAsBytes(title)});

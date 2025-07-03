@@ -4,6 +4,7 @@ const GUID = windows.GUID;
 const WINAPI = windows.WINAPI;
 const HRESULT = windows.HRESULT;
 const HSTRING = windows.HSTRING;
+const IUnknown = windows.IUnknown;
 const IAsyncOperation = windows.IAsyncOperation;
 
 pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern struct {
@@ -14,6 +15,10 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
     pub const SIGNATURE = "rc(" ++ NAME ++ ";{68856cf6-adb4-54b2-ac16-05837907acb6})";
 
     pub const UUID = &GUID.parse("{68856cf6-adb4-54b2-ac16-05837907acb6}");
+
+    pub inline fn Release(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) void {
+        IUnknown.Release(@ptrCast(self));
+    }
 
     pub const GetTitleError = error{Unexpected};
 
@@ -35,6 +40,10 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
     vtable: [*]const *const anyopaque,
 
     pub const TryGetMediaPropertiesAsyncError = error{Unexpected};
+
+    pub inline fn Release(self: *IGlobalSystemMediaTransportControlsSession) void {
+        IUnknown.Release(@ptrCast(self));
+    }
 
     pub fn TryGetMediaPropertiesAsync(
         self: *IGlobalSystemMediaTransportControlsSession,
@@ -63,6 +72,10 @@ pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
     pub const UUID = &GUID.parse("{cace8eac-e86e-504a-ab31-5ff8ff1bce49}");
 
     pub const GetCurrentSessionError = error{Unexpected};
+
+    pub inline fn Release(self: *IGlobalSystemMediaTransportControlsSessionManager) void {
+        IUnknown.Release(@ptrCast(self));
+    }
 
     pub fn GetCurrentSession(self: *IGlobalSystemMediaTransportControlsSessionManager) GetCurrentSessionError!?*IGlobalSystemMediaTransportControlsSession {
         const FnType = fn (*IGlobalSystemMediaTransportControlsSessionManager, *?*IGlobalSystemMediaTransportControlsSession) callconv(WINAPI) HRESULT;
@@ -95,6 +108,10 @@ pub const IGlobalSystemMediaTransportControlsSessionManagerStatics = extern stru
     };
 
     pub const RequestAsyncError = error{Unexpected};
+
+    pub inline fn Release(self: *IGlobalSystemMediaTransportControlsSessionManagerStatics) void {
+        IUnknown.Release(@ptrCast(self));
+    }
 
     pub fn RequestAsync(
         self: *IGlobalSystemMediaTransportControlsSessionManagerStatics,
