@@ -600,3 +600,68 @@ pub inline fn signatureOf(comptime T: type) *const [signatureOfCount(T):0]u8 {
         }
     }
 }
+
+pub fn AsyncOperation(comptime TResult: type) type {
+    return struct {
+        handle: *IAsyncOperation(TResult),
+
+        const Self = @This();
+
+        pub inline fn Release(self: Self) void {
+            self.handle.Release();
+        }
+
+        pub inline fn Close(self: Self) void {
+            self.handle.Close();
+        }
+
+        pub fn get(self: Self) !TResult{
+            var async_info: *IAsyncInfo = undefined;
+
+            try self.handle.QueryInterface(IAsyncInfo.UUID, @ptrCast(&async_info));
+            defer async_info.Release();
+
+            if (async_info.get_Status() == .Completed) {
+                return self.handle.GetResults();
+            }
+
+            var reset_event: std.Thread.ResetEvent = .{};
+
+            const Context = struct {
+                reset_event: *std.Thread.ResetEvent,
+
+                pub fn invoke(ctx: @This(), _: *IAsyncInfo, _: AsyncStatus) !void {
+                    ctx.reset_event.set();
+                }
+            };
+
+            const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};" ++ signatureOf(TResult) ++ ")";
+
+            // we need to get idk callback from CompletedHandler(...).callback().handler()
+
+            var callback: Callback(
+                uuidFromSignature(signature),
+                Context,
+                Context.invoke,
+            ) = .init(.{ .reset_event = &reset_event });
+
+            try self.handle.put_Completed(callback.handler());
+            reset_event.wait();
+
+            return switch (async_info.get_Status()) {
+                .Started => unreachable,
+                .Completed => self.handle.GetResults(),
+                .Error => error.UnhandledError, // todo: get error stuff from info
+                .Canceled => error.Canceled,
+            };
+        }
+
+        /// Same as `get` just releases all COM resources.
+        pub fn getAndForget(self: Self) !TResult {
+            defer Release(self);
+            defer Close(self);
+
+            return get(self);
+        }
+    };
+}

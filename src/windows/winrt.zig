@@ -103,6 +103,7 @@ pub fn Callback(
             const self: *@This() = @alignCast(@ptrCast(ctx));
 
             const prev = self.ref_count.fetchSub(1, .acquire);
+            std.debug.print("Callback refs: {d}\n", .{prev - 1});
             return prev - 1;
         }
 
@@ -345,45 +346,6 @@ pub fn IAsyncOperation(comptime T: type) type {
             return switch (hr) {
                 windows.S_OK => val,
                 else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
-            };
-        }
-
-        pub fn get(self: *Self) !T {
-            var async_info: *IAsyncInfo = undefined;
-
-            try self.QueryInterface(IAsyncInfo.UUID, @ptrCast(&async_info));
-            defer async_info.Release();
-
-            if (async_info.get_Status() == .Completed) {
-                return self.GetResults();
-            }
-
-            var reset_event: std.Thread.ResetEvent = .{};
-
-            const Context = struct {
-                reset_event: *std.Thread.ResetEvent,
-
-                pub fn invoke(ctx: @This(), _: *IAsyncInfo, _: AsyncStatus) !void {
-                    ctx.reset_event.set();
-                }
-            };
-
-            const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};" ++ signatureOf(T) ++ ")";
-
-            var callback: Callback(
-                uuidFromSignature(signature),
-                Context,
-                Context.invoke,
-            ) = .init(.{ .reset_event = &reset_event });
-
-            try self.put_Completed(callback.handler());
-            reset_event.wait();
-
-            return switch (async_info.get_Status()) {
-                .Started => unreachable,
-                .Completed => self.GetResults(),
-                .Error => error.UnhandledError, // todo: get error stuff from info
-                .Canceled => error.Canceled,
             };
         }
     };
