@@ -49,11 +49,28 @@ pub fn main() !void {
     const session = (try manager.GetCurrentSession()).?;
     defer session.Release();
 
-    const a_sesion = try session.TryGetMediaPropertiesAsync();
-    defer a_sesion.Release();
-    defer a_sesion.Close();
+    // now this sucks we prob could do like TypedEvent(..., ...).callback({}, invokeFn)
+    // then to get like raw call .handler to cast it
 
-    const props = try a_sesion.get();
+    var callback: windows.Callback2(
+        *windows.media.IGlobalSystemMediaTransportControlsSession,
+        *windows.media.IMediaPropertiesChangedEventArgs,
+        void,
+        struct {
+            fn invoke(_: void) !void {
+                std.debug.print("invoked!\n", .{});
+            }
+        }.invoke,
+    ) = .init({});
+
+    _ = try session.add_MediaPropertiesChanged(callback.handler());
+    // prob we need to rem after we're done
+
+    const a_props = try session.TryGetMediaPropertiesAsync();
+    defer a_props.Release();
+    defer a_props.Close();
+
+    const props = try a_props.get();
     defer props.Release();
 
     const w_title = windows.WindowsGetStringRawBuffer(try props.get_Title());

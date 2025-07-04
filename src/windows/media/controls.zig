@@ -1,11 +1,24 @@
 const windows = @import("../../windows.zig");
 
+const INT64 = i64;
 const GUID = windows.GUID;
 const WINAPI = windows.WINAPI;
 const HRESULT = windows.HRESULT;
 const HSTRING = windows.HSTRING;
 const IUnknown = windows.IUnknown;
 const IAsyncOperation = windows.IAsyncOperation;
+const TypedEventHandler = windows.TypedEventHandler;
+
+pub const EventRegistrationToken = extern struct {
+    value: INT64,
+};
+
+pub const IMediaPropertiesChangedEventArgs = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const NAME = "Windows.Media.Control.MediaPropertiesChangedEventArgs";
+    pub const SIGNATURE = "rc(" ++ NAME ++ ";{7d3741cb-adf0-5cef-91ba-cfabcdd77678})";
+};
 
 pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern struct {
     vtable: [*]const *const anyopaque,
@@ -54,6 +67,9 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
 pub const IGlobalSystemMediaTransportControlsSession = extern struct {
     vtable: [*]const *const anyopaque,
 
+    pub const NAME = "Windows.Media.Control.GlobalSystemMediaTransportControlsSession";
+    pub const SIGNATURE = "rc(" ++ NAME ++ ";{7148c835-9b14-5ae2-ab85-dc9b1c14e1a8})";
+
     pub const TryGetMediaPropertiesAsyncError = error{Unexpected};
 
     pub inline fn Release(self: *IGlobalSystemMediaTransportControlsSession) void {
@@ -74,6 +90,30 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
+
+    pub const AddMediaPropertiesChangedError = error{Unexpected};
+
+    pub fn add_MediaPropertiesChanged(
+        self: *IGlobalSystemMediaTransportControlsSession,
+        handler: *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs),
+    ) AddMediaPropertiesChangedError!EventRegistrationToken {
+        const FnType = fn (
+            *IGlobalSystemMediaTransportControlsSession,
+            *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs),
+            *EventRegistrationToken
+        ) callconv(WINAPI) HRESULT;
+
+        const add_media_proparties_changed: *const FnType = @ptrCast(self.vtable[29]);
+
+        var token: EventRegistrationToken = undefined;
+
+        const hr = add_media_proparties_changed(self, handler, &token);
+        return switch (hr) {
+            windows.S_OK => token,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+
 };
 
 // prob add those GlobalSystemMediaTransportControlsSessionManager classes for general use

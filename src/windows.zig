@@ -49,9 +49,11 @@ pub const REFIID = *const windows.GUID;
 pub const HINTERNET = winhttp.HINTERNET;
 pub const INTERNET_PORT = winhttp.INTERNET_PORT;
 pub const IAsyncOperation = winrt.IAsyncOperation;
+pub const TypedEventHandler = winrt.TypedEventHandler;
 pub const IAsyncInfo = winrt.IAsyncInfo;
 pub const AsyncStatus = winrt.AsyncStatus;
 pub const Callback = winrt.Callback;
+pub const Callback2 = winrt.Callback2;
 pub const LPUNKNOWN = **IUnknown;
 
 pub const WM_MOUSEMOVE = 0x0200;
@@ -529,4 +531,72 @@ pub inline fn eqlGuids(guid: *const GUID, comptime guids: []const *const GUID) b
         }
     }
     return false;
+}
+
+pub inline fn uuidOf(comptime T: type) *const GUID {
+    comptime {
+        switch (@typeInfo(T)) {
+            .@"struct" => {
+                if (!@hasDecl(T, "UUID")) {
+                    @compileError("'" ++ @typeName(T) ++ "' has no declaration 'UUID'");
+                }
+                return T.UUID;
+            },
+            .pointer => |ptr| return signatureOf(ptr.child),
+            else => @compileError("expected struct found '" ++ @typeName(T) ++ "'"),
+        }
+    }
+}
+
+pub inline fn uuidFromSignature(comptime signature: []const u8) *const GUID {
+    comptime {
+        @setEvalBranchQuota(10_000);
+
+        const prefix = &[_]u8{ 0x11, 0xf4, 0x7a, 0xd5, 0x7b, 0x73, 0x42, 0xc0, 0xab, 0xae, 0x87, 0x8b, 0x1e, 0x16, 0xad, 0xee };
+        const data = prefix ++ signature;
+
+        var hashed: [20]u8 = undefined;
+        std.crypto.hash.Sha1.hash(data, &hashed, .{});
+
+        const data1 = mem.readInt(u32, hashed[0..4], .big);
+        const data2 = mem.readInt(u16, hashed[4..6], .big);
+
+        const data3 = (mem.readInt(u16, hashed[6..8], .big) & 0x0fff) | (5 << 12);
+        const data4 = ([1]u8{(hashed[8] & 0x3f) | 0x80} ++ hashed[9..16]).*;
+
+        return &GUID{
+            .Data1 = data1,
+            .Data2 = data2,
+            .Data3 = data3,
+            .Data4 = data4,
+        };
+    }
+}
+
+fn signatureOfCount(comptime T: type) usize {
+    switch (@typeInfo(T)) {
+        .@"struct" => {
+            if (!@hasDecl(T, "SIGNATURE")) {
+                @compileError("'" ++ @typeName(T) ++ "' has no declaration 'SIGNATURE'");
+            }
+            return T.SIGNATURE.len;
+        },
+        .pointer => |ptr| return signatureOfCount(ptr.child),
+        else => @compileError("expected struct found '" ++ @typeName(T) ++ "'"),
+    }
+}
+
+pub inline fn signatureOf(comptime T: type) *const [signatureOfCount(T):0]u8 {
+    comptime {
+        switch (@typeInfo(T)) {
+            .@"struct" => {
+                if (!@hasDecl(T, "SIGNATURE")) {
+                    @compileError("'" ++ @typeName(T) ++ "' has no declaration 'SIGNATURE'");
+                }
+                return T.SIGNATURE;
+            },
+            .pointer => |ptr| return signatureOf(ptr.child),
+            else => @compileError("expected struct found '" ++ @typeName(T) ++ "'"),
+        }
+    }
 }

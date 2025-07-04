@@ -3,6 +3,9 @@ const windows = @import("../windows.zig");
 const mem = std.mem;
 const Allocator = mem.Allocator;
 const assert = std.debug.assert;
+const uuidOf = windows.uuidOf;
+const signatureOf = windows.signatureOf;
+const uuidFromSignature = windows.uuidFromSignature;
 
 const INT = windows.INT;
 const GUID = windows.GUID;
@@ -61,7 +64,6 @@ pub fn Callback(
         }
 
         pub fn handler(self: *Self) *IAsyncOperationCompletedHandler {
-            _ = AddRef(self);
             return @alignCast(@ptrCast(self));
         }
 
@@ -113,6 +115,125 @@ pub fn Callback(
 
             return windows.S_OK;
         }
+    };
+}
+
+pub fn Callback2(
+    comptime TSender: type,
+    comptime TResult: type,
+    comptime Context: anytype,
+    comptime invokeFn: fn (Context) IAsyncOperationCompletedHandler.InvokeError!void,
+) type {
+    return struct {
+        vtable: *const TypedEventHandlerVTable(TSender, TResult) = &.{
+            .QueryInterface = &QueryInterface,
+            .AddRef = &AddRef,
+            .Release = &Release,
+            .Invoke = &Invoke,
+        },
+
+        ref_count: std.atomic.Value(ULONG) = .init(0),
+
+        context: Context,
+
+        const Self = @This();
+
+        // tbf we rly dont need to make new vtables for each subtype of Callback
+        // check what zig does if it does not optimize this, we should just push our generic CallbackVTable
+
+        comptime {
+            if (@offsetOf(Self, "vtable") != 0) {
+                @compileError("Callback's 'vtable' argument must be set to first");
+            }
+
+            //@compileLog(@offsetOf(Self, "ref_count"));
+            //@compileLog(@sizeOf(std.atomic.Value(ULONG)));
+
+            //if (@offsetOf(Self, "ref_count") != 4) {
+            //@compileError("Callback's 'ref_count' argument must be set to second");
+            //}
+        }
+
+        pub fn init(ctx: Context) Self {
+            return .{ .context = ctx };
+        }
+
+        pub fn handler(self: *Self) *TypedEventHandler(TSender, TResult) {
+            return @alignCast(@ptrCast(self));
+        }
+
+        pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+
+            const guids = &[_]windows.REFIID{
+                uuidOf(TypedEventHandler(TSender, TResult)),
+                IUnknown.UUID,
+                IAgileObject.UUID,
+            };
+
+            if (windows.eqlGuids(riid, guids)) {
+                _ = self.ref_count.fetchAdd(1, .release);
+
+                ppvObject.* = ctx;
+                return windows.S_OK;
+            }
+
+            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IMarshal.UUID))) {
+                @panic("marshal requested!");
+            }
+
+            return windows.E_NOINTERFACE;
+        }
+
+        // todo: reusize this
+        pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+
+            const prev = self.ref_count.fetchAdd(1, .release);
+            return prev + 1;
+        }
+
+        // todo: reusize this
+        fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+
+            const prev = self.ref_count.fetchSub(1, .acquire);
+            return prev - 1;
+        }
+
+        pub fn Invoke(ctx: *anyopaque, _: TSender, _: TResult) callconv(WINAPI) HRESULT {
+            const self: *@This() = @alignCast(@ptrCast(ctx));
+            invokeFn(self.context) catch |err| return switch (err) {
+                error.OutOfMemory => windows.E_OUTOFMEMORY,
+                error.Unexpected => windows.E_UNEXPECTED,
+            };
+
+            return windows.S_OK;
+        }
+    };
+}
+
+pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
+    return extern struct {
+        vtable: *const TypedEventHandlerVTable(TSender, TResult),
+
+        pub const SIGNATURE = "pinterface({9de1c534-6ae1-11e0-84e1-18a905bcc53f}"
+            ++ ";"
+            ++ signatureOf(TSender)
+            ++ ";"
+            ++ signatureOf(TResult) 
+            ++ ")";
+
+        pub const UUID = uuidFromSignature(SIGNATURE);
+    };
+}
+
+pub fn TypedEventHandlerVTable(comptime TSender: type, comptime TResult: type) type {
+    return extern struct {
+        QueryInterface: *const fn (*anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT,
+        AddRef: *const fn (*anyopaque) callconv(WINAPI) ULONG,
+        Release: *const fn (*anyopaque) callconv(WINAPI) ULONG,
+        Invoke: *const fn (*anyopaque, sender: TSender, args: TResult) callconv(WINAPI) HRESULT,
     };
 }
 
@@ -247,34 +368,10 @@ pub fn IAsyncOperation(comptime T: type) type {
                 }
             };
 
-            const UUID = comptime blk: {
-                @setEvalBranchQuota(10_000);
-                const prefix = &[_]u8{ 0x11, 0xf4, 0x7a, 0xd5, 0x7b, 0x73, 0x42, 0xc0, 0xab, 0xae, 0x87, 0x8b, 0x1e, 0x16, 0xad, 0xee };
-                const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};" ++ std.meta.Child(T).SIGNATURE ++ ")";
-
-                const data = prefix ++ signature;
-
-                var hashed: [20]u8 = undefined;
-                std.crypto.hash.Sha1.hash(data, &hashed, .{});
-
-                const data1 = mem.readInt(u32, hashed[0..4], .big);
-                const data2 = mem.readInt(u16, hashed[4..6], .big);
-
-                const data3 = (mem.readInt(u16, hashed[6..8], .big) & 0x0fff) | (5 << 12);
-                const data4 = ([1]u8{(hashed[8] & 0x3f) | 0x80} ++ hashed[9..16]).*;
-
-                break :blk &GUID{
-                    .Data1 = data1,
-                    .Data2 = data2,
-                    .Data3 = data3,
-                    .Data4 = data4,
-                };
-            };
-
-            //@compileLog(std.fmt.comptimePrint("{x}", .{UUID.Data1}));
+            const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};" ++ signatureOf(T) ++ ")";
 
             var callback: Callback(
-                UUID,
+                uuidFromSignature(signature),
                 Context,
                 Context.invoke,
             ) = .init(.{ .reset_event = &reset_event });
