@@ -20,13 +20,13 @@ pub fn main() !void {
     var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
     defer _ = da.deinit();
 
-    //const allocator = da.allocator();
+    const allocator = da.allocator();
 
     try windows.RoInitialize(windows.RO_INIT_MULTITHREADED);
     defer windows.RoUninitialize();
 
     // mybe move this media to just windows
-    const session = try (try media.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()).getAndForget();
+    const session = try (try media.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()).getAndForget(allocator);
     std.debug.print("{}\n", .{session});
 
     // todo: use WindowsCreateStringReference

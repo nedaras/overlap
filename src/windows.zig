@@ -37,6 +37,8 @@ const HRESULT = windows.HRESULT;
 const LPCVOID = windows.LPCVOID;
 const LONG_PTR = windows.LONG_PTR;
 const Win32Error = windows.Win32Error;
+const IAsyncOperationCompletedHandler = winrt.IAsyncOperationCompletedHandler;
+const IAsyncOperationCompletedHandlerVTable  = winrt.IAsyncOperationCompletedHandlerVTable;
 
 pub const RO_INIT_TYPE = INT;
 pub const RO_INIT_SINGLETHREADED = 0;
@@ -615,7 +617,7 @@ pub fn AsyncOperation(comptime TResult: type) type {
             self.handle.Close();
         }
 
-        pub fn get(self: Self) !TResult{
+        pub fn get(self: Self, allocator: mem.Allocator) !TResult{
             var async_info: *IAsyncInfo = undefined;
 
             try self.handle.QueryInterface(IAsyncInfo.UUID, @ptrCast(&async_info));
@@ -630,22 +632,15 @@ pub fn AsyncOperation(comptime TResult: type) type {
             const Context = struct {
                 reset_event: *std.Thread.ResetEvent,
 
-                pub fn invoke(ctx: @This(), _: *IAsyncInfo, _: AsyncStatus) !void {
+                pub fn invokeFn(ctx: @This(), _: *IAsyncInfo, _: AsyncStatus) void {
                     ctx.reset_event.set();
                 }
             };
 
-            const signature = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};" ++ signatureOf(TResult) ++ ")";
+            const callback: AsyncOperationCompletedHandler(TResult) = try .init(allocator, Context{.reset_event = &reset_event}, Context.invokeFn);
+            defer callback.Release();
 
-            // we need to get idk callback from CompletedHandler(...).callback().handler()
-
-            var callback: Callback(
-                uuidFromSignature(signature),
-                Context,
-                Context.invoke,
-            ) = .init(.{ .reset_event = &reset_event });
-
-            try self.handle.put_Completed(callback.handler());
+            try self.handle.put_Completed(callback.handle);
             reset_event.wait();
 
             return switch (async_info.get_Status()) {
@@ -657,11 +652,110 @@ pub fn AsyncOperation(comptime TResult: type) type {
         }
 
         /// Same as `get` just releases all COM resources.
-        pub fn getAndForget(self: Self) !TResult {
+        pub fn getAndForget(self: Self, allocator: mem.Allocator) !TResult {
             defer Release(self);
             defer Close(self);
 
-            return get(self);
+            return get(self, allocator);
+        }
+    };
+}
+
+pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
+    return struct {
+        handle: *IAsyncOperationCompletedHandler(TResult),
+
+        pub const SIGNATURE = "pinterface({fcdcf02c-e5d8-4478-915a-4d90b74b83a5};" ++ signatureOf(TResult) ++ ")";
+        pub const UUID = uuidFromSignature(SIGNATURE);
+
+        const Self = @This();
+
+        pub inline fn Release(self: Self) void {
+            self.handle.Release();
+        }
+
+        /// Expects threadsafe allocator
+        pub fn init(
+            allocator: mem.Allocator,
+            context: anytype,
+            comptime invokeFn: fn (@TypeOf(context), asyncInfo: *IAsyncInfo, status: AsyncStatus) void,
+        ) mem.Allocator.Error!Self {
+            const Context = @TypeOf(context);
+            const Closure = struct {
+                vtable: *const IAsyncOperationCompletedHandlerVTable = &.{
+                    .QueryInterface = &QueryInterface,
+                    .AddRef = &AddRef,
+                    .Release = &@This().Release,
+                    .Invoke = &Invoke,
+                },
+
+                allocator: mem.Allocator,
+                ref_count: std.atomic.Value(ULONG),
+
+                context: Context,
+                
+                fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
+                    const self: *@This() = @alignCast(@ptrCast(ctx));
+
+                    const guids = &[_]REFIID{
+                        UUID,
+                        IUnknown.UUID,
+                        IAgileObject.UUID,
+                    };
+
+                    if (eqlGuids(riid, guids)) {
+                        _ = self.ref_count.fetchAdd(1, .release);
+
+                        ppvObject.* = ctx;
+                        return windows.S_OK;
+                    }
+
+                    if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IMarshal.UUID))) {
+                        @panic("marshal requested!");
+                    }
+
+                    return windows.E_NOINTERFACE;
+                }
+
+                // todo: reusize this
+                pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
+                const self: *@This() = @alignCast(@ptrCast(ctx));
+
+                    const prev = self.ref_count.fetchAdd(1, .release);
+                    return prev + 1;
+                }
+
+                // todo: reusize this
+                fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
+                    const self: *@This() = @alignCast(@ptrCast(ctx));
+
+                    const prev = self.ref_count.fetchSub(1, .acquire);
+                    std.debug.print("Callback refs: {d}\n", .{prev - 1});
+                    if (prev == 1) {
+                        self.allocator.destroy(self);
+                    }
+                    return prev - 1;
+                }
+
+                pub fn Invoke(ctx: *anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT {
+                    const self: *@This() = @alignCast(@ptrCast(ctx));
+                    invokeFn(self.context, asyncInfo, status);
+
+                    return windows.S_OK;
+                }
+
+            };
+
+            const closure = try allocator.create(Closure);
+            closure.* = .{
+                .allocator = allocator,
+                .ref_count = .init(1),
+                .context = context,
+            };
+
+            return .{
+                .handle = @ptrCast(closure),
+            };
         }
     };
 }

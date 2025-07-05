@@ -238,20 +238,22 @@ pub fn TypedEventHandlerVTable(comptime TSender: type, comptime TResult: type) t
     };
 }
 
-pub const IAsyncOperationCompletedHandler = extern struct {
-    vtable: *const IAsyncOperationCompletedHandlerVTable,
+pub fn IAsyncOperationCompletedHandler(comptime TResult: type) type {
+    return extern struct {
+        vtable: *const IAsyncOperationCompletedHandlerVTable,
 
-    pub const UUID = &GUID.parse("{fcdcf02c-e5d8-4478-915a-4d90b74b83a5}");
+        pub const UUID = &GUID.parse("{fcdcf02c-e5d8-4478-915a-4d90b74b83a5}");
 
-    pub inline fn Release(self: *IAsyncOperationCompletedHandler) void {
-        _ = self.vtable.Release(self);
-    }
+        pub inline fn Release(self: *IAsyncOperationCompletedHandler(TResult)) void {
+            _ = self.vtable.Release(self);
+        }
 
-    pub const InvokeError = error{
-        OutOfMemory,
-        Unexpected,
+        pub const InvokeError = error{
+            OutOfMemory,
+            Unexpected,
+        };
     };
-};
+}
 
 pub const IAsyncOperationCompletedHandlerVTable = extern struct {
     QueryInterface: *const fn (*anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT,
@@ -323,8 +325,8 @@ pub fn IAsyncOperation(comptime T: type) type {
             async_info.Close();
         }
 
-        pub fn put_Completed(self: *Self, handler: *IAsyncOperationCompletedHandler) PutCompletedError!void {
-            const FnType = fn (*Self, *IAsyncOperationCompletedHandler) callconv(WINAPI) HRESULT;
+        pub fn put_Completed(self: *Self, handler: *IAsyncOperationCompletedHandler(T)) PutCompletedError!void {
+            const FnType = fn (*Self, *IAsyncOperationCompletedHandler(T)) callconv(WINAPI) HRESULT;
             const put_completed: *const FnType = @ptrCast(self.vtable[6]);
 
             const hr = put_completed(self, handler);
