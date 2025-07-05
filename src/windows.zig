@@ -37,8 +37,12 @@ const HRESULT = windows.HRESULT;
 const LPCVOID = windows.LPCVOID;
 const LONG_PTR = windows.LONG_PTR;
 const Win32Error = windows.Win32Error;
+const IGlobalSystemMediaTransportControlsSessionMediaProperties = media.IGlobalSystemMediaTransportControlsSessionMediaProperties;
 const IAsyncOperationCompletedHandler = winrt.IAsyncOperationCompletedHandler;
 const IAsyncOperationCompletedHandlerVTable  = winrt.IAsyncOperationCompletedHandlerVTable;
+const IGlobalSystemMediaTransportControlsSessionManager = media.IGlobalSystemMediaTransportControlsSessionManager;
+const IGlobalSystemMediaTransportControlsSessionManagerStatics = media.IGlobalSystemMediaTransportControlsSessionManagerStatics;
+const IGlobalSystemMediaTransportControlsSession = media.IGlobalSystemMediaTransportControlsSession;
 
 pub const RO_INIT_TYPE = INT;
 pub const RO_INIT_SINGLETHREADED = 0;
@@ -653,12 +657,9 @@ pub fn AsyncOperation(comptime TResult: type) type {
 
         /// Same as `get` just releases all COM resources.
         pub fn getAndForget(self: Self, allocator: mem.Allocator) !TResult {
-            const res = get(self, allocator);
-            Close(self);
-            std.debug.print("close called\n", .{});
-            Release(self);
-            std.debug.print("release called\n", .{});
-            return res;
+            defer Release(self);
+            defer Close(self);
+            return get(self, allocator);
         }
     };
 }
@@ -697,7 +698,6 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                 context: Context,
                 
                 fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
-                    std.debug.print("Callback Query called\n", .{});
                     const self: *@This() = @alignCast(@ptrCast(ctx));
 
                     const guids = &[_]REFIID{
@@ -707,8 +707,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                     };
 
                     if (eqlGuids(riid, guids)) {
-                        const prev = self.ref_count.fetchAdd(1, .monotonic);
-                        std.debug.print("Callback Queary + ref: {d}\n", .{prev + 1});
+                        _ = self.ref_count.fetchAdd(1, .monotonic);
 
                         ppvObject.* = ctx;
                         return windows.S_OK;
@@ -723,31 +722,26 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
 
                 // todo: reusize this
                 pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
-                    std.debug.print("Callback AddRef called\n", .{});
                     const self: *@This() = @alignCast(@ptrCast(ctx));
+
                     const prev = self.ref_count.fetchAdd(1, .monotonic);
-                    std.debug.print("Callback refs: {d}\n", .{prev + 1});
                     return prev + 1;
                 }
 
                 // todo: reusize this
                 fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
-                    std.debug.print("Callback Release called\n", .{});
                     const self: *@This() = @alignCast(@ptrCast(ctx));
                     const prev = self.ref_count.fetchSub(1, .release);
-                    std.debug.print("Callback refs: {d}\n", .{prev - 1});
 
                     if (prev == 1) {
                         _ = self.ref_count.load(.acquire);
                         self.allocator.destroy(self);
-                        std.debug.print("Callback released objects\n", .{});
                     }
 
                     return prev - 1;
                 }
 
                 pub fn Invoke(ctx: *anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT {
-                    std.debug.print("Callback Invoke called\n", .{});
                     const self: *@This() = @alignCast(@ptrCast(ctx));
                     invokeFn(self.context, asyncInfo, status);
 
@@ -769,3 +763,73 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
         }
     };
 }
+
+pub const GlobalSystemMediaTransportControlsSessionManager = struct {
+    handle: *IGlobalSystemMediaTransportControlsSessionManager, 
+
+    pub const SIGNATURE = IGlobalSystemMediaTransportControlsSessionManager.SIGNATURE;
+    pub const NAME = IGlobalSystemMediaTransportControlsSessionManager.NAME;
+
+    pub fn RequestAsync() !AsyncOperation(GlobalSystemMediaTransportControlsSessionManager) {
+        // tood: use const ref string
+        const class = try WindowsCreateString(unicode.wtf8ToWtf16LeStringLiteral(NAME));
+        defer WindowsDeleteString(class);
+
+        var static_manager: *IGlobalSystemMediaTransportControlsSessionManagerStatics = undefined;
+
+        try RoGetActivationFactory(
+            class,
+            IGlobalSystemMediaTransportControlsSessionManagerStatics.UUID,
+            @ptrCast(&static_manager),
+        );
+        defer static_manager.Release();
+
+        return .{
+            // safe as GlobalSystemMediaTransportControlsSessionManager is just *IGlobalSystemMediaTransportControlsSessionManager
+            .handle = @ptrCast(try static_manager.RequestAsync()),
+        };
+    }
+
+    pub inline fn Release(self: GlobalSystemMediaTransportControlsSessionManager) void {
+        self.handle.Release();
+    }
+
+    pub fn GetCurrentSession(self: GlobalSystemMediaTransportControlsSessionManager) !?GlobalSystemMediaTransportControlsSession {
+        const session = try self.handle.GetCurrentSession();
+        return if (session) |handle| .{ .handle = handle } else null;
+    }
+};
+
+pub const GlobalSystemMediaTransportControlsSession = struct {
+    handle: *IGlobalSystemMediaTransportControlsSession,
+
+    pub inline fn Release(self: GlobalSystemMediaTransportControlsSession) void {
+        self.handle.Release();
+    }
+
+    pub fn TryGetMediaPropertiesAsync(self: GlobalSystemMediaTransportControlsSession) !AsyncOperation(GlobalSystemMediaTransportControlsSessionMediaProperties) {
+        return .{
+            .handle = @ptrCast(try self.handle.TryGetMediaPropertiesAsync()),
+        };
+    }
+
+};
+
+pub const GlobalSystemMediaTransportControlsSessionMediaProperties = extern struct {
+    handle: *IGlobalSystemMediaTransportControlsSessionMediaProperties,
+
+    pub const SIGNATURE = IGlobalSystemMediaTransportControlsSessionMediaProperties.SIGNATURE;
+
+    pub inline fn Release(self: GlobalSystemMediaTransportControlsSessionMediaProperties) void {
+        self.handle.Release();
+    }
+
+    pub inline fn Title(self: GlobalSystemMediaTransportControlsSessionMediaProperties) [:0]const u16 {
+        return WindowsGetStringRawBuffer(self.handle.get_Title());
+    }
+
+    pub inline fn Artist(self: GlobalSystemMediaTransportControlsSessionMediaProperties) [:0]const u16 {
+        return WindowsGetStringRawBuffer(self.handle.get_Artist());
+    }
+
+};

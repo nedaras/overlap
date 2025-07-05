@@ -6,7 +6,6 @@ const Hook = @import("Hook.zig");
 const time = std.time;
 const unicode = std.unicode;
 const windows = @import("windows.zig");
-const media = windows.media;
 const Uri = std.Uri;
 const assert = std.debug.assert;
 
@@ -20,7 +19,7 @@ pub fn main() !void {
     var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
     defer _ = da.deinit();
 
-    const allocator = da.allocator();
+    //const allocator = da.allocator();
 
     try windows.RoInitialize(windows.RO_INIT_MULTITHREADED);
     defer windows.RoUninitialize();
@@ -29,10 +28,20 @@ pub fn main() !void {
     // ok bug is tha our callback made with allocator can be freed after some long time like out of this scope when da.deinit is called
     // so it can panick that mem leaked or it can double down and crash as when "leak" is detected our callback tries to free stuff
     // soo da_allocator is unsafe here
-    const session = try (try media.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()).getAndForget(allocator);
+    const manager = try (try windows.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()).getAndForget(std.heap.page_allocator);
+    defer manager.Release();
+
+    const session = (try manager.GetCurrentSession()) orelse return error.NoSession;
     defer session.Release();
 
-    std.debug.print("{}\n", .{session});
+    const props = try (try session.TryGetMediaPropertiesAsync()).getAndForget(std.heap.page_allocator);
+    defer props.Release();
+
+    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(props.Title())});
+    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(props.Artist())});
+
+    //session.handle.TryGetMediaPropertiesAsync()
+
 
     // todo: use WindowsCreateStringReference
 

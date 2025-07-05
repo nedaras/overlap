@@ -1,4 +1,6 @@
+const std = @import("std");
 const windows = @import("../../windows.zig");
+const assert = std.debug.assert;
 
 const INT64 = i64;
 const GUID = windows.GUID;
@@ -33,34 +35,22 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
         IUnknown.Release(@ptrCast(self));
     }
 
-    pub const GetTitleError = error{Unexpected};
-
-    pub fn get_Title(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) GetTitleError!HSTRING {
+    pub fn get_Title(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) HSTRING {
         const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, *HSTRING) callconv(WINAPI) HRESULT;
         const get_title: *const FnType = @ptrCast(self.vtable[6]);
 
-        var value: HSTRING = undefined;
-
-        const hr = get_title(self, &value);
-        return switch (hr) {
-            windows.S_OK => value,
-            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
-        };
+        var title: HSTRING = undefined;
+        assert(get_title(self, &title) == windows.S_OK);
+        return title;
     }
 
-    pub const GetArtistError = error{Unexpected};
-
-    pub fn get_Artist(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) GetArtistError!HSTRING {
+    pub fn get_Artist(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) HSTRING {
         const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, *HSTRING) callconv(WINAPI) HRESULT;
         const get_artist: *const FnType = @ptrCast(self.vtable[9]);
 
-        var value: HSTRING = undefined;
-
-        const hr = get_artist(self, &value);
-        return switch (hr) {
-            windows.S_OK => value,
-            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
-        };
+        var artist: HSTRING = undefined;
+        assert(get_artist(self, &artist) == windows.S_OK);
+        return artist;
     }
 };
 
