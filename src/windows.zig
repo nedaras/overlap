@@ -7,6 +7,7 @@ const mem = std.mem;
 const psapi = @import("windows/psapi.zig");
 const winhttp = @import("windows/winhttp.zig");
 const winrt = @import("windows/winrt.zig");
+const Allocator = mem.Allocator;
 
 pub usingnamespace windows;
 
@@ -37,6 +38,7 @@ const HRESULT = windows.HRESULT;
 const LPCVOID = windows.LPCVOID;
 const LONG_PTR = windows.LONG_PTR;
 const Win32Error = windows.Win32Error;
+pub const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
 const IGlobalSystemMediaTransportControlsSessionMediaProperties = media.IGlobalSystemMediaTransportControlsSessionMediaProperties;
 const IAsyncOperationCompletedHandler = winrt.IAsyncOperationCompletedHandler;
 const IAsyncOperationCompletedHandlerVTable  = winrt.IAsyncOperationCompletedHandlerVTable;
@@ -621,7 +623,7 @@ pub fn AsyncOperation(comptime TResult: type) type {
             self.handle.Close();
         }
 
-        pub fn get(self: Self, allocator: mem.Allocator) !TResult{
+        pub fn get(self: Self, allocator: Allocator) !TResult{
             var async_info: *IAsyncInfo = undefined;
 
             try self.handle.QueryInterface(IAsyncInfo.UUID, @ptrCast(&async_info));
@@ -656,7 +658,7 @@ pub fn AsyncOperation(comptime TResult: type) type {
         }
 
         /// Same as `get` just releases all COM resources.
-        pub fn getAndForget(self: Self, allocator: mem.Allocator) !TResult {
+        pub fn getAndForget(self: Self, allocator: Allocator) !TResult {
             defer Release(self);
             defer Close(self);
             return get(self, allocator);
@@ -679,10 +681,10 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
 
         /// Expects threadsafe allocator
         pub fn init(
-            allocator: mem.Allocator,
+            allocator: Allocator,
             context: anytype,
             comptime invokeFn: fn (@TypeOf(context), asyncInfo: *IAsyncInfo, status: AsyncStatus) void,
-        ) mem.Allocator.Error!Self {
+        ) Allocator.Error!Self {
             const Context = @TypeOf(context);
             const Closure = struct {
                 vtable: *const IAsyncOperationCompletedHandlerVTable = &.{
@@ -692,7 +694,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                     .Invoke = &Invoke,
                 },
 
-                allocator: mem.Allocator,
+                allocator: Allocator,
                 ref_count: std.atomic.Value(ULONG),
 
                 context: Context,
@@ -811,6 +813,21 @@ pub const GlobalSystemMediaTransportControlsSession = struct {
         return .{
             .handle = @ptrCast(try self.handle.TryGetMediaPropertiesAsync()),
         };
+    }
+
+
+    pub fn MediaPropertiesChanged(
+        self: GlobalSystemMediaTransportControlsSession,
+        allocator: Allocator,
+        context: anytype,
+        comptime invokeFn: fn (@TypeOf(context)) void,
+    ) !i64 {
+        const Handler = *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs);
+
+        const handler: Handler = try .init(allocator, context, invokeFn);
+        defer handler.Release();
+
+        return (try self.handle.add_MediaPropertiesChanged(handler)).value;
     }
 
 };

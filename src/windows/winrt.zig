@@ -24,101 +24,6 @@ pub const AsyncStatus = enum(INT) {
     Error = 3,
 };
 
-pub fn Callback2(
-    comptime TSender: type,
-    comptime TResult: type,
-    comptime Context: anytype,
-    comptime invokeFn: fn (Context) IAsyncOperationCompletedHandler.InvokeError!void,
-) type {
-    return struct {
-        vtable: *const TypedEventHandlerVTable(TSender, TResult) = &.{
-            .QueryInterface = &QueryInterface,
-            .AddRef = &AddRef,
-            .Release = &Release,
-            .Invoke = &Invoke,
-        },
-
-        ref_count: std.atomic.Value(ULONG) = .init(0),
-
-        context: Context,
-
-        const Self = @This();
-
-        // tbf we rly dont need to make new vtables for each subtype of Callback
-        // check what zig does if it does not optimize this, we should just push our generic CallbackVTable
-
-        comptime {
-            if (@offsetOf(Self, "vtable") != 0) {
-                @compileError("Callback's 'vtable' argument must be set to first");
-            }
-
-            //@compileLog(@offsetOf(Self, "ref_count"));
-            //@compileLog(@sizeOf(std.atomic.Value(ULONG)));
-
-            //if (@offsetOf(Self, "ref_count") != 4) {
-            //@compileError("Callback's 'ref_count' argument must be set to second");
-            //}
-        }
-
-        pub fn init(ctx: Context) Self {
-            return .{ .context = ctx };
-        }
-
-        pub fn handler(self: *Self) *TypedEventHandler(TSender, TResult) {
-            return @alignCast(@ptrCast(self));
-        }
-
-        pub fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
-            const self: *@This() = @alignCast(@ptrCast(ctx));
-
-            const guids = &[_]windows.REFIID{
-                uuidOf(TypedEventHandler(TSender, TResult)),
-                IUnknown.UUID,
-                IAgileObject.UUID,
-            };
-
-            if (windows.eqlGuids(riid, guids)) {
-                _ = self.ref_count.fetchAdd(1, .release);
-
-                ppvObject.* = ctx;
-                return windows.S_OK;
-            }
-
-            if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IMarshal.UUID))) {
-                @panic("marshal requested!");
-            }
-
-            return windows.E_NOINTERFACE;
-        }
-
-        // todo: reusize this
-        pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
-            const self: *@This() = @alignCast(@ptrCast(ctx));
-
-            const prev = self.ref_count.fetchAdd(1, .release);
-            return prev + 1;
-        }
-
-        // todo: reusize this
-        fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
-            const self: *@This() = @alignCast(@ptrCast(ctx));
-
-            const prev = self.ref_count.fetchSub(1, .acquire);
-            return prev - 1;
-        }
-
-        pub fn Invoke(ctx: *anyopaque, _: TSender, _: TResult) callconv(WINAPI) HRESULT {
-            const self: *@This() = @alignCast(@ptrCast(ctx));
-            invokeFn(self.context) catch |err| return switch (err) {
-                error.OutOfMemory => windows.E_OUTOFMEMORY,
-                error.Unexpected => windows.E_UNEXPECTED,
-            };
-
-            return windows.S_OK;
-        }
-    };
-}
-
 pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
     return extern struct {
         vtable: *const TypedEventHandlerVTable(TSender, TResult),
@@ -131,6 +36,95 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
             ++ ")";
 
         pub const UUID = uuidFromSignature(SIGNATURE);
+
+        const Self = @This();
+
+        pub inline fn Release(self: *Self) void {
+            IUnknown.Release(@ptrCast(self));
+        }
+
+        /// Expects threadsafe allocator
+        pub fn init(
+            allocator: Allocator,
+            context: anytype,
+            comptime invokeFn: fn (@TypeOf(context)) void,
+        ) Allocator.Error!*Self {
+            const Context = @TypeOf(context);
+            const Closure = struct {
+                vtable: *const TypedEventHandlerVTable(TSender, TResult) = &.{
+                    .QueryInterface = &QueryInterface,
+                    .AddRef = &AddRef,
+                    .Release = &@This().Release,
+                    .Invoke = &Invoke,
+                },
+
+                allocator: Allocator,
+                ref_count: std.atomic.Value(ULONG),
+
+                context: Context,
+                
+                fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
+                    const self: *@This() = @alignCast(@ptrCast(ctx));
+
+                    const guids = &[_]REFIID{
+                        UUID,
+                        IUnknown.UUID,
+                        IAgileObject.UUID,
+                    };
+
+                    if (windows.eqlGuids(riid, guids)) {
+                        _ = self.ref_count.fetchAdd(1, .monotonic);
+
+                        ppvObject.* = ctx;
+                        return windows.S_OK;
+                    }
+
+                    if (mem.eql(u8, mem.asBytes(riid), mem.asBytes(IMarshal.UUID))) {
+                        @panic("marshal requested!");
+                    }
+
+                    return windows.E_NOINTERFACE;
+                }
+
+                // todo: reusize this
+                pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
+                    const self: *@This() = @alignCast(@ptrCast(ctx));
+
+                    const prev = self.ref_count.fetchAdd(1, .monotonic);
+                    return prev + 1;
+                }
+
+                // todo: reusize this
+                fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
+                    const self: *@This() = @alignCast(@ptrCast(ctx));
+                    const prev = self.ref_count.fetchSub(1, .release);
+
+                    if (prev == 1) {
+                        _ = self.ref_count.load(.acquire);
+                        self.allocator.destroy(self);
+                    }
+
+                    return prev - 1;
+                }
+
+                pub fn Invoke(ctx: *anyopaque, _: TSender, _: TResult) callconv(WINAPI) HRESULT {
+                    const self: *@This() = @alignCast(@ptrCast(ctx));
+                    invokeFn(self.context);
+
+                    return windows.S_OK;
+                }
+
+            };
+
+            const closure = try allocator.create(Closure);
+            closure.* = .{
+                .allocator = allocator,
+                .ref_count = .init(1),
+                .context = context,
+            };
+
+            return @ptrCast(closure);
+        }
     };
 }
 

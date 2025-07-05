@@ -34,6 +34,14 @@ pub fn main() !void {
     const session = (try manager.GetCurrentSession()) orelse return error.NoSession;
     defer session.Release();
 
+    const token = try session.MediaPropertiesChanged(std.heap.page_allocator, {}, struct {
+        fn invokeFn(_: void) void {
+            std.debug.print("changed...\n", .{});
+        }
+    }.invokeFn);
+
+    std.debug.print("{d}\n", .{token});
+
     const props = try (try session.TryGetMediaPropertiesAsync()).getAndForget(std.heap.page_allocator);
     defer props.Release();
 
