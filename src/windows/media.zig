@@ -13,6 +13,10 @@ pub const GlobalSystemMediaTransportControlsSessionManager = struct {
     pub const SIGNATURE = IGlobalSystemMediaTransportControlsSessionManager.SIGNATURE;
     pub const NAME = IGlobalSystemMediaTransportControlsSessionManager.NAME;
 
+    pub inline fn Release(self: GlobalSystemMediaTransportControlsSessionManager) void {
+        self.handle.Release();
+    }
+
     pub fn RequestAsync() !AsyncOperation(GlobalSystemMediaTransportControlsSessionManager) {
         // tood: use const ref string
         const class = try windows.WindowsCreateString(unicode.wtf8ToWtf16LeStringLiteral(NAME));

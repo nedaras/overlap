@@ -653,10 +653,13 @@ pub fn AsyncOperation(comptime TResult: type) type {
 
         /// Same as `get` just releases all COM resources.
         pub fn getAndForget(self: Self, allocator: mem.Allocator) !TResult {
-            defer Release(self);
-            defer Close(self);
-
-            return get(self, allocator);
+            const res = get(self, allocator);
+            std.debug.print("get called\n", .{});
+            Close(self);
+            std.debug.print("close called\n", .{});
+            Release(self);
+            std.debug.print("release called\n", .{});
+            return res;
         }
     };
 }
@@ -695,6 +698,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                 context: Context,
                 
                 fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
+                    std.debug.print("Callback Query called\n", .{});
                     const self: *@This() = @alignCast(@ptrCast(ctx));
 
                     const guids = &[_]REFIID{
@@ -704,7 +708,8 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                     };
 
                     if (eqlGuids(riid, guids)) {
-                        _ = self.ref_count.fetchAdd(1, .release);
+                        const prev = self.ref_count.fetchAdd(1, .release);
+                        std.debug.print("Callback Queary + ref: {d}\n", .{prev + 1});
 
                         ppvObject.* = ctx;
                         return windows.S_OK;
@@ -719,16 +724,17 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
 
                 // todo: reusize this
                 pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
-                const self: *@This() = @alignCast(@ptrCast(ctx));
-
+                    std.debug.print("Callback AddRef called\n", .{});
+                    const self: *@This() = @alignCast(@ptrCast(ctx));
                     const prev = self.ref_count.fetchAdd(1, .release);
+                    std.debug.print("Callback refs: {d}\n", .{prev + 1});
                     return prev + 1;
                 }
 
                 // todo: reusize this
                 fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
+                    std.debug.print("Callback Release called\n", .{});
                     const self: *@This() = @alignCast(@ptrCast(ctx));
-
                     const prev = self.ref_count.fetchSub(1, .acquire);
                     std.debug.print("Callback refs: {d}\n", .{prev - 1});
                     if (prev == 1) {
@@ -738,6 +744,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                 }
 
                 pub fn Invoke(ctx: *anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT {
+                    std.debug.print("Callback Invoke called\n", .{});
                     const self: *@This() = @alignCast(@ptrCast(ctx));
                     invokeFn(self.context, asyncInfo, status);
 

@@ -27,6 +27,8 @@ pub fn main() !void {
 
     // mybe move this media to just windows
     const session = try (try media.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()).getAndForget(allocator);
+    defer session.Release();
+
     std.debug.print("{}\n", .{session});
 
     // todo: use WindowsCreateStringReference
