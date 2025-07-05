@@ -820,11 +820,18 @@ pub const GlobalSystemMediaTransportControlsSession = struct {
         self: GlobalSystemMediaTransportControlsSession,
         allocator: Allocator,
         context: anytype,
-        comptime invokeFn: fn (@TypeOf(context)) void,
+        comptime invokeFn: fn (@TypeOf(context), sender: GlobalSystemMediaTransportControlsSession) void,
     ) !i64 {
         const Handler = *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs);
+        const WrappedContext = struct {
+            original: @TypeOf(context),
 
-        const handler: Handler = try .init(allocator, context, invokeFn);
+            fn wrappedInvokeFn(ctx: @This(), sender: *IGlobalSystemMediaTransportControlsSession, _: *IMediaPropertiesChangedEventArgs) void {
+                return invokeFn(ctx.original, .{ .handle = sender });
+            }
+        };
+
+        const handler: Handler = try .init(allocator, WrappedContext{ .original = context }, WrappedContext.wrappedInvokeFn);
         defer handler.Release();
 
         return (try self.handle.add_MediaPropertiesChanged(handler)).value;

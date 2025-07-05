@@ -47,7 +47,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
         pub fn init(
             allocator: Allocator,
             context: anytype,
-            comptime invokeFn: fn (@TypeOf(context)) void,
+            comptime invokeFn: fn (@TypeOf(context), sender: TSender, args: TResult) void,
         ) Allocator.Error!*Self {
             const Context = @TypeOf(context);
             const Closure = struct {
@@ -107,9 +107,9 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
                     return prev - 1;
                 }
 
-                pub fn Invoke(ctx: *anyopaque, _: TSender, _: TResult) callconv(WINAPI) HRESULT {
+                pub fn Invoke(ctx: *anyopaque, sender: TSender, args: TResult) callconv(WINAPI) HRESULT {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
-                    invokeFn(self.context);
+                    invokeFn(self.context, sender, args);
 
                     return windows.S_OK;
                 }
