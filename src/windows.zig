@@ -654,7 +654,6 @@ pub fn AsyncOperation(comptime TResult: type) type {
         /// Same as `get` just releases all COM resources.
         pub fn getAndForget(self: Self, allocator: mem.Allocator) !TResult {
             const res = get(self, allocator);
-            std.debug.print("get called\n", .{});
             Close(self);
             std.debug.print("close called\n", .{});
             Release(self);
@@ -708,7 +707,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                     };
 
                     if (eqlGuids(riid, guids)) {
-                        const prev = self.ref_count.fetchAdd(1, .release);
+                        const prev = self.ref_count.fetchAdd(1, .monotonic);
                         std.debug.print("Callback Queary + ref: {d}\n", .{prev + 1});
 
                         ppvObject.* = ctx;
@@ -726,7 +725,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                 pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
                     std.debug.print("Callback AddRef called\n", .{});
                     const self: *@This() = @alignCast(@ptrCast(ctx));
-                    const prev = self.ref_count.fetchAdd(1, .release);
+                    const prev = self.ref_count.fetchAdd(1, .monotonic);
                     std.debug.print("Callback refs: {d}\n", .{prev + 1});
                     return prev + 1;
                 }
@@ -735,11 +734,15 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                 fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
                     std.debug.print("Callback Release called\n", .{});
                     const self: *@This() = @alignCast(@ptrCast(ctx));
-                    const prev = self.ref_count.fetchSub(1, .acquire);
+                    const prev = self.ref_count.fetchSub(1, .release);
                     std.debug.print("Callback refs: {d}\n", .{prev - 1});
+
                     if (prev == 1) {
+                        _ = self.ref_count.load(.acquire);
                         self.allocator.destroy(self);
+                        std.debug.print("Callback released objects\n", .{});
                     }
+
                     return prev - 1;
                 }
 

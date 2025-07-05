@@ -26,6 +26,9 @@ pub fn main() !void {
     defer windows.RoUninitialize();
 
     // mybe move this media to just windows
+    // ok bug is tha our callback made with allocator can be freed after some long time like out of this scope when da.deinit is called
+    // so it can panick that mem leaked or it can double down and crash as when "leak" is detected our callback tries to free stuff
+    // soo da_allocator is unsafe here
     const session = try (try media.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()).getAndForget(allocator);
     defer session.Release();
 
