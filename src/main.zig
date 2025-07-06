@@ -25,24 +25,27 @@ fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession)
     const props = try (try session.TryGetMediaPropertiesAsync()).getAndForget(allocator);
     defer props.Release();
 
-    {
-        state.mutex.lock();
-        defer state.mutex.unlock();
-
-        if (state.title) |title| {
-            allocator.free(title);
-        }
-
-        // todo: calc size needed to alloc and reusize buf, idk why zig internaly uses std.Allocator fot this,
-        //       mb we can fix this and post a pr
-        state.title = try unicode.wtf16LeToWtf8Alloc(allocator, props.Title());
-    }
-
-    const thumbnail = (try props.Thumbnail()).?;
+    const thumbnail = (try props.Thumbnail()) orelse return;
     defer thumbnail.Release();
 
     const stream = try (try thumbnail.OpenReadAsync()).getAndForget(allocator);
     defer stream.Release();
+
+    const decoder = try (try windows.BitmapDecoder.CreateAsync(@ptrCast(stream))).getAndForget(allocator);
+    defer decoder.Release();
+
+    // ...
+
+    state.mutex.lock();
+    defer state.mutex.unlock();
+
+    if (state.title) |title| {
+        allocator.free(title);
+    }
+
+    // todo: calc size needed to alloc and reusize buf, idk why zig internaly uses std.Allocator fot this,
+    //       mb we can fix this and post a pr
+    state.title = try unicode.wtf16LeToWtf8Alloc(allocator, props.Title());
 }
 
 fn sessionChanged(manager: windows.GlobalSystemMediaTransportControlsSessionManager) !void {

@@ -4,6 +4,8 @@ const unicode = std.unicode;
 const assert = std.debug.assert;
 const kernel32 = @import("windows/kernel32.zig");
 const mem = std.mem;
+const graphics = @import("windows/graphics.zig");
+const media = @import("windows/media.zig");
 const psapi = @import("windows/psapi.zig");
 const winhttp = @import("windows/winhttp.zig");
 const winrt = @import("windows/winrt.zig");
@@ -13,7 +15,6 @@ pub usingnamespace windows;
 
 pub const combase = @import("windows/combase.zig");
 pub const user32 = @import("windows/user32.zig");
-pub const media = @import("windows/media.zig");
 pub const dxgi = @import("windows/dxgi.zig");
 pub const d3d11 = @import("windows/d3d11.zig");
 pub const d3dcommon = @import("windows/d3dcommon.zig");
@@ -48,6 +49,8 @@ const IGlobalSystemMediaTransportControlsSession = media.IGlobalSystemMediaTrans
 const ICurrentSessionChangedEventArgs = media.ICurrentSessionChangedEventArgs;
 const IRandomAccessStreamReference = winrt.IRandomAccessStreamReference;
 const IRandomAccessStreamWithContentType = winrt.IRandomAccessStreamWithContentType;
+const IBitmapDecoder = graphics.IBitmapDecoder;
+const IBitmapDecoderStatics = graphics.IBitmapDecoderStatics;
 
 pub const RO_INIT_TYPE = INT;
 pub const RO_INIT_SINGLETHREADED = 0;
@@ -892,4 +895,39 @@ pub const RandomAccessStreamReference = struct {
     pub inline fn OpenReadAsync(self: RandomAccessStreamReference) !AsyncOperation(*IRandomAccessStreamWithContentType) {
         return .{ .handle = try self.handle.OpenReadAsync() };
     }
+};
+
+pub const BitmapDecoder = struct {
+    handle: *IBitmapDecoder,
+
+    const NAME = IBitmapDecoder.NAME;
+    const SIGNATURE = IBitmapDecoder.SIGNATURE;
+
+    pub fn CreateAsync(stream: *IRandomAccessStream) !AsyncOperation(BitmapDecoder) {
+        // tood: use const ref string
+        const class = try WindowsCreateString(unicode.wtf8ToWtf16LeStringLiteral(NAME));
+        defer WindowsDeleteString(class);
+
+        var static_bitmap_decoder: *IBitmapDecoderStatics = undefined;
+
+        try RoGetActivationFactory(
+            class,
+            IBitmapDecoderStatics.UUID,
+            @ptrCast(&static_bitmap_decoder),
+        );
+        defer static_bitmap_decoder.Release();
+
+        return .{
+            .handle = @ptrCast(try static_bitmap_decoder.CreateAsync(stream)),
+        };
+    }
+
+    pub inline fn Release(self: BitmapDecoder) void {
+        self.handle.Release();
+    }
+
+};
+
+pub const IRandomAccessStream = extern struct {
+    vtable: [*]const *const anyopaque,
 };
