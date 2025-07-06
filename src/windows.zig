@@ -38,13 +38,14 @@ const HRESULT = windows.HRESULT;
 const LPCVOID = windows.LPCVOID;
 const LONG_PTR = windows.LONG_PTR;
 const Win32Error = windows.Win32Error;
-pub const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
+const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
 const IGlobalSystemMediaTransportControlsSessionMediaProperties = media.IGlobalSystemMediaTransportControlsSessionMediaProperties;
 const IAsyncOperationCompletedHandler = winrt.IAsyncOperationCompletedHandler;
 const IAsyncOperationCompletedHandlerVTable  = winrt.IAsyncOperationCompletedHandlerVTable;
 const IGlobalSystemMediaTransportControlsSessionManager = media.IGlobalSystemMediaTransportControlsSessionManager;
 const IGlobalSystemMediaTransportControlsSessionManagerStatics = media.IGlobalSystemMediaTransportControlsSessionManagerStatics;
 const IGlobalSystemMediaTransportControlsSession = media.IGlobalSystemMediaTransportControlsSession;
+const ICurrentSessionChangedEventArgs = media.ICurrentSessionChangedEventArgs;
 
 pub const RO_INIT_TYPE = INT;
 pub const RO_INIT_SINGLETHREADED = 0;
@@ -800,6 +801,28 @@ pub const GlobalSystemMediaTransportControlsSessionManager = struct {
         const session = try self.handle.GetCurrentSession();
         return if (session) |handle| .{ .handle = handle } else null;
     }
+
+    pub fn CurrentSessionChanged(
+        self: GlobalSystemMediaTransportControlsSessionManager,
+        allocator: Allocator,
+        context: anytype,
+        comptime invokeFn: fn (@TypeOf(context), session: GlobalSystemMediaTransportControlsSessionManager) void,
+    ) !i64 {
+        const Handler = *TypedEventHandler(*IGlobalSystemMediaTransportControlsSessionManager, *ICurrentSessionChangedEventArgs);
+        const WrappedContext = struct {
+            original: @TypeOf(context),
+
+            fn wrappedInvokeFn(ctx: @This(), sender: *IGlobalSystemMediaTransportControlsSessionManager, _: *ICurrentSessionChangedEventArgs) void {
+                return invokeFn(ctx.original, .{ .handle = sender });
+            }
+        };
+
+        const handler: Handler = try .init(allocator, WrappedContext{ .original = context }, WrappedContext.wrappedInvokeFn);
+        defer handler.Release();
+
+        return (try self.handle.add_CurrentSessionChanged(handler)).value;
+    }
+    
 };
 
 pub const GlobalSystemMediaTransportControlsSession = struct {
@@ -820,7 +843,7 @@ pub const GlobalSystemMediaTransportControlsSession = struct {
         self: GlobalSystemMediaTransportControlsSession,
         allocator: Allocator,
         context: anytype,
-        comptime invokeFn: fn (@TypeOf(context), sender: GlobalSystemMediaTransportControlsSession) void,
+        comptime invokeFn: fn (@TypeOf(context), session: GlobalSystemMediaTransportControlsSession) void,
     ) !i64 {
         const Handler = *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs);
         const WrappedContext = struct {

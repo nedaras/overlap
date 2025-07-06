@@ -13,6 +13,32 @@ const assert = std.debug.assert;
 //        Read album image
 //        hook to track change and session chnage events
 
+const global_allocator = std.heap.page_allocator;
+
+fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession) !void {
+    const props = try (try session.TryGetMediaPropertiesAsync()).getAndForget(global_allocator);
+    defer props.Release();
+
+    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(props.Title())});
+    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(props.Artist())});
+}
+
+fn sessionChanged(manager: windows.GlobalSystemMediaTransportControlsSessionManager) !void {
+    std.debug.print("session changed\n", .{});
+
+    const session = (try manager.GetCurrentSession()) orelse return;
+    defer session.Release();
+     
+    _ = try session.MediaPropertiesChanged(global_allocator, {}, struct {
+        fn invokeFn(_: void, sender: windows.GlobalSystemMediaTransportControlsSession) void {
+            proparitesChanged(sender) catch unreachable;
+        }
+    }.invokeFn);
+    // todo: remove prev sessions props changed event
+
+    return proparitesChanged(session);
+}
+
 pub fn main() !void {
     // we're doing smth bad with releases closes as we get crashes when cleaning up
 
@@ -24,31 +50,17 @@ pub fn main() !void {
     try windows.RoInitialize(windows.RO_INIT_MULTITHREADED);
     defer windows.RoUninitialize();
 
-    // mybe move this media to just windows
-    // ok bug is tha our callback made with allocator can be freed after some long time like out of this scope when da.deinit is called
-    // so it can panick that mem leaked or it can double down and crash as when "leak" is detected our callback tries to free stuff
-    // soo da_allocator is unsafe here
-    const manager = try (try windows.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()).getAndForget(std.heap.page_allocator);
+    const manager = try (try windows.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()).getAndForget(global_allocator);
     defer manager.Release();
 
-    const session = (try manager.GetCurrentSession()) orelse return error.NoSession;
-    defer session.Release();
-
-    _ = try session.MediaPropertiesChanged(std.heap.page_allocator, {}, struct {
-        fn invokeFn(_: void, sender: windows.GlobalSystemMediaTransportControlsSession) void {
-            const props = (sender.TryGetMediaPropertiesAsync() catch unreachable).getAndForget(std.heap.page_allocator) catch unreachable;
-            defer props.Release();
-
-            std.debug.print("{s}\n", .{std.mem.sliceAsBytes(props.Title())});
-            std.debug.print("{s}\n", .{std.mem.sliceAsBytes(props.Artist())});
+    _ = try manager.CurrentSessionChanged(global_allocator, {}, struct {
+        fn invokeFn(_: void, sender: windows.GlobalSystemMediaTransportControlsSessionManager) void {
+            sessionChanged(sender) catch unreachable;
         }
     }.invokeFn);
+    // todo: defer remCSesChannged
 
-    const props = try (try session.TryGetMediaPropertiesAsync()).getAndForget(std.heap.page_allocator);
-    defer props.Release();
-
-    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(props.Title())});
-    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(props.Artist())});
+    try sessionChanged(manager);
 
     var hook: Hook = .init;
 

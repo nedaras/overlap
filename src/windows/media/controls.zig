@@ -22,6 +22,13 @@ pub const IMediaPropertiesChangedEventArgs = extern struct {
     pub const SIGNATURE = "rc(" ++ NAME ++ ";{7d3741cb-adf0-5cef-91ba-cfabcdd77678})";
 };
 
+pub const ICurrentSessionChangedEventArgs = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const NAME = "Windows.Media.Control.CurrentSessionChangedEventArgs";
+    pub const SIGNATURE = "rc(" ++ NAME ++ ";{6969cb39-0bfa-5fe0-8d73-09cc5e5408e1})";
+};
+
 pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern struct {
     vtable: [*]const *const anyopaque,
 
@@ -116,11 +123,11 @@ pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
 
     pub const UUID = &GUID.parse("{cace8eac-e86e-504a-ab31-5ff8ff1bce49}");
 
-    pub const GetCurrentSessionError = error{Unexpected};
-
     pub inline fn Release(self: *IGlobalSystemMediaTransportControlsSessionManager) void {
         IUnknown.Release(@ptrCast(self));
     }
+
+    pub const GetCurrentSessionError = error{Unexpected};
 
     pub fn GetCurrentSession(self: *IGlobalSystemMediaTransportControlsSessionManager) GetCurrentSessionError!?*IGlobalSystemMediaTransportControlsSession {
         const FnType = fn (*IGlobalSystemMediaTransportControlsSessionManager, *?*IGlobalSystemMediaTransportControlsSession) callconv(WINAPI) HRESULT;
@@ -134,6 +141,30 @@ pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
+
+    pub const AddCurrentSessionChangedError = error{Unexpected};
+
+    pub fn add_CurrentSessionChanged(
+        self: *IGlobalSystemMediaTransportControlsSessionManager,
+        handler: *TypedEventHandler(*IGlobalSystemMediaTransportControlsSessionManager, *ICurrentSessionChangedEventArgs),
+    ) AddCurrentSessionChangedError!EventRegistrationToken {
+        const FnType = fn (
+            *IGlobalSystemMediaTransportControlsSessionManager,
+            *TypedEventHandler(*IGlobalSystemMediaTransportControlsSessionManager, *ICurrentSessionChangedEventArgs),
+            *EventRegistrationToken,
+        ) callconv(WINAPI) HRESULT;
+
+        const add_current_session_chnaged: *const FnType = @ptrCast(self.vtable[8]);
+
+        var token: EventRegistrationToken = undefined;
+
+        const hr = add_current_session_chnaged(self, handler, &token);
+        return switch (hr) {
+            windows.S_OK => token,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+
 };
 
 pub const IGlobalSystemMediaTransportControlsSessionManagerStatics = extern struct {
