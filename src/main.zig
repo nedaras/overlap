@@ -38,7 +38,7 @@ fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession)
         state.title = try unicode.wtf16LeToWtf8Alloc(allocator, props.Title());
     }
 
-    const thumbnail = try props.Thumbnail();
+    const thumbnail = (try props.Thumbnail()).?;
     defer thumbnail.Release();
 
     const stream = try (try thumbnail.OpenReadAsync()).getAndForget(allocator);

@@ -877,8 +877,8 @@ pub const GlobalSystemMediaTransportControlsSessionMediaProperties = extern stru
         return WindowsGetStringRawBuffer(self.handle.get_Artist());
     }
 
-    pub inline fn Thumbnail(self: GlobalSystemMediaTransportControlsSessionMediaProperties) !RandomAccessStreamReference {
-        return .{ .handle = try self.handle.get_Thumbnail() };
+    pub inline fn Thumbnail(self: GlobalSystemMediaTransportControlsSessionMediaProperties) !?RandomAccessStreamReference {
+        return if (try self.handle.get_Thumbnail()) |thumbnail| return .{ .handle = thumbnail } else null;
     }
 };
 

@@ -64,11 +64,11 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
 
     pub const GetThumbnailError = error{Unexpected};
 
-    pub fn get_Thumbnail(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) GetThumbnailError!*IRandomAccessStreamReference {
-        const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, **IRandomAccessStreamReference) callconv(WINAPI) HRESULT;
+    pub fn get_Thumbnail(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) GetThumbnailError!?*IRandomAccessStreamReference {
+        const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, *?*IRandomAccessStreamReference) callconv(WINAPI) HRESULT;
         const get_thumbnail: *const FnType = @ptrCast(self.vtable[15]);
 
-        var thumbnail: *IRandomAccessStreamReference = undefined;
+        var thumbnail: ?*IRandomAccessStreamReference = undefined;
 
         const hr = get_thumbnail(self, &thumbnail);
         return switch (hr) {
