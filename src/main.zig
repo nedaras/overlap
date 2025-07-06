@@ -13,7 +13,7 @@ const assert = std.debug.assert;
 //        Read album image
 //        hook to track change and session chnage events
 
-var debug_allocator  = std.heap.DebugAllocator(.{ .thread_safe = true }){};
+var debug_allocator = std.heap.DebugAllocator(.{ .thread_safe = true }){};
 const allocator = debug_allocator.allocator();
 
 const state = struct {
@@ -25,14 +25,24 @@ fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession)
     const props = try (try session.TryGetMediaPropertiesAsync()).getAndForget(allocator);
     defer props.Release();
 
-    state.mutex.lock();
-    defer state.mutex.unlock();
+    {
+        state.mutex.lock();
+        defer state.mutex.unlock();
 
-    if (state.title) |title| {
-        allocator.free(title);
+        if (state.title) |title| {
+            allocator.free(title);
+        }
+
+        // todo: calc size needed to alloc and reusize buf, idk why zig internaly uses std.Allocator fot this,
+        //       mb we can fix this and post a pr
+        state.title = try unicode.wtf16LeToWtf8Alloc(allocator, props.Title());
     }
 
-    state.title = try unicode.wtf16LeToWtf8Alloc(allocator, props.Title());
+    const thumbnail = try props.Thumbnail();
+    defer thumbnail.Release();
+
+    const stream = try (try thumbnail.OpenReadAsync()).getAndForget(allocator);
+    defer stream.Release();
 }
 
 fn sessionChanged(manager: windows.GlobalSystemMediaTransportControlsSessionManager) !void {
@@ -40,7 +50,7 @@ fn sessionChanged(manager: windows.GlobalSystemMediaTransportControlsSessionMana
 
     const session = (try manager.GetCurrentSession()) orelse return;
     defer session.Release();
-     
+
     _ = try session.MediaPropertiesChanged(allocator, {}, struct {
         fn invokeFn(_: void, sender: windows.GlobalSystemMediaTransportControlsSession) void {
             proparitesChanged(sender) catch unreachable;

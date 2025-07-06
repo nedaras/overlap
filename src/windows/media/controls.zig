@@ -1,5 +1,6 @@
 const std = @import("std");
 const windows = @import("../../windows.zig");
+const winrt = @import("../winrt.zig");
 const assert = std.debug.assert;
 
 const INT64 = i64;
@@ -10,6 +11,7 @@ const HSTRING = windows.HSTRING;
 const IUnknown = windows.IUnknown;
 const IAsyncOperation = windows.IAsyncOperation;
 const TypedEventHandler = windows.TypedEventHandler;
+const IRandomAccessStreamReference = winrt.IRandomAccessStreamReference;
 
 pub const EventRegistrationToken = extern struct {
     value: INT64,
@@ -59,6 +61,21 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
         assert(get_artist(self, &artist) == windows.S_OK);
         return artist;
     }
+
+    pub const GetThumbnailError = error{Unexpected};
+
+    pub fn get_Thumbnail(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) GetThumbnailError!*IRandomAccessStreamReference {
+        const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, **IRandomAccessStreamReference) callconv(WINAPI) HRESULT;
+        const get_thumbnail: *const FnType = @ptrCast(self.vtable[15]);
+
+        var thumbnail: *IRandomAccessStreamReference = undefined;
+
+        const hr = get_thumbnail(self, &thumbnail);
+        return switch (hr) {
+            windows.S_OK => thumbnail,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
 };
 
 pub const IGlobalSystemMediaTransportControlsSession = extern struct {
@@ -94,11 +111,7 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         self: *IGlobalSystemMediaTransportControlsSession,
         handler: *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs),
     ) AddMediaPropertiesChangedError!EventRegistrationToken {
-        const FnType = fn (
-            *IGlobalSystemMediaTransportControlsSession,
-            *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs),
-            *EventRegistrationToken
-        ) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSession, *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs), *EventRegistrationToken) callconv(WINAPI) HRESULT;
 
         const add_media_proparties_changed: *const FnType = @ptrCast(self.vtable[29]);
 
@@ -110,7 +123,6 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
-
 };
 
 // prob add those GlobalSystemMediaTransportControlsSessionManager classes for general use
@@ -164,7 +176,6 @@ pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
-
 };
 
 pub const IGlobalSystemMediaTransportControlsSessionManagerStatics = extern struct {

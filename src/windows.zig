@@ -41,11 +41,13 @@ const Win32Error = windows.Win32Error;
 const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
 const IGlobalSystemMediaTransportControlsSessionMediaProperties = media.IGlobalSystemMediaTransportControlsSessionMediaProperties;
 const IAsyncOperationCompletedHandler = winrt.IAsyncOperationCompletedHandler;
-const IAsyncOperationCompletedHandlerVTable  = winrt.IAsyncOperationCompletedHandlerVTable;
+const IAsyncOperationCompletedHandlerVTable = winrt.IAsyncOperationCompletedHandlerVTable;
 const IGlobalSystemMediaTransportControlsSessionManager = media.IGlobalSystemMediaTransportControlsSessionManager;
 const IGlobalSystemMediaTransportControlsSessionManagerStatics = media.IGlobalSystemMediaTransportControlsSessionManagerStatics;
 const IGlobalSystemMediaTransportControlsSession = media.IGlobalSystemMediaTransportControlsSession;
 const ICurrentSessionChangedEventArgs = media.ICurrentSessionChangedEventArgs;
+const IRandomAccessStreamReference = winrt.IRandomAccessStreamReference;
+const IRandomAccessStreamWithContentType = winrt.IRandomAccessStreamWithContentType;
 
 pub const RO_INIT_TYPE = INT;
 pub const RO_INIT_SINGLETHREADED = 0;
@@ -624,7 +626,7 @@ pub fn AsyncOperation(comptime TResult: type) type {
             self.handle.Close();
         }
 
-        pub fn get(self: Self, allocator: Allocator) !TResult{
+        pub fn get(self: Self, allocator: Allocator) !TResult {
             var async_info: *IAsyncInfo = undefined;
 
             try self.handle.QueryInterface(IAsyncInfo.UUID, @ptrCast(&async_info));
@@ -644,7 +646,7 @@ pub fn AsyncOperation(comptime TResult: type) type {
                 }
             };
 
-            const callback: AsyncOperationCompletedHandler(TResult) = try .init(allocator, Context{.reset_event = &reset_event}, Context.invokeFn);
+            const callback: AsyncOperationCompletedHandler(TResult) = try .init(allocator, Context{ .reset_event = &reset_event }, Context.invokeFn);
             defer callback.Release();
 
             try self.handle.put_Completed(callback.handle);
@@ -699,7 +701,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                 ref_count: std.atomic.Value(ULONG),
 
                 context: Context,
-                
+
                 fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
 
@@ -750,7 +752,6 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
 
                     return windows.S_OK;
                 }
-
             };
 
             const closure = try allocator.create(Closure);
@@ -768,7 +769,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
 }
 
 pub const GlobalSystemMediaTransportControlsSessionManager = struct {
-    handle: *IGlobalSystemMediaTransportControlsSessionManager, 
+    handle: *IGlobalSystemMediaTransportControlsSessionManager,
 
     pub const SIGNATURE = IGlobalSystemMediaTransportControlsSessionManager.SIGNATURE;
     pub const NAME = IGlobalSystemMediaTransportControlsSessionManager.NAME;
@@ -822,7 +823,6 @@ pub const GlobalSystemMediaTransportControlsSessionManager = struct {
 
         return (try self.handle.add_CurrentSessionChanged(handler)).value;
     }
-    
 };
 
 pub const GlobalSystemMediaTransportControlsSession = struct {
@@ -837,7 +837,6 @@ pub const GlobalSystemMediaTransportControlsSession = struct {
             .handle = @ptrCast(try self.handle.TryGetMediaPropertiesAsync()),
         };
     }
-
 
     pub fn MediaPropertiesChanged(
         self: GlobalSystemMediaTransportControlsSession,
@@ -859,7 +858,6 @@ pub const GlobalSystemMediaTransportControlsSession = struct {
 
         return (try self.handle.add_MediaPropertiesChanged(handler)).value;
     }
-
 };
 
 pub const GlobalSystemMediaTransportControlsSessionMediaProperties = extern struct {
@@ -879,4 +877,19 @@ pub const GlobalSystemMediaTransportControlsSessionMediaProperties = extern stru
         return WindowsGetStringRawBuffer(self.handle.get_Artist());
     }
 
+    pub inline fn Thumbnail(self: GlobalSystemMediaTransportControlsSessionMediaProperties) !RandomAccessStreamReference {
+        return .{ .handle = try self.handle.get_Thumbnail() };
+    }
+};
+
+pub const RandomAccessStreamReference = struct {
+    handle: *IRandomAccessStreamReference,
+
+    pub inline fn Release(self: RandomAccessStreamReference) void {
+        self.handle.Release();
+    }
+
+    pub inline fn OpenReadAsync(self: RandomAccessStreamReference) !AsyncOperation(*IRandomAccessStreamWithContentType) {
+        return .{ .handle = try self.handle.OpenReadAsync() };
+    }
 };

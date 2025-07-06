@@ -113,7 +113,8 @@ pub fn newFrame(self: *Self) FrameError!void {
 }
 
 pub fn endFrame(self: *Self) void {
-    self.gateway.mutex.unlock(); // input mutex
+    self.gateway.mutex.unlock(); // todo: input mutex and this is dumb af why should windproc wait fot present?
+    //       just copy the input to temp input that would be used in present func
     self.gateway.main_reset_event.reset();
     self.gateway.hooked_reset_event.set();
 }

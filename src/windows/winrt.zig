@@ -28,12 +28,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
     return extern struct {
         vtable: *const TypedEventHandlerVTable(TSender, TResult),
 
-        pub const SIGNATURE = "pinterface({9de1c534-6ae1-11e0-84e1-18a905bcc53f}"
-            ++ ";"
-            ++ signatureOf(TSender)
-            ++ ";"
-            ++ signatureOf(TResult) 
-            ++ ")";
+        pub const SIGNATURE = "pinterface({9de1c534-6ae1-11e0-84e1-18a905bcc53f}" ++ ";" ++ signatureOf(TSender) ++ ";" ++ signatureOf(TResult) ++ ")";
 
         pub const UUID = uuidFromSignature(SIGNATURE);
 
@@ -62,7 +57,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
                 ref_count: std.atomic.Value(ULONG),
 
                 context: Context,
-                
+
                 fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
 
@@ -113,7 +108,6 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
 
                     return windows.S_OK;
                 }
-
             };
 
             const closure = try allocator.create(Closure);
@@ -251,3 +245,36 @@ pub fn IAsyncOperation(comptime T: type) type {
         }
     };
 }
+
+pub const IRandomAccessStreamReference = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub inline fn Release(self: *IRandomAccessStreamReference) void {
+        IUnknown.Release(@ptrCast(self));
+    }
+
+    pub const OpenReadAsyncError = error{Unexpected};
+
+    pub fn OpenReadAsync(self: *IRandomAccessStreamReference) OpenReadAsyncError!*IAsyncOperation(*IRandomAccessStreamWithContentType) {
+        const FnType = fn (*IRandomAccessStreamReference, **IAsyncOperation(*IRandomAccessStreamWithContentType)) callconv(WINAPI) HRESULT;
+        const open_read_async: *const FnType = @ptrCast(self.vtable[6]);
+
+        var operation: *IAsyncOperation(*IRandomAccessStreamWithContentType) = undefined;
+
+        const hr = open_read_async(self, &operation);
+        return switch (hr) {
+            windows.S_OK => operation,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+};
+
+pub const IRandomAccessStreamWithContentType = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const SIGNATURE = "{cc254827-4b3d-438f-9232-10c76bc7e038}";
+
+    pub inline fn Release(self: *IRandomAccessStreamWithContentType) void {
+        IUnknown.Release(@ptrCast(self));
+    }
+};
