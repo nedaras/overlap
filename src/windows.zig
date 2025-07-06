@@ -53,7 +53,8 @@ const IBitmapDecoder = graphics.IBitmapDecoder;
 const IBitmapDecoderStatics = graphics.IBitmapDecoderStatics;
 const IBitmapFrame = graphics.IBitmapFrame;
 const IPixelDataProvider = graphics.IPixelDataProvider;
-const IBitmapTransform = graphics.IBitmapTransform;
+
+pub const IBitmapTransform = graphics.IBitmapTransform;
 
 pub const RO_INIT_TYPE = INT;
 pub const RO_INIT_SINGLETHREADED = 0;
@@ -977,7 +978,7 @@ pub const BitmapFrame = struct {
         self: BitmapFrame,
         pixelFormat: BitmapPixelFormat,
         alphaMode: BitmapAlphaMode,
-        transform: ?*IBitmapTransform,
+        transform: **IBitmapTransform,
         exifOrientationMode: ExifOrientationMode,
         colorManagementMode: ColorManagementMode,
     ) !AsyncOperation(*IPixelDataProvider) {

@@ -39,10 +39,24 @@ fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession)
 
     std.debug.print("{d}x{d}\n", .{frame.PixelWidth(), frame.PixelHeight()});
 
+    const class = try windows.WindowsCreateString(
+        unicode.wtf8ToWtf16LeStringLiteral(windows.IBitmapTransform.NAME),
+    );
+    defer windows.WindowsDeleteString(class);
+
+    var transform: *windows.IBitmapTransform = undefined;
+
+    try windows.RoGetActivationFactory(
+        class,
+        windows.IBitmapTransform.UUID,
+        @ptrCast(&transform),
+    );
+    defer transform.Release();
+
     const pixels = try (try frame.GetPixelDataTransformedAsync(
         windows.BitmapPixelFormat_Rgba8,
         windows.BitmapAlphaMode_Premultiplied,
-        null,
+        &transform,
         windows.ExifOrientationMode_IgnoreExifOrientation,
         windows.ColorManagementMode_DoNotColorManage,
     )).getAndForget(allocator);

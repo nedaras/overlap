@@ -15,7 +15,16 @@ const BitmapAlphaMode = windows.BitmapAlphaMode;
 const ExifOrientationMode = windows.ExifOrientationMode;
 const ColorManagementMode = windows.ColorManagementMode;
 
-pub const IBitmapTransform = opaque{};
+pub const IBitmapTransform = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const NAME = "Windows.Graphics.Imaging.BitmapTransform";
+    pub const UUID = &GUID.parse("{ae755344-e268-4d35-adcf-e995d31a8d34}");
+
+    pub inline fn Release(self: *IBitmapTransform) void {
+        IUnknown.Release(@ptrCast(self));
+    }
+};
 
 pub const IBitmapDecoderStatics = extern struct {
     vtable: [*]const *const anyopaque,
@@ -105,7 +114,7 @@ pub const IBitmapFrame = extern struct {
         self: *IBitmapFrame,
         pixelFormat: BitmapPixelFormat,
         alphaMode: BitmapAlphaMode,
-        transform: ?*IBitmapTransform,
+        transform: **IBitmapTransform,
         exifOrientationMode: ExifOrientationMode,
         colorManagementMode: ColorManagementMode,
     ) GetPixelDataAsyncError!*IAsyncOperation(*IPixelDataProvider) {
@@ -113,7 +122,7 @@ pub const IBitmapFrame = extern struct {
             *IBitmapFrame,
             BitmapPixelFormat,
             BitmapAlphaMode,
-            ?*IBitmapTransform,
+            **IBitmapTransform,
             ExifOrientationMode,
             ColorManagementMode,
             **IAsyncOperation(*IPixelDataProvider),
@@ -135,6 +144,8 @@ pub const IPixelDataProvider = extern struct {
 
     pub const NAME = "Windows.Graphics.Imaging.PixelDataProvider";
     pub const SIGNATURE = "rc(" ++ NAME ++ ";{dd831f25-185c-4595-9fb9-ccbe6ec18a6f})";
+
+    pub const UUID = &GUID.parse("{dd831f25-185c-4595-9fb9-ccbe6ec18a6f}");
 
     pub inline fn Release(self: *IPixelDataProvider) void {
         IUnknown.Release(@ptrCast(self));
