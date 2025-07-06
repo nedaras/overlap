@@ -13,14 +13,26 @@ const assert = std.debug.assert;
 //        Read album image
 //        hook to track change and session chnage events
 
-const global_allocator = std.heap.page_allocator;
+var debug_allocator  = std.heap.DebugAllocator(.{ .thread_safe = true }){};
+const allocator = debug_allocator.allocator();
+
+const state = struct {
+    var mutex: std.Thread.Mutex = .{};
+    var title: ?[]const u8 = null;
+};
 
 fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession) !void {
-    const props = try (try session.TryGetMediaPropertiesAsync()).getAndForget(global_allocator);
+    const props = try (try session.TryGetMediaPropertiesAsync()).getAndForget(allocator);
     defer props.Release();
 
-    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(props.Title())});
-    std.debug.print("{s}\n", .{std.mem.sliceAsBytes(props.Artist())});
+    state.mutex.lock();
+    defer state.mutex.unlock();
+
+    if (state.title) |title| {
+        allocator.free(title);
+    }
+
+    state.title = try unicode.wtf16LeToWtf8Alloc(allocator, props.Title());
 }
 
 fn sessionChanged(manager: windows.GlobalSystemMediaTransportControlsSessionManager) !void {
@@ -29,7 +41,7 @@ fn sessionChanged(manager: windows.GlobalSystemMediaTransportControlsSessionMana
     const session = (try manager.GetCurrentSession()) orelse return;
     defer session.Release();
      
-    _ = try session.MediaPropertiesChanged(global_allocator, {}, struct {
+    _ = try session.MediaPropertiesChanged(allocator, {}, struct {
         fn invokeFn(_: void, sender: windows.GlobalSystemMediaTransportControlsSession) void {
             proparitesChanged(sender) catch unreachable;
         }
@@ -40,20 +52,22 @@ fn sessionChanged(manager: windows.GlobalSystemMediaTransportControlsSessionMana
 }
 
 pub fn main() !void {
-    // we're doing smth bad with releases closes as we get crashes when cleaning up
+    // unsafe as those COM objects can have bigger lifespan than this stack function
+    defer _ = debug_allocator.deinit();
+    defer if (state.title) |title| {
+        state.mutex.lock();
+        defer state.mutex.unlock();
 
-    var da = std.heap.DebugAllocator(.{ .thread_safe = true }){};
-    defer _ = da.deinit();
-
-    //const allocator = da.allocator();
+        allocator.free(title);
+    };
 
     try windows.RoInitialize(windows.RO_INIT_MULTITHREADED);
     defer windows.RoUninitialize();
 
-    const manager = try (try windows.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()).getAndForget(global_allocator);
+    const manager = try (try windows.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()).getAndForget(allocator);
     defer manager.Release();
 
-    _ = try manager.CurrentSessionChanged(global_allocator, {}, struct {
+    _ = try manager.CurrentSessionChanged(allocator, {}, struct {
         fn invokeFn(_: void, sender: windows.GlobalSystemMediaTransportControlsSessionManager) void {
             sessionChanged(sender) catch unreachable;
         }
@@ -67,14 +81,21 @@ pub fn main() !void {
     try hook.attach();
     defer hook.detach();
 
-    //const gui = hook.gui();
-    //const input = hook.input();
+    const gui = hook.gui();
+    const input = hook.input();
 
-    //const font = try hook.loadFont(allocator, "font.fat");
-    //defer font.deinit(allocator);
+    const font = try hook.loadFont(allocator, "font.fat");
+    defer font.deinit(allocator);
 
     while (true) {
         try hook.newFrame();
         defer hook.endFrame();
+
+        state.mutex.lock();
+        defer state.mutex.unlock();
+
+        if (state.title) |title| {
+            gui.text(.{ @floatFromInt(input.mouse_x), @floatFromInt(input.mouse_y) }, title, 0xFFFFFFFF, font);
+        }
     }
 }
