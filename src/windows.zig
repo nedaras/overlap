@@ -52,6 +52,8 @@ const IRandomAccessStreamWithContentType = winrt.IRandomAccessStreamWithContentT
 const IBitmapDecoder = graphics.IBitmapDecoder;
 const IBitmapDecoderStatics = graphics.IBitmapDecoderStatics;
 const IBitmapFrame = graphics.IBitmapFrame;
+const IPixelDataProvider = graphics.IPixelDataProvider;
+const IBitmapTransform = graphics.IBitmapTransform;
 
 pub const RO_INIT_TYPE = INT;
 pub const RO_INIT_SINGLETHREADED = 0;
@@ -83,6 +85,20 @@ pub const WNDPROC = *const fn (
     wParam: WPARAM,
     lParam: LPARAM,
 ) callconv(WINAPI) LRESULT;
+
+pub const BitmapPixelFormat = INT;
+pub const BitmapPixelFormat_Rgba8 = 30;
+
+pub const BitmapAlphaMode = INT;
+pub const BitmapAlphaMode_Premultiplied = 0;
+pub const BitmapAlphaMode_Straight = 1;
+pub const BitmapAlphaMode_Ignore  = 2;
+
+pub const ExifOrientationMode = INT;
+pub const ExifOrientationMode_IgnoreExifOrientation = 0;
+
+pub const ColorManagementMode = INT;
+pub const ColorManagementMode_DoNotColorManage = 0;
 
 pub const GWLP_WNDPROC = -4;
 
@@ -955,5 +971,22 @@ pub const BitmapFrame = struct {
 
     pub inline fn PixelHeight(self: BitmapFrame) UINT32 {
         return self.handle.get_PixelHeight();
+    }
+
+    pub inline fn GetPixelDataTransformedAsync(
+        self: BitmapFrame,
+        pixelFormat: BitmapPixelFormat,
+        alphaMode: BitmapAlphaMode,
+        transform: ?*IBitmapTransform,
+        exifOrientationMode: ExifOrientationMode,
+        colorManagementMode: ColorManagementMode,
+    ) !AsyncOperation(*IPixelDataProvider) {
+        return .{ .handle = try self.handle.GetPixelDataTransformedAsync(
+            pixelFormat,
+            alphaMode,
+            transform,
+            exifOrientationMode,
+            colorManagementMode,
+        ) };
     }
 };

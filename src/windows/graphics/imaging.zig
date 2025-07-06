@@ -10,6 +10,12 @@ const IUnknown = windows.IUnknown;
 const IRandomAccessStream = windows.IRandomAccessStream;
 const IAsyncOperation = winrt.IAsyncOperation;
 const UINT32 = windows.UINT32;
+const BitmapPixelFormat = windows.BitmapPixelFormat;
+const BitmapAlphaMode = windows.BitmapAlphaMode;
+const ExifOrientationMode = windows.ExifOrientationMode;
+const ColorManagementMode = windows.ColorManagementMode;
+
+pub const IBitmapTransform = opaque{};
 
 pub const IBitmapDecoderStatics = extern struct {
     vtable: [*]const *const anyopaque,
@@ -61,7 +67,6 @@ pub const IBitmapDecoder = extern struct {
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
-
 };
 
 pub const IBitmapFrame = extern struct {
@@ -92,5 +97,46 @@ pub const IBitmapFrame = extern struct {
 
         assert(get_pixel_height(self, &value) == windows.S_OK);
         return value;
+    }
+
+    pub const GetPixelDataAsyncError = error{Unexpected};
+
+    pub fn GetPixelDataTransformedAsync(
+        self: *IBitmapFrame,
+        pixelFormat: BitmapPixelFormat,
+        alphaMode: BitmapAlphaMode,
+        transform: ?*IBitmapTransform,
+        exifOrientationMode: ExifOrientationMode,
+        colorManagementMode: ColorManagementMode,
+    ) GetPixelDataAsyncError!*IAsyncOperation(*IPixelDataProvider) {
+        const FnType = fn (
+            *IBitmapFrame,
+            BitmapPixelFormat,
+            BitmapAlphaMode,
+            ?*IBitmapTransform,
+            ExifOrientationMode,
+            ColorManagementMode,
+            **IAsyncOperation(*IPixelDataProvider),
+        ) callconv(WINAPI) HRESULT;
+
+        const get_pixel_data_transformed_async: *const FnType = @ptrCast(self.vtable[17]);
+        var operation: *IAsyncOperation(*IPixelDataProvider) = undefined;
+
+        const hr = get_pixel_data_transformed_async(self, pixelFormat, alphaMode, transform, exifOrientationMode, colorManagementMode, &operation);
+        return switch (hr) {
+            windows.S_OK => operation,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+};
+
+pub const IPixelDataProvider = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const NAME = "Windows.Graphics.Imaging.PixelDataProvider";
+    pub const SIGNATURE = "rc(" ++ NAME ++ ";{dd831f25-185c-4595-9fb9-ccbe6ec18a6f})";
+
+    pub inline fn Release(self: *IPixelDataProvider) void {
+        IUnknown.Release(@ptrCast(self));
     }
 };

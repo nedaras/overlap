@@ -39,18 +39,29 @@ fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession)
 
     std.debug.print("{d}x{d}\n", .{frame.PixelWidth(), frame.PixelHeight()});
 
-    // ...
+    const pixels = try (try frame.GetPixelDataTransformedAsync(
+        windows.BitmapPixelFormat_Rgba8,
+        windows.BitmapAlphaMode_Premultiplied,
+        null,
+        windows.ExifOrientationMode_IgnoreExifOrientation,
+        windows.ColorManagementMode_DoNotColorManage,
+    )).getAndForget(allocator);
+    defer pixels.Release();
 
-    state.mutex.lock();
-    defer state.mutex.unlock();
+    std.debug.print("got them pixels\n", .{});
 
-    if (state.title) |title| {
-        allocator.free(title);
+    {
+        state.mutex.lock();
+        defer state.mutex.unlock();
+
+        if (state.title) |title| {
+            allocator.free(title);
+        }
+
+        // todo: calc size needed to alloc and reusize buf, idk why zig internaly uses std.Allocator fot this,
+        //       mb we can fix this and post a pr
+        state.title = try unicode.wtf16LeToWtf8Alloc(allocator, props.Title());
     }
-
-    // todo: calc size needed to alloc and reusize buf, idk why zig internaly uses std.Allocator fot this,
-    //       mb we can fix this and post a pr
-    state.title = try unicode.wtf16LeToWtf8Alloc(allocator, props.Title());
 }
 
 fn sessionChanged(manager: windows.GlobalSystemMediaTransportControlsSessionManager) !void {
