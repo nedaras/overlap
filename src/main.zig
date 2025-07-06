@@ -44,13 +44,17 @@ fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession)
     );
     defer windows.WindowsDeleteString(class);
 
+    var factory: *windows.IActivationFactory = undefined;
     var transform: *windows.IBitmapTransform = undefined;
 
     try windows.RoGetActivationFactory(
         class,
-        windows.IBitmapTransform.UUID,
-        @ptrCast(&transform),
+        windows.IActivationFactory.UUID,
+        @ptrCast(&factory),
     );
+    defer factory.Release();
+
+    try factory.ActivateInstance(@ptrCast(&transform));
     defer transform.Release();
 
     const pixels = try (try frame.GetPixelDataTransformedAsync(

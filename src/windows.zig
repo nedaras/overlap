@@ -965,7 +965,6 @@ pub const BitmapFrame = struct {
         self.handle.Release();
     }
 
-
     pub inline fn PixelWidth(self: BitmapFrame) UINT32 {
         return self.handle.get_PixelWidth();
     }
@@ -991,3 +990,28 @@ pub const BitmapFrame = struct {
         ) };
     }
 };
+
+pub const IActivationFactory = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const UUID = &GUID.parse("{00000035-0000-0000-c000-000000000046}");
+
+    pub inline fn Release(self: *IActivationFactory) void {
+        IUnknown.Release(@ptrCast(self));
+    }
+
+    pub const ActivateInstanceError = error{Unexpected};
+
+    pub fn ActivateInstance(self: *IActivationFactory, instance: **anyopaque) ActivateInstanceError!void {
+        const FnType = fn (*IActivationFactory, **anyopaque) callconv(WINAPI) HRESULT;
+        const activate_instance: *const FnType = @ptrCast(self.vtable[6]);
+
+        const hr = activate_instance(self, instance);
+        return switch (hr) {
+            windows.S_OK => {},
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+
+};
+
