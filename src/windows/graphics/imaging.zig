@@ -1,5 +1,7 @@
+const std = @import("std");
 const windows = @import("../../windows.zig");
 const winrt = @import("../winrt.zig");
+const assert = std.debug.assert;
 
 const GUID = windows.GUID;
 const WINAPI = windows.WINAPI;
@@ -7,6 +9,7 @@ const HRESULT = windows.HRESULT;
 const IUnknown = windows.IUnknown;
 const IRandomAccessStream = windows.IRandomAccessStream;
 const IAsyncOperation = winrt.IAsyncOperation;
+const UINT32 = windows.UINT32;
 
 pub const IBitmapDecoderStatics = extern struct {
     vtable: [*]const *const anyopaque,
@@ -42,5 +45,52 @@ pub const IBitmapDecoder = extern struct {
 
     pub inline fn Release(self: *IBitmapDecoder) void {
         IUnknown.Release(@ptrCast(self));
+    }
+
+    pub const GetFrameAsyncError = error{Unexpected};
+
+    pub fn GetFrameAsync(self: *IBitmapDecoder, frameIndex: UINT32) GetFrameAsyncError!*IAsyncOperation(*IBitmapFrame) {
+        const FnType = fn (*IBitmapDecoder, UINT32, **IAsyncOperation(*IBitmapFrame)) callconv(WINAPI) HRESULT;
+        const get_frame_async: *const FnType = @ptrCast(self.vtable[10]);
+
+        var operation: *IAsyncOperation(*IBitmapFrame) = undefined;
+
+        const hr = get_frame_async(self, frameIndex, &operation);
+        return switch (hr) {
+            windows.S_OK => operation,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+
+};
+
+pub const IBitmapFrame = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const NAME = "Windows.Graphics.Imaging.BitmapFrame";
+    pub const SIGNATURE = "rc(" ++ NAME ++ ";{72a49a1c-8081-438d-91bc-94ecfc8185c6})";
+
+    pub inline fn Release(self: *IBitmapFrame) void {
+        IUnknown.Release(@ptrCast(self));
+    }
+
+    pub fn get_PixelWidth(self: *IBitmapFrame) UINT32 {
+        const FnType = fn (*IBitmapFrame, *UINT32) callconv(WINAPI) HRESULT;
+        const get_pixel_width: *const FnType = @ptrCast(self.vtable[12]);
+
+        var value: UINT32 = undefined;
+
+        assert(get_pixel_width(self, &value) == windows.S_OK);
+        return value;
+    }
+
+    pub fn get_PixelHeight(self: *IBitmapFrame) UINT32 {
+        const FnType = fn (*IBitmapFrame, *UINT32) callconv(WINAPI) HRESULT;
+        const get_pixel_height: *const FnType = @ptrCast(self.vtable[13]);
+
+        var value: UINT32 = undefined;
+
+        assert(get_pixel_height(self, &value) == windows.S_OK);
+        return value;
     }
 };

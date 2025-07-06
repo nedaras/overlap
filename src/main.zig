@@ -34,6 +34,11 @@ fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession)
     const decoder = try (try windows.BitmapDecoder.CreateAsync(@ptrCast(stream))).getAndForget(allocator);
     defer decoder.Release();
 
+    const frame = try (try decoder.GetFrameAsync(0)).getAndForget(allocator);
+    defer frame.Release();
+
+    std.debug.print("{d}x{d}\n", .{frame.PixelWidth(), frame.PixelHeight()});
+
     // ...
 
     state.mutex.lock();

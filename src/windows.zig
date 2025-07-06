@@ -51,6 +51,7 @@ const IRandomAccessStreamReference = winrt.IRandomAccessStreamReference;
 const IRandomAccessStreamWithContentType = winrt.IRandomAccessStreamWithContentType;
 const IBitmapDecoder = graphics.IBitmapDecoder;
 const IBitmapDecoderStatics = graphics.IBitmapDecoderStatics;
+const IBitmapFrame = graphics.IBitmapFrame;
 
 pub const RO_INIT_TYPE = INT;
 pub const RO_INIT_SINGLETHREADED = 0;
@@ -926,8 +927,33 @@ pub const BitmapDecoder = struct {
         self.handle.Release();
     }
 
+    pub inline fn GetFrameAsync(self: BitmapDecoder, frameIndex: UINT32) !AsyncOperation(BitmapFrame) {
+        return .{
+            .handle = @ptrCast(try self.handle.GetFrameAsync(frameIndex)),
+        };
+    }
+
 };
 
 pub const IRandomAccessStream = extern struct {
     vtable: [*]const *const anyopaque,
+};
+
+pub const BitmapFrame = struct {
+    handle: *IBitmapFrame,
+
+    pub const SIGNATURE = IBitmapFrame.SIGNATURE;
+
+    pub inline fn Release(self: BitmapFrame) void {
+        self.handle.Release();
+    }
+
+
+    pub inline fn PixelWidth(self: BitmapFrame) UINT32 {
+        return self.handle.get_PixelWidth();
+    }
+
+    pub inline fn PixelHeight(self: BitmapFrame) UINT32 {
+        return self.handle.get_PixelHeight();
+    }
 };
