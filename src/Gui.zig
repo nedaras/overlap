@@ -132,27 +132,39 @@ const DrawCommand = struct {
 fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
     const amt: u16 = @intCast(self.draw_verticies.len);
 
-    self.draw_verticies.appendSlice(draw_cmd.verticies) catch unreachable;
+    self.draw_verticies.ensureUnusedCapacity(draw_cmd.verticies.len) catch return;
+    self.draw_indecies.ensureUnusedCapacity(draw_cmd.indecies.len) catch return;
+
+    const reuse_image = blk: {
+        if (self.draw_commands.len == 0) break :blk false;
+        const last_draw_cmd = self.draw_commands.get(self.draw_commands.len - 1);
+        break :blk equalImages(last_draw_cmd.image, draw_cmd.image);
+    };
+
+    if (reuse_image) {
+        self.draw_commands.ensureUnusedCapacity(1) catch return;
+    }
+
+    self.draw_verticies.appendSliceAssumeCapacity(draw_cmd.verticies);
 
     for (draw_cmd.indecies) |idx| {
         // todo: add simd
         // appendSlice
         // and then in simd add do it amt
-        self.draw_indecies.append(amt + idx) catch unreachable;
+        self.draw_indecies.appendAssumeCapacity(amt + idx);
     }
 
-    if (self.draw_commands.len > 0) blk: {
+    if (reuse_image) {
         const last_draw_cmd = &self.draw_commands.slice()[self.draw_commands.len - 1];
-        if (!equalImages(last_draw_cmd.image, draw_cmd.image)) break :blk;
-
         last_draw_cmd.index_len += @intCast(draw_cmd.indecies.len);
+
         return;
     }
 
-    self.draw_commands.append(.{
+    self.draw_commands.appendAssumeCapacity(.{
         .image = draw_cmd.image,
         .index_len = @intCast(draw_cmd.indecies.len),
-    }) catch unreachable;
+    });
 }
 
 fn equalImages(a: ?Image, b: ?Image) bool {
