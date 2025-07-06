@@ -19,6 +19,9 @@ const allocator = debug_allocator.allocator();
 const state = struct {
     var mutex: std.Thread.Mutex = .{};
     var title: ?[]const u8 = null;
+    var width: u32 = 0;
+    var height: u32 = 0;
+    var pixel_data: ?*windows.IPixelDataProvider = null;
 };
 
 fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession) !void {
@@ -57,16 +60,16 @@ fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession)
     try factory.ActivateInstance(@ptrCast(&transform));
     defer transform.Release();
 
+    // maybe we can activate our callbacks like this cuz then our out of stack allocator problems would disolve
+
     const pixels = try (try frame.GetPixelDataTransformedAsync(
         windows.BitmapPixelFormat_Rgba8,
         windows.BitmapAlphaMode_Premultiplied,
-        &transform,
+        transform,
         windows.ExifOrientationMode_IgnoreExifOrientation,
         windows.ColorManagementMode_DoNotColorManage,
     )).getAndForget(allocator);
-    defer pixels.Release();
-
-    std.debug.print("got them pixels\n", .{});
+    errdefer pixels.Release();
 
     {
         state.mutex.lock();
@@ -76,9 +79,16 @@ fn proparitesChanged(session: windows.GlobalSystemMediaTransportControlsSession)
             allocator.free(title);
         }
 
+        if (state.pixel_data) |pixel_data| {
+            pixel_data.Release();
+        }
+
         // todo: calc size needed to alloc and reusize buf, idk why zig internaly uses std.Allocator fot this,
         //       mb we can fix this and post a pr
         state.title = try unicode.wtf16LeToWtf8Alloc(allocator, props.Title());
+        state.width = frame.PixelWidth();
+        state.height = frame.PixelHeight();
+        state.pixel_data = pixels;
     }
 }
 
@@ -128,11 +138,18 @@ pub fn main() !void {
     try hook.attach();
     defer hook.detach();
 
+    var image: ?Hook.Image = null;
+    defer if (image) |img| {
+        img.deinit(allocator);
+    };
+
     const gui = hook.gui();
-    const input = hook.input();
+    //const input = hook.input();
 
     const font = try hook.loadFont(allocator, "font.fat");
     defer font.deinit(allocator);
+
+    var prev_first_char: u8 = '\x00';
 
     while (true) {
         try hook.newFrame();
@@ -141,8 +158,39 @@ pub fn main() !void {
         state.mutex.lock();
         defer state.mutex.unlock();
 
-        if (state.title) |title| {
-            gui.text(.{ @floatFromInt(input.mouse_x), @floatFromInt(input.mouse_y) }, title, 0xFFFFFFFF, font);
+        const pixel_data = state.pixel_data orelse continue;
+        const title = state.title orelse continue;
+
+        // this is just stoopid, but works for testing
+        defer prev_first_char = title[0];
+        if (prev_first_char != title[0]) {
+            var len: u32 = undefined;
+            var ptr: [*]const u8 = undefined;
+
+            pixel_data.DetachPixelData(&len, &ptr);
+
+            if (image == null or image.?.width != state.width or image.?.height != state.height) {
+                if (image) |img| {
+                    img.deinit(allocator);
+                    image = null;
+                }
+
+                image = try hook.loadImage(allocator, .{
+                    .width = state.width,
+                    .height = state.height,
+                    .data = ptr[0..len],
+                    .format = .rgba,
+                    .usage = .dynamic,
+                });
+            } else {
+                try hook.updateImage(image.?, ptr[0..len]);
+            }
         }
+
+        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(state.width), @floatFromInt(state.height) }, image.?);
+
+        //if (state.title) |title| {
+            //gui.text(.{ @floatFromInt(input.mouse_x), @floatFromInt(input.mouse_y) }, title, 0xFFFFFFFF, font);
+        //}
     }
 }

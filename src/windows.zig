@@ -52,8 +52,8 @@ const IRandomAccessStreamWithContentType = winrt.IRandomAccessStreamWithContentT
 const IBitmapDecoder = graphics.IBitmapDecoder;
 const IBitmapDecoderStatics = graphics.IBitmapDecoderStatics;
 const IBitmapFrame = graphics.IBitmapFrame;
-const IPixelDataProvider = graphics.IPixelDataProvider;
 
+pub const IPixelDataProvider = graphics.IPixelDataProvider;
 pub const IBitmapTransform = graphics.IBitmapTransform;
 
 pub const RO_INIT_TYPE = INT;
@@ -977,7 +977,7 @@ pub const BitmapFrame = struct {
         self: BitmapFrame,
         pixelFormat: BitmapPixelFormat,
         alphaMode: BitmapAlphaMode,
-        transform: **IBitmapTransform,
+        transform: *IBitmapTransform,
         exifOrientationMode: ExifOrientationMode,
         colorManagementMode: ColorManagementMode,
     ) !AsyncOperation(*IPixelDataProvider) {

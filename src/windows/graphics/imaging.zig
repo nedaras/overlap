@@ -4,6 +4,7 @@ const winrt = @import("../winrt.zig");
 const assert = std.debug.assert;
 
 const GUID = windows.GUID;
+const BYTE = windows.BYTE;
 const WINAPI = windows.WINAPI;
 const HRESULT = windows.HRESULT;
 const IUnknown = windows.IUnknown;
@@ -114,7 +115,7 @@ pub const IBitmapFrame = extern struct {
         self: *IBitmapFrame,
         pixelFormat: BitmapPixelFormat,
         alphaMode: BitmapAlphaMode,
-        transform: **IBitmapTransform,
+        transform: *IBitmapTransform,
         exifOrientationMode: ExifOrientationMode,
         colorManagementMode: ColorManagementMode,
     ) GetPixelDataAsyncError!*IAsyncOperation(*IPixelDataProvider) {
@@ -122,7 +123,7 @@ pub const IBitmapFrame = extern struct {
             *IBitmapFrame,
             BitmapPixelFormat,
             BitmapAlphaMode,
-            **IBitmapTransform,
+            *IBitmapTransform,
             ExifOrientationMode,
             ColorManagementMode,
             **IAsyncOperation(*IPixelDataProvider),
@@ -150,4 +151,13 @@ pub const IPixelDataProvider = extern struct {
     pub inline fn Release(self: *IPixelDataProvider) void {
         IUnknown.Release(@ptrCast(self));
     }
+
+    // todo: add PixelDataProvider that would just return []const u8
+    pub fn DetachPixelData(self: *IPixelDataProvider, pixelDataLength: *UINT32, pixelData: *[*]const BYTE) void {
+        const FnType = fn (*IPixelDataProvider, *UINT32, *[*]const BYTE) callconv(WINAPI) HRESULT;
+        const detach_pixel_data: *const FnType = @ptrCast(self.vtable[6]);
+
+        assert(detach_pixel_data(self, pixelDataLength, pixelData) == windows.S_OK);
+    }
+
 };
