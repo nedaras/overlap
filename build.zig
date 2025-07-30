@@ -9,10 +9,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const stb = b.dependency("stb", .{
-        .target = target,
-        .optimize = optimize,
-    });
+    //const stb = b.dependency("stb", .{
+        //.target = target,
+        //.optimize = optimize,
+    //});
 
     const fat = b.dependency("fat", .{
         .target = target,
@@ -31,8 +31,8 @@ pub fn build(b: *std.Build) void {
     });
 
     lib.linkLibC();
-    lib.addIncludePath(stb.path(""));
-    lib.addCSourceFile(.{ .file = b.path("src/stb.c") });
+    //lib.addIncludePath(stb.path(""));
+    //lib.addCSourceFile(.{ .file = b.path("src/stb.c") });
 
     lib.root_module.addImport("fat", fat.module("fat"));
 
