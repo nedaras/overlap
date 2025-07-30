@@ -1,9 +1,7 @@
 const std = @import("std");
 const shared = @import("gui/shared.zig");
-const fat = @import("fat.zig");
 const Backend = @import("gui/Backend.zig");
 const Image = @import("gui/Image.zig");
-const Font = @import("gui/Font.zig");
 const Allocator = std.mem.Allocator;
 
 // We can have a potential probelm in the future
@@ -69,51 +67,6 @@ pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
         .verticies = &verticies,
         .indecies = &indecies,
     });
-}
-
-pub fn text(self: *Gui, at: [2]f32, utf8_str: []const u8, col: u32, font: Font) void {
-    const view = std.unicode.Utf8View.init(utf8_str) catch return;
-    var it = view.iterator();
-
-    var advance: f32 = 0.0;
-    while (it.nextCodepoint()) |unicode| {
-        // todo: if no glyph render the missing char glyph or smth
-        const glyph = font.loadGlyph(unicode) orelse continue;
-        defer advance += glyph.advance;
-
-        // todo: in fat space is not a char for some reason
-        if (glyph.size[x] == 0.0 or glyph.size[y] == 0.0) {
-            continue;
-        }
-
-        const top = [2]f32{
-            at[x] + glyph.bearing[x] + advance,
-            at[y] + glyph.bearing[y],
-        };
-
-        const bot = [2]f32{
-            top[x] + glyph.size[x],
-            top[y] + glyph.size[y],
-        };
-
-        const verticies = [_]shared.DrawVertex{
-            .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv_top[x], glyph.uv_top[y] }, .col = col, .flags = 5 },
-            .{ .pos = .{ bot[x], top[y] }, .uv = .{ glyph.uv_bot[x], glyph.uv_top[y] }, .col = col, .flags = 5 },
-            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ glyph.uv_bot[x], glyph.uv_bot[y] }, .col = col, .flags = 5 },
-            .{ .pos = .{ top[x], bot[y] }, .uv = .{ glyph.uv_top[x], glyph.uv_bot[y] }, .col = col, .flags = 5 },
-        };
-
-        const indecies = &[_]u16{
-            0, 1, 2,
-            0, 2, 3,
-        };
-
-        self.addDrawCommand(.{
-            .image = font.image,
-            .verticies = &verticies,
-            .indecies = indecies,
-        });
-    }
 }
 
 pub fn clear(self: *Gui) void {

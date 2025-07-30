@@ -828,14 +828,19 @@ pub const GlobalSystemMediaTransportControlsSessionManager = struct {
         self: GlobalSystemMediaTransportControlsSessionManager,
         allocator: Allocator,
         context: anytype,
-        comptime invokeFn: fn (@TypeOf(context), session: GlobalSystemMediaTransportControlsSessionManager) void,
+        comptime invokeFn: fn (@TypeOf(context), session: GlobalSystemMediaTransportControlsSessionManager) anyerror!void,
     ) !i64 {
         const Handler = *TypedEventHandler(*IGlobalSystemMediaTransportControlsSessionManager, *ICurrentSessionChangedEventArgs);
         const WrappedContext = struct {
             original: @TypeOf(context),
 
             fn wrappedInvokeFn(ctx: @This(), sender: *IGlobalSystemMediaTransportControlsSessionManager, _: *ICurrentSessionChangedEventArgs) void {
-                return invokeFn(ctx.original, .{ .handle = sender });
+                invokeFn(ctx.original, .{ .handle = sender }) catch |err| {
+                    std.debug.print("error: {s}\n", .{@errorName(err)});
+                    if (@errorReturnTrace()) |trace| {
+                        std.debug.dumpStackTrace(trace.*);
+                    }
+                };
             }
         };
 
@@ -863,14 +868,19 @@ pub const GlobalSystemMediaTransportControlsSession = struct {
         self: GlobalSystemMediaTransportControlsSession,
         allocator: Allocator,
         context: anytype,
-        comptime invokeFn: fn (@TypeOf(context), session: GlobalSystemMediaTransportControlsSession) void,
+        comptime invokeFn: fn (@TypeOf(context), session: GlobalSystemMediaTransportControlsSession) anyerror!void,
     ) !i64 {
         const Handler = *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs);
         const WrappedContext = struct {
             original: @TypeOf(context),
 
             fn wrappedInvokeFn(ctx: @This(), sender: *IGlobalSystemMediaTransportControlsSession, _: *IMediaPropertiesChangedEventArgs) void {
-                return invokeFn(ctx.original, .{ .handle = sender });
+                invokeFn(ctx.original, .{ .handle = sender }) catch |err| {
+                    std.debug.print("error: {s}\n", .{@errorName(err)});
+                    if (@errorReturnTrace()) |trace| {
+                        std.debug.dumpStackTrace(trace.*);
+                    }
+                };
             }
         };
 
@@ -1012,6 +1022,5 @@ pub const IActivationFactory = extern struct {
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
-
 };
 

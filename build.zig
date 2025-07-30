@@ -14,6 +14,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const fat = b.dependency("fat", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const lib_mod = b.createModule(.{
         .root_source_file = b.path("src/libmain.zig"),
         .target = target,
@@ -28,6 +33,8 @@ pub fn build(b: *std.Build) void {
     lib.linkLibC();
     lib.addIncludePath(stb.path(""));
     lib.addCSourceFile(.{ .file = b.path("src/stb.c") });
+
+    lib.root_module.addImport("fat", fat.module("fat"));
 
     switch (target.result.os.tag) {
         .windows => {
