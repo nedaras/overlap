@@ -6,7 +6,20 @@ const Allocator = std.mem.Allocator;
 
 const Context = struct {
     allocator: Allocator, // has to be threadsafe
-    modified: u16  = 0,
+
+    mutex: std.Thread.Mutex = .{},
+    modified: u16 = 0,
+
+    image_width: u32 = 0,
+    image_height: u32 = 0,
+    image_pixels: ?*windows.IPixelDataProvider = null,
+
+    pub fn deinit(self: *Context) void {
+        if (self.image_pixels) |image_pixels| {
+            image_pixels.Release();
+        }
+        self.* = undefined;
+    }
 };
 
 pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
@@ -25,8 +38,6 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     const frame = try (try decoder.GetFrameAsync(0)).getAndForget(context.allocator);
     defer frame.Release();
 
-    std.debug.print("{d}x{d}\n", .{frame.PixelWidth(), frame.PixelHeight()});
-
     const transform = try windows.IBitmapTransform.new();
     defer transform.Release();
 
@@ -37,7 +48,16 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
         windows.ExifOrientationMode_IgnoreExifOrientation,
         windows.ColorManagementMode_DoNotColorManage,
     )).getAndForget(context.allocator);
-    defer pixels.Release();
+    errdefer pixels.Release();
+
+    context.mutex.lock();
+    defer context.mutex.unlock();
+
+    context.image_width = frame.PixelWidth();
+    context.image_height = frame.PixelHeight();
+    context.image_pixels = pixels;
+
+    context.modified +%= 1;
 }
 
 pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTransportControlsSessionManager) !void {
@@ -58,6 +78,7 @@ pub fn main() !void {
     var context = Context{
         .allocator = allocator,
     };
+    defer context.deinit();
 
     try windows.RoInitialize(windows.RO_INIT_MULTITHREADED);
     defer windows.RoUninitialize();
@@ -75,8 +96,45 @@ pub fn main() !void {
     try hook.attach();
     defer hook.detach();
 
+    const gui = hook.gui();
+
+    var image: ?Hook.Image = null;
+    defer if (image) |img| {
+        img.deinit(allocator);
+    };
+
+    var modified: u32 = 0;
     while (true) {
         try hook.newFrame();
         defer hook.endFrame();
+
+        blk: {
+            context.mutex.lock();
+            defer context.mutex.unlock();
+            defer modified = context.modified;
+
+            if (modified == context.modified) break :blk;
+            const pixels = context.image_pixels orelse break :blk;
+
+            if (image) |img| {
+                img.deinit(allocator);
+                image = null;
+            }
+
+            var ptr: [*]const u8 = undefined;
+            var len: u32 = undefined;
+            pixels.DetachPixelData(&len, &ptr); // todo: add PixelDataProvider
+
+            image = try hook.loadImage(allocator, .{
+                .width = context.image_width,
+                .height = context.image_height,
+                .data = ptr[0..len],
+                .format = .rgba,
+            });
+        }
+
+        if (image) |img| {
+            gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(img.width), @floatFromInt(img.height) }, img);
+        }
     }
 }

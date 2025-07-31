@@ -15,7 +15,7 @@ const IAsyncOperation = winrt.IAsyncOperation;
 const BitmapAlphaMode = windows.BitmapAlphaMode;
 const BitmapPixelFormat = windows.BitmapPixelFormat;
 const IRandomAccessStream = windows.IRandomAccessStream;
-const IActivationFactory  = windows.IActivationFactory;
+const IActivationFactory = windows.IActivationFactory;
 const ExifOrientationMode = windows.ExifOrientationMode;
 const ColorManagementMode = windows.ColorManagementMode;
 
@@ -51,7 +51,7 @@ pub const IBitmapTransform = extern struct {
 
 pub const IBitmapDecoderStatics = extern struct {
     vtable: [*]const *const anyopaque,
-    
+
     pub const UUID = &GUID.parse("{438ccb26-bcef-4e95-bad6-23a822e58d01}");
 
     pub inline fn Release(self: *IBitmapDecoderStatics) void {
@@ -72,7 +72,6 @@ pub const IBitmapDecoderStatics = extern struct {
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }
-
 };
 
 pub const IBitmapDecoder = extern struct {
@@ -181,5 +180,4 @@ pub const IPixelDataProvider = extern struct {
 
         assert(detach_pixel_data(self, pixelDataLength, pixelData) == windows.S_OK);
     }
-
 };

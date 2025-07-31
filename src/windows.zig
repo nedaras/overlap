@@ -81,7 +81,9 @@ pub const WM_RBUTTONDOWN = 0x0204;
 pub const WM_RBUTTONUP = 0x0205;
 
 pub const HSTRING_HEADER = extern struct {
-    Reserved: [@sizeOf(@cImport({@cInclude("hstring.h");}).HSTRING_HEADER)]u8,
+    Reserved: [@sizeOf(@cImport({
+        @cInclude("hstring.h");
+    }).HSTRING_HEADER)]u8,
 };
 
 pub const WNDPROC = *const fn (
@@ -97,7 +99,7 @@ pub const BitmapPixelFormat_Rgba8 = 30;
 pub const BitmapAlphaMode = INT;
 pub const BitmapAlphaMode_Premultiplied = 0;
 pub const BitmapAlphaMode_Straight = 1;
-pub const BitmapAlphaMode_Ignore  = 2;
+pub const BitmapAlphaMode_Ignore = 2;
 
 pub const ExifOrientationMode = INT;
 pub const ExifOrientationMode_IgnoreExifOrientation = 0;
@@ -986,7 +988,6 @@ pub const BitmapDecoder = struct {
             .handle = @ptrCast(try self.handle.GetFrameAsync(frameIndex)),
         };
     }
-
 };
 
 pub const IRandomAccessStream = extern struct {
@@ -1050,4 +1051,3 @@ pub const IActivationFactory = extern struct {
         };
     }
 };
-
