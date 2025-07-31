@@ -963,9 +963,8 @@ pub const BitmapDecoder = struct {
     const SIGNATURE = IBitmapDecoder.SIGNATURE;
 
     pub fn CreateAsync(stream: *IRandomAccessStream) !AsyncOperation(BitmapDecoder) {
-        // tood: use const ref string
-        const class = try WindowsCreateString(unicode.wtf8ToWtf16LeStringLiteral(NAME));
-        defer WindowsDeleteString(class);
+        var header: HSTRING_HEADER = undefined;
+        const class = try WindowsCreateStringReference(unicode.wtf8ToWtf16LeStringLiteral(NAME), &header);
 
         var static_bitmap_decoder: *IBitmapDecoderStatics = undefined;
 
