@@ -6,13 +6,38 @@ const Allocator = std.mem.Allocator;
 
 const Context = struct {
     allocator: Allocator, // has to be threadsafe
+    modified: u16  = 0,
 };
 
 pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
     const properties = try (try session.TryGetMediaPropertiesAsync()).getAndForget(context.allocator);
     defer properties.Release();
 
-    std.debug.print("title: {}\n", .{unicode.fmtUtf16Le(properties.Title())});
+    const thubnail = (try properties.Thumbnail()) orelse return;
+    defer thubnail.Release();
+
+    const stream = try (try thubnail.OpenReadAsync()).getAndForget(context.allocator);
+    defer stream.Release();
+
+    const decoder = try (try windows.BitmapDecoder.CreateAsync(@ptrCast(stream))).getAndForget(context.allocator);
+    defer decoder.Release();
+
+    const frame = try (try decoder.GetFrameAsync(0)).getAndForget(context.allocator);
+    defer frame.Release();
+
+    std.debug.print("{d}x{d}\n", .{frame.PixelWidth(), frame.PixelHeight()});
+
+    const transform = try windows.IBitmapTransform.new();
+    defer transform.Release();
+
+    const pixels = try (try frame.GetPixelDataTransformedAsync(
+        windows.BitmapPixelFormat_Rgba8,
+        windows.BitmapAlphaMode_Premultiplied,
+        transform,
+        windows.ExifOrientationMode_IgnoreExifOrientation,
+        windows.ColorManagementMode_DoNotColorManage,
+    )).getAndForget(context.allocator);
+    defer pixels.Release();
 }
 
 pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTransportControlsSessionManager) !void {

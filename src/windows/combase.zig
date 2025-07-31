@@ -9,6 +9,7 @@ const HSTRING = windows.HSTRING;
 const PCWSTR = windows.PCWSTR;
 const LPUNKNOWN = windows.LPUNKNOWN;
 const RO_INIT_TYPE = windows.RO_INIT_TYPE;
+const HSTRING_HEADER = windows.HSTRING_HEADER;
 
 pub extern "api-ms-win-core-winrt-l1-1-0" fn RoInitialize(initType: RO_INIT_TYPE) callconv(WINAPI) HRESULT;
 
@@ -28,6 +29,13 @@ pub extern "api-ms-win-core-winrt-string-l1-1-0" fn WindowsCreateString(
 
 pub extern "api-ms-win-core-winrt-string-l1-1-0" fn WindowsDeleteString(
     string: HSTRING,
+) callconv(WINAPI) HRESULT;
+
+pub extern "api-ms-win-core-winrt-string-l1-1-0" fn WindowsCreateStringReference(
+    sourceString: PCNZWCH,
+    length: UINT32,
+    hstringHeader: *HSTRING_HEADER,
+    string: *HSTRING,
 ) callconv(WINAPI) HRESULT;
 
 pub extern "api-ms-win-core-winrt-string-l1-1-0" fn WindowsGetStringRawBuffer(

@@ -1,18 +1,21 @@
 const std = @import("std");
 const windows = @import("../../windows.zig");
 const winrt = @import("../winrt.zig");
+const unicode = std.unicode;
 const assert = std.debug.assert;
 
 const GUID = windows.GUID;
 const BYTE = windows.BYTE;
 const WINAPI = windows.WINAPI;
+const UINT32 = windows.UINT32;
 const HRESULT = windows.HRESULT;
 const IUnknown = windows.IUnknown;
-const IRandomAccessStream = windows.IRandomAccessStream;
+const HSTRING_HEADER = windows.HSTRING_HEADER;
 const IAsyncOperation = winrt.IAsyncOperation;
-const UINT32 = windows.UINT32;
-const BitmapPixelFormat = windows.BitmapPixelFormat;
 const BitmapAlphaMode = windows.BitmapAlphaMode;
+const BitmapPixelFormat = windows.BitmapPixelFormat;
+const IRandomAccessStream = windows.IRandomAccessStream;
+const IActivationFactory  = windows.IActivationFactory;
 const ExifOrientationMode = windows.ExifOrientationMode;
 const ColorManagementMode = windows.ColorManagementMode;
 
@@ -24,6 +27,25 @@ pub const IBitmapTransform = extern struct {
 
     pub inline fn Release(self: *IBitmapTransform) void {
         IUnknown.Release(@ptrCast(self));
+    }
+
+    pub fn new() !*IBitmapTransform {
+        var header: HSTRING_HEADER = undefined;
+        const class = try windows.WindowsCreateStringReference(unicode.wtf8ToWtf16LeStringLiteral(NAME), &header);
+
+        var factory: *IActivationFactory = undefined;
+        var transform: *IBitmapTransform = undefined;
+
+        try windows.RoGetActivationFactory(
+            class,
+            windows.IActivationFactory.UUID,
+            @ptrCast(&factory),
+        );
+        defer factory.Release();
+
+        try factory.ActivateInstance(@ptrCast(&transform));
+
+        return transform;
     }
 };
 

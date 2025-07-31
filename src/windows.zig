@@ -80,6 +80,10 @@ pub const WM_LBUTTONUP = 0x0202;
 pub const WM_RBUTTONDOWN = 0x0204;
 pub const WM_RBUTTONUP = 0x0205;
 
+pub const HSTRING_HEADER = extern struct {
+    Reserved: [@sizeOf(@cImport({@cInclude("hstring.h");}).HSTRING_HEADER)]u8,
+};
+
 pub const WNDPROC = *const fn (
     hWnd: HWND,
     uMsg: UINT,
@@ -516,7 +520,10 @@ pub fn RoGetActivationFactory(
     };
 }
 
-pub const WindowsCreateStringError = error{Unexpected};
+pub const WindowsCreateStringError = error{
+    OutOfMemory,
+    Unexpected,
+};
 
 pub fn WindowsCreateString(sourceString: [:0]const u16) WindowsCreateStringError!HSTRING {
     var hstring: HSTRING = undefined;
@@ -524,12 +531,33 @@ pub fn WindowsCreateString(sourceString: [:0]const u16) WindowsCreateStringError
     const hr = combase.WindowsCreateString(sourceString.ptr, @intCast(sourceString.len), &hstring);
     return switch (hr) {
         windows.S_OK => hstring,
+        windows.E_OUTOFMEMORY => error.OutOfMemory,
+        windows.E_POINTER => unreachable,
+        windows.E_INVALIDARG => unreachable,
         else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
     };
 }
 
 pub inline fn WindowsDeleteString(string: HSTRING) void {
     assert(combase.WindowsDeleteString(string) == windows.S_OK);
+}
+
+pub const WindowsCreateStringReferenceError = error{
+    OutOfMemory,
+    Unexpected,
+};
+
+pub fn WindowsCreateStringReference(sourceString: [:0]const u16, hstringHeader: *HSTRING_HEADER) WindowsCreateStringReferenceError!HSTRING {
+    var hstring: HSTRING = undefined;
+
+    const hr = combase.WindowsCreateStringReference(sourceString.ptr, @intCast(sourceString.len), hstringHeader, &hstring);
+    return switch (hr) {
+        windows.S_OK => hstring,
+        windows.E_OUTOFMEMORY => error.OutOfMemory,
+        windows.E_POINTER => unreachable,
+        windows.E_INVALIDARG => unreachable,
+        else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+    };
 }
 
 pub fn WindowsGetStringRawBuffer(string: HSTRING) [:0]const u16 {
@@ -796,9 +824,8 @@ pub const GlobalSystemMediaTransportControlsSessionManager = struct {
     pub const NAME = IGlobalSystemMediaTransportControlsSessionManager.NAME;
 
     pub fn RequestAsync() !AsyncOperation(GlobalSystemMediaTransportControlsSessionManager) {
-        // tood: use const ref string
-        const class = try WindowsCreateString(unicode.wtf8ToWtf16LeStringLiteral(NAME));
-        defer WindowsDeleteString(class);
+        var header: HSTRING_HEADER = undefined;
+        const class = try WindowsCreateStringReference(unicode.wtf8ToWtf16LeStringLiteral(NAME), &header);
 
         var static_manager: *IGlobalSystemMediaTransportControlsSessionManagerStatics = undefined;
 
