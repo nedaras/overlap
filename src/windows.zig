@@ -81,9 +81,11 @@ pub const WM_RBUTTONDOWN = 0x0204;
 pub const WM_RBUTTONUP = 0x0205;
 
 pub const HSTRING_HEADER = extern struct {
-    Reserved: [@sizeOf(@cImport({
-        @cInclude("hstring.h");
-    }).HSTRING_HEADER)]u8,
+    Reserved: [
+        @sizeOf(@cImport({
+            @cInclude("hstring.h");
+        }).HSTRING_HEADER)
+    ]u8,
 };
 
 pub const WNDPROC = *const fn (

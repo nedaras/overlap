@@ -53,6 +53,10 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     context.mutex.lock();
     defer context.mutex.unlock();
 
+    if (context.image_pixels) |image_pixels| {
+        image_pixels.Release();
+    }
+
     context.image_width = frame.PixelWidth();
     context.image_height = frame.PixelHeight();
     context.image_pixels = pixels;
@@ -61,7 +65,18 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
 }
 
 pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTransportControlsSessionManager) !void {
-    const session = (try manager.GetCurrentSession()) orelse return;
+    const session = (try manager.GetCurrentSession()) orelse {
+        context.mutex.lock();
+        defer context.mutex.unlock();
+
+        context.image_width = 0;
+        context.image_height = 0;
+        context.image_pixels = null;
+
+        context.modified +%= 1;
+
+        return;
+    };
     defer session.Release();
 
     try propartiesChanged(context, session);
@@ -114,12 +129,13 @@ pub fn main() !void {
             defer modified = context.modified;
 
             if (modified == context.modified) break :blk;
-            const pixels = context.image_pixels orelse break :blk;
 
             if (image) |img| {
                 img.deinit(allocator);
                 image = null;
             }
+
+            const pixels = context.image_pixels orelse break :blk;
 
             var ptr: [*]const u8 = undefined;
             var len: u32 = undefined;
