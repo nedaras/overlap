@@ -1,4 +1,5 @@
 const std = @import("std");
+const fat = @import("fat");
 const shared = @import("gui/shared.zig");
 const Backend = @import("gui/Backend.zig");
 const Image = @import("gui/Image.zig");
@@ -67,6 +68,12 @@ pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
         .verticies = &verticies,
         .indecies = &indecies,
     });
+}
+
+pub fn text(self: *Gui, pos: [2]f32, msg: []const u8) void {
+    _ = self;
+    _ = pos;
+    _ = msg;
 }
 
 pub fn clear(self: *Gui) void {

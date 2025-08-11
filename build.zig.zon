@@ -9,8 +9,8 @@
             .hash = "N-V-__8AADKXBAD5SeIOOMeNn8G9VWn9tyf4G7AObfQZ_BLj",
         },
         .fat = .{
-            .url = "git+https://github.com/nedaras/fat#500afdea9e9992d04ff74f83b4f29c0222a34807",
-            .hash = "fat-0.0.0-utxKUXZLAQDgsghIyjvtL_fzUX4mXNhJMT8SA0tFOVP3",
+            .url = "git+https://github.com/nedaras/fat#c08beae4fe964a28d62542727289cb0ffc465e6d",
+            .hash = "fat-0.0.0-utxKUXMiAQA-F32LvqqEjGXv0E7Q5tT04NQwpShC8Yao",
         },
         .stb = .{
             .url = "git+https://github.com/nothings/stb#f58f558c120e9b32c217290b80bad1a0729fbb2c",

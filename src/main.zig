@@ -1,4 +1,5 @@
 const std = @import("std");
+const fat = @import("fat");
 const Hook = @import("Hook.zig");
 const windows = @import("windows.zig");
 const unicode = std.unicode;
@@ -90,6 +91,15 @@ pub fn main() !void {
     const allocator = debug_allocator.allocator();
     defer _ = debug_allocator.deinit(); // unsafe as those COM objects can have bigger lifespan than this stack function
 
+    var it = try fat.iterateCollection(allocator, .{});
+    defer it.deinit();
+
+    while (try it.next()) |face| {
+        defer face.deinit();
+
+        std.debug.print("{s}\n", .{face.family});
+    }
+
     var context = Context{
         .allocator = allocator,
     };
@@ -122,6 +132,8 @@ pub fn main() !void {
     while (true) {
         try hook.newFrame();
         defer hook.endFrame();
+
+        gui.text(.{ 0.0, 0.0 }, "Hello World!");
 
         blk: {
             context.mutex.lock();
