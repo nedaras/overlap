@@ -6,7 +6,8 @@ const unicode = std.unicode;
 const Allocator = std.mem.Allocator;
 
 const Context = struct {
-    allocator: Allocator, // has to be threadsafe
+    /// Must be threadsafe.
+    allocator: Allocator, 
 
     mutex: std.Thread.Mutex = .{},
     modified: u16 = 0,
@@ -91,14 +92,17 @@ pub fn main() !void {
     const allocator = debug_allocator.allocator();
     defer _ = debug_allocator.deinit(); // unsafe as those COM objects can have longer lifespan than this stack function
 
-    var it = try fat.iterateFonts(allocator, .{});
+    var it = try fat.iterateFonts(allocator, .{ .family = "Arial" });
     defer it.deinit();
 
-    while (try it.next()) |deffered_face| {
-        defer deffered_face.deinit();
+    const font = (try it.next()).?;
+    defer font.deinit();
 
-        std.debug.print("{s}\n", .{deffered_face.family});
-    }
+    const face = try font.open(.{ .size = .{ .points = 64.0 } });
+    defer face.close();
+
+    const render = try face.renderGlyph(allocator, face.glyphIndex('A').?);
+    defer render.deinit(allocator);
 
     var context = Context{
         .allocator = allocator,
@@ -127,6 +131,14 @@ pub fn main() !void {
     defer if (image) |img| {
         img.deinit(allocator);
     };
+
+    const letter = try hook.loadImage(allocator, .{
+        .data = render.bitmap,
+        .width = render.width,
+        .height = render.height,
+        .format = .r,
+    });
+    defer letter.deinit(allocator);
 
     var modified: u32 = 0;
     while (true) {
@@ -160,6 +172,9 @@ pub fn main() !void {
                 .format = .rgba,
             });
         }
+
+
+        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(letter.width), @floatFromInt(letter.height) }, letter);
 
         if (image) |img| {
             gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(img.width), @floatFromInt(img.height) }, img);

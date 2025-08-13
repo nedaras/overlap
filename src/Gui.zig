@@ -71,6 +71,10 @@ pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
 }
 
 pub fn text(self: *Gui, pos: [2]f32, msg: []const u8) void {
+    // * idea it this ok we can pass like array of our Faces but if even looping those faces,
+    //   then we will use our cached fallback fonts or get new one
+    //   and would be nice to add some shaping, but does not matter that mutch for now (later)
+    // * for rendering we will just generate atlas and cache them glyphs
     _ = self;
     _ = pos;
     _ = msg;
