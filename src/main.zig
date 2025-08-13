@@ -89,15 +89,15 @@ pub fn main() !void {
     var debug_allocator = std.heap.DebugAllocator(.{ .thread_safe = true }){};
 
     const allocator = debug_allocator.allocator();
-    defer _ = debug_allocator.deinit(); // unsafe as those COM objects can have bigger lifespan than this stack function
+    defer _ = debug_allocator.deinit(); // unsafe as those COM objects can have longer lifespan than this stack function
 
-    var it = try fat.iterateCollection(allocator, .{});
+    var it = try fat.iterateFonts(allocator, .{});
     defer it.deinit();
 
-    while (try it.next()) |face| {
-        defer face.deinit();
+    while (try it.next()) |deffered_face| {
+        defer deffered_face.deinit();
 
-        std.debug.print("{s}\n", .{face.family});
+        std.debug.print("{s}\n", .{deffered_face.family});
     }
 
     var context = Context{
