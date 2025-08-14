@@ -7,7 +7,7 @@ const Allocator = std.mem.Allocator;
 
 const Context = struct {
     /// Must be threadsafe.
-    allocator: Allocator, 
+    allocator: Allocator,
 
     mutex: std.Thread.Mutex = .{},
     modified: u16 = 0,
@@ -92,17 +92,37 @@ pub fn main() !void {
     const allocator = debug_allocator.allocator();
     defer _ = debug_allocator.deinit(); // unsafe as those COM objects can have longer lifespan than this stack function
 
+    const Atlas = @import("gui/Atlas.zig");
+
+    var atlas = try Atlas.init(allocator, 512);
+    defer atlas.deinit();
+
     var it = try fat.iterateFonts(allocator, .{ .family = "Arial" });
     defer it.deinit();
 
     const font = (try it.next()).?;
     defer font.deinit();
 
-    const face = try font.open(.{ .size = .{ .points = 64.0 } });
+    const face = try font.open(.{ .size = .{ .points = 24.0 } });
     defer face.close();
 
-    const render = try face.renderGlyph(allocator, face.glyphIndex('A').?);
-    defer render.deinit(allocator);
+    for ('A'..'z') |c| {
+        const idx = face.glyphIndex(@intCast(c)) orelse continue;
+
+        const bbox = try face.glyphBoundingBox(idx);
+        const rect = try atlas.reserve(bbox.width, bbox.height);
+
+        const render = try face.renderGlyph(allocator, idx);
+        defer render.deinit(allocator);
+
+        // todo: add like atlas.put or smth as this is mad
+        for (0..render.height) |y| {
+            const src = render.bitmap[render.width * y .. render.width * (y + 1)];
+            const dst = atlas.data[atlas.size * (rect.y + y) + rect.x .. atlas.size * (rect.y + y + 1) + rect.x];
+
+            @memcpy(dst, src);
+        }
+    }
 
     var context = Context{
         .allocator = allocator,
@@ -133,9 +153,9 @@ pub fn main() !void {
     };
 
     const letter = try hook.loadImage(allocator, .{
-        .data = render.bitmap,
-        .width = render.width,
-        .height = render.height,
+        .data = atlas.data,
+        .width = atlas.size,
+        .height = atlas.size,
         .format = .r,
     });
     defer letter.deinit(allocator);
@@ -172,7 +192,6 @@ pub fn main() !void {
                 .format = .rgba,
             });
         }
-
 
         gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(letter.width), @floatFromInt(letter.height) }, letter);
 
