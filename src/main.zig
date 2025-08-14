@@ -103,7 +103,7 @@ pub fn main() !void {
     const font = (try it.next()).?;
     defer font.deinit();
 
-    const face = try font.open(.{ .size = .{ .points = 24.0 } });
+    const face = try font.open(.{ .size = .{ .points = 64.0 } });
     defer face.close();
 
     for ('A'..'z') |c| {
@@ -117,10 +117,10 @@ pub fn main() !void {
 
         // todo: add like atlas.put or smth as this is mad
         for (0..render.height) |y| {
-            const src = render.bitmap[render.width * y .. render.width * (y + 1)];
-            const dst = atlas.data[atlas.size * (rect.y + y) + rect.x .. atlas.size * (rect.y + y + 1) + rect.x];
+            const src_i = render.width * y;
+            const dst_i = atlas.size * (y + rect.y) + rect.x;
 
-            @memcpy(dst, src);
+            @memcpy(atlas.data[dst_i .. dst_i + render.width], render.bitmap[src_i .. src_i + render.width]);
         }
     }
 
