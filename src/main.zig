@@ -94,36 +94,6 @@ pub fn main() !void {
 
     const Atlas = @import("gui/Atlas.zig");
 
-    var atlas = try Atlas.init(allocator, 512);
-    defer atlas.deinit();
-
-    var it = try fat.iterateFonts(allocator, .{ .family = "Arial" });
-    defer it.deinit();
-
-    const font = (try it.next()).?;
-    defer font.deinit();
-
-    const face = try font.open(.{ .size = .{ .points = 64.0 } });
-    defer face.close();
-
-    for ('A'..'z') |c| {
-        const idx = face.glyphIndex(@intCast(c)) orelse continue;
-
-        const bbox = try face.glyphBoundingBox(idx);
-        const rect = try atlas.reserve(bbox.width, bbox.height);
-
-        const render = try face.renderGlyph(allocator, idx);
-        defer render.deinit(allocator);
-
-        // todo: add like atlas.put or smth as this is mad
-        for (0..render.height) |y| {
-            const src_i = render.width * y;
-            const dst_i = atlas.size * (y + rect.y) + rect.x;
-
-            @memcpy(atlas.data[dst_i .. dst_i + render.width], render.bitmap[src_i .. src_i + render.width]);
-        }
-    }
-
     var context = Context{
         .allocator = allocator,
     };
@@ -153,13 +123,15 @@ pub fn main() !void {
         img.deinit(allocator);
     };
 
-    const letter = try hook.loadImage(allocator, .{
-        .data = atlas.data,
-        .width = atlas.size,
-        .height = atlas.size,
-        .format = .r,
-    });
-    defer letter.deinit(allocator);
+    {
+        var it = try fat.iterateFonts(allocator, .{ .codepoint = 'H' });
+        defer it.deinit();
+
+        const deffered_face = (try it.next()).?;
+        defer deffered_face.deinit();
+
+        std.debug.print("{s}\n", .{deffered_face.family});
+    }
 
     var modified: u32 = 0;
     while (true) {
@@ -193,8 +165,6 @@ pub fn main() !void {
                 .format = .rgba,
             });
         }
-
-        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(letter.width), @floatFromInt(letter.height) }, letter);
 
         if (image) |img| {
             gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(img.width), @floatFromInt(img.height) }, img);

@@ -55,8 +55,8 @@ pub fn getGlyph(self: *FontRenderer, descriptor: Descriptor) !Glyph {
 
     // idk render a square if null
     const font = (try getFont(self, descriptor)) orelse @panic("not implemented");
-
     const idx = font.glyphIndex(descriptor.codepoint).?;
+
     const render = try font.renderGlyph(self.allocator, idx);
     defer render.deinit(self.allocator);
 
