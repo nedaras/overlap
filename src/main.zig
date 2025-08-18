@@ -92,8 +92,6 @@ pub fn main() !void {
     const allocator = debug_allocator.allocator();
     defer _ = debug_allocator.deinit(); // unsafe as those COM objects can have longer lifespan than this stack function
 
-    const Atlas = @import("gui/Atlas.zig");
-
     var context = Context{
         .allocator = allocator,
     };
