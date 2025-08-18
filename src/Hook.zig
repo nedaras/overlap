@@ -35,18 +35,24 @@ gateway: Gateway,
 
 const Self = @This();
 
-pub const init = Self{
-    .d3d11_hook = null,
-    .gateway = .{
-        .gui = .init,
-        .main_reset_event = .{},
-        .hooked_reset_event = .{},
-        .err = null,
-        .exiting = false,
-    },
-};
+pub fn init() !Self {
+    return .{
+        .d3d11_hook = null,
+        .gateway = .{
+            .gui = undefined,
+            .main_reset_event = .{},
+            .hooked_reset_event = .{},
+            .err = null,
+            .exiting = false,
+        }
+    };
+}
 
-pub fn attach(self: *Self) !void {
+pub fn deinit(self: *Self) void {
+    _ = self;
+}
+
+pub fn attach(self: *Self, allocator: Allocator) !void {
     const window = windows.FindWindow(null, "...") orelse return error.NoWindow;
 
     try minhook.MH_Initialize();
@@ -72,11 +78,15 @@ pub fn attach(self: *Self) !void {
 
     self.d3d11_hook = d3d11_hook;
     self.win32_hook = win32_hook;
+
+    self.gateway.gui = try Gui.init(allocator, d3d11_hook.backend.?.backend());
 }
 
 pub fn detach(self: *Self) void {
     self.gateway.exiting = true;
     self.gateway.hooked_reset_event.set();
+
+    self.gateway.gui.deinit();
 
     if (self.d3d11_hook) |d3d11_hook| {
         d3d11_hook.deinit();

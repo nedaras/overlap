@@ -140,9 +140,10 @@ pub fn main() !void {
     // todo: remove this id
     _ = try manager.CurrentSessionChanged(allocator, &context, sessionChanged);
 
-    var hook: Hook = .init;
+    var hook: Hook = try .init();
+    defer hook.deinit();
 
-    try hook.attach();
+    try hook.attach(allocator);
     defer hook.detach();
 
     const gui = hook.gui();
@@ -165,7 +166,7 @@ pub fn main() !void {
         try hook.newFrame();
         defer hook.endFrame();
 
-        gui.text(.{ 0.0, 0.0 }, "Hello World!");
+        try gui.text(.{ 0.0, 0.0 }, "Hello World!");
 
         blk: {
             context.mutex.lock();

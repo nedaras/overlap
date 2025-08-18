@@ -3,7 +3,9 @@ const fat = @import("fat");
 const shared = @import("gui/shared.zig");
 const Backend = @import("gui/Backend.zig");
 const Image = @import("gui/Image.zig");
+const FontRenderer = @import("gui/FontRenderer.zig");
 const Allocator = std.mem.Allocator;
+const unicode = std.unicode;
 
 // We can have a potential probelm in the future
 // What if Directx and Opengl calls frame at the same time
@@ -16,18 +18,53 @@ const DrawCommands = std.BoundedArray(shared.DrawCommand, shared.max_draw_comman
 const DrawVerticies = std.BoundedArray(shared.DrawVertex, shared.max_verticies);
 const DrawIndecies = std.BoundedArray(shared.DrawIndex, shared.max_indicies);
 
+const Glyph = struct {
+    width: u32,
+    height: u32,
+
+    bearing_x: u32,
+    bearing_y: u32,
+
+    advance_x: u32,
+
+    uv0: [2]f32,
+    uv1: [2]f32,
+};
+
+// as we need backend now in gui i see no point to simulate that 1x1 pixel by checking if it's null
+// just make that one our self here in gui
+
+allocator: Allocator,
+backend: Backend,
+
 draw_commands: DrawCommands,
 
+// todo: move text stuff somewhere else
 draw_verticies: DrawVerticies,
 draw_indecies: DrawIndecies,
 
+font_renderer: FontRenderer,
+atlas: ?Image = null,
+
 const Gui = @This();
 
-pub const init = Gui{
-    .draw_commands = .{},
-    .draw_verticies = .{},
-    .draw_indecies = .{},
-};
+pub fn init(allocator: Allocator, backend: Backend) !Gui {
+    return .{
+        .allocator = allocator,
+        .backend = backend,
+        .draw_commands = .{},
+        .draw_verticies = .{},
+        .draw_indecies = .{},
+        .font_renderer = try FontRenderer.init(allocator),
+    };
+}
+
+pub fn deinit(self: *Gui) void {
+    self.font_renderer.deinit();
+    if (self.atlas) |atlas| {
+        atlas.deinit(self.allocator);
+    }
+}
 
 pub fn rect(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
     const verticies = [_]shared.DrawVertex{
@@ -70,14 +107,57 @@ pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
     });
 }
 
-pub fn text(self: *Gui, pos: [2]f32, msg: []const u8) void {
-    // * idea it this ok we can pass like array of our Faces but if even looping those faces,
-    //   then we will use our cached fallback fonts or get new one
-    //   and would be nice to add some shaping, but does not matter that mutch for now (later)
-    // * for rendering we will just generate atlas and cache them glyphs
-    _ = self;
-    _ = pos;
-    _ = msg;
+// this is cursed this is hell
+// so we should just have gpu image no need to cpu one
+pub fn text(self: *Gui, pos: [2]f32, msg: []const u8) !void {
+    const view = try unicode.Wtf8View.init(msg);
+    
+    var it = view.iterator();
+    var advance: f32 = 0.0;
+
+    while (it.nextCodepoint()) |codepoint| {
+        const prev = self.font_renderer.modified;
+
+        const glyph = try self.font_renderer.getGlyph(.{ .codepoint = codepoint });
+        defer advance += @floatFromInt(glyph.metrics.advance_x);
+
+        const modified = prev != self.font_renderer.modified;
+
+        if (modified) {
+            if (self.atlas) |atlas| {
+                try self.backend.updateImage(atlas, self.font_renderer.atlas.data);
+            } else {
+                self.atlas = try self.backend.loadImage(self.allocator, .{
+                    .data = self.font_renderer.atlas.data,
+                    .width = self.font_renderer.atlas.size,
+                    .height = self.font_renderer.atlas.size,
+                    .format = .r,
+                    .usage = .dynamic,
+                });
+            }
+        }
+
+        const top = [2]f32{pos[x] + @as(f32, @floatFromInt(glyph.metrics.bearing_x)) + advance, pos[y] + @as(f32, @floatFromInt(glyph.metrics.bearing_y))};
+        const bot = [2]f32{top[x] + @as(f32, @floatFromInt(glyph.width)), top[y] + @as(f32, @floatFromInt(glyph.height))};
+
+        const verticies = [_]shared.DrawVertex{
+            .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv0[x], glyph.uv0[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ bot[x], top[y] }, .uv = .{ glyph.uv1[x], glyph.uv0[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ glyph.uv1[x], glyph.uv1[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ top[x], bot[y] }, .uv = .{ glyph.uv0[x], glyph.uv1[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+        };
+
+        const indecies = [_]u16{
+            0, 1, 2,
+            0, 2, 3,
+        };
+
+        self.addDrawCommand(.{
+            .image = self.atlas.?,
+            .verticies = &verticies,
+            .indecies = &indecies,
+        });
+    }
 }
 
 pub fn clear(self: *Gui) void {
