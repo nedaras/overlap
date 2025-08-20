@@ -18,24 +18,10 @@ const DrawCommands = std.BoundedArray(shared.DrawCommand, shared.max_draw_comman
 const DrawVerticies = std.BoundedArray(shared.DrawVertex, shared.max_verticies);
 const DrawIndecies = std.BoundedArray(shared.DrawIndex, shared.max_indicies);
 
-const Glyph = struct {
-    width: u32,
-    height: u32,
-
-    bearing_x: u32,
-    bearing_y: u32,
-
-    advance_x: u32,
-
-    uv0: [2]f32,
-    uv1: [2]f32,
-};
-
 // as we need backend now in gui i see no point to simulate that 1x1 pixel by checking if it's null
 // just make that one our self here in gui
 
 allocator: Allocator,
-backend: Backend,
 
 draw_commands: DrawCommands,
 
@@ -44,26 +30,21 @@ draw_verticies: DrawVerticies,
 draw_indecies: DrawIndecies,
 
 font_renderer: FontRenderer,
-atlas: ?Image = null,
 
 const Gui = @This();
 
 pub fn init(allocator: Allocator, backend: Backend) !Gui {
     return .{
         .allocator = allocator,
-        .backend = backend,
         .draw_commands = .{},
         .draw_verticies = .{},
         .draw_indecies = .{},
-        .font_renderer = try FontRenderer.init(allocator),
+        .font_renderer = try FontRenderer.init(allocator, backend),
     };
 }
 
 pub fn deinit(self: *Gui) void {
     self.font_renderer.deinit();
-    if (self.atlas) |atlas| {
-        atlas.deinit(self.allocator);
-    }
 }
 
 pub fn rect(self: *Gui, top: [2]f32, bot: [2]f32, col: u32) void {
@@ -116,26 +97,8 @@ pub fn text(self: *Gui, pos: [2]f32, msg: []const u8) !void {
     var advance: f32 = 0.0;
 
     while (it.nextCodepoint()) |codepoint| {
-        const prev = self.font_renderer.modified;
-
         const glyph = try self.font_renderer.getGlyph(.{ .codepoint = codepoint });
         defer advance += @floatFromInt(glyph.metrics.advance_x);
-
-        const modified = prev != self.font_renderer.modified;
-
-        if (modified) {
-            if (self.atlas) |atlas| {
-                try self.backend.updateImage(atlas, self.font_renderer.atlas.data);
-            } else {
-                self.atlas = try self.backend.loadImage(self.allocator, .{
-                    .data = self.font_renderer.atlas.data,
-                    .width = self.font_renderer.atlas.size,
-                    .height = self.font_renderer.atlas.size,
-                    .format = .r,
-                    .usage = .dynamic,
-                });
-            }
-        }
 
         const top = [2]f32{pos[x] + @as(f32, @floatFromInt(glyph.metrics.bearing_x)) + advance, pos[y] + @as(f32, @floatFromInt(glyph.metrics.bearing_y))};
         const bot = [2]f32{top[x] + @as(f32, @floatFromInt(glyph.width)), top[y] + @as(f32, @floatFromInt(glyph.height))};
@@ -153,7 +116,7 @@ pub fn text(self: *Gui, pos: [2]f32, msg: []const u8) !void {
         };
 
         self.addDrawCommand(.{
-            .image = self.atlas.?,
+            .image = self.font_renderer.atlas.image,
             .verticies = &verticies,
             .indecies = &indecies,
         });

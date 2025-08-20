@@ -1,6 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+// todo: add backend here so we could do like image.map -> unmap and stuff without our backend
+
 pub const Error = error{
     OutOfMemory,
     Unexpected,

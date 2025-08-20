@@ -1,6 +1,7 @@
 const std = @import("std");
 const fat = @import("fat");
 const Atlas = @import("Atlas.zig");
+const Backend = @import("Backend.zig");
 const Allocator = std.mem.Allocator;
 
 allocator: Allocator,
@@ -9,8 +10,6 @@ atlas: Atlas,
 
 glyphs: std.AutoHashMapUnmanaged(Descriptor, Glyph),
 fonts: std.ArrayListUnmanaged(fat.Face),
-
-modified: u16 = 0,
 
 pub const Glyph = struct {
     uv0: [2]f32,
@@ -29,10 +28,10 @@ pub const Descriptor = struct {
 
 const FontRenderer = @This();
 
-pub fn init(allocator: Allocator) !FontRenderer {
+pub fn init(allocator: Allocator, backend: Backend) !FontRenderer {
     return .{
         .allocator = allocator,
-        .atlas = try Atlas.init(allocator, 512),
+        .atlas = try Atlas.init(allocator, backend, 512),
         .glyphs = .empty,
         .fonts = .empty,
     };
@@ -55,24 +54,16 @@ pub fn getGlyph(self: *FontRenderer, descriptor: Descriptor) !Glyph {
 
     // idk render a square if null
     const font = (try getFont(self, descriptor)) orelse @panic("not implemented");
+    // todo: fix space char as some weird shit happens when passing it
     const idx = font.glyphIndex(descriptor.codepoint).?;
 
     const render = try font.renderGlyph(self.allocator, idx);
     defer render.deinit(self.allocator);
 
     const rect = try self.atlas.reserve(render.width, render.height);
-
-    for (0..rect.height) |y| {
-        const src_i = render.width * y;
-        const dst_i = self.atlas.size * (y + rect.y) + rect.x;
-
-        @memcpy(self.atlas.data[dst_i..dst_i + render.width], render.bitmap[src_i..src_i + render.width]);
-    }
-
-    self.modified +%= 1;
+    try self.atlas.fill(rect, render.bitmap);
 
     const altas_size: f32 = @floatFromInt(self.atlas.size);
-
     const glyph: Glyph = .{
         .uv0 = .{ @as(f32, @floatFromInt(rect.x)) / altas_size, @as(f32, @floatFromInt(rect.y)) / altas_size },
         .uv1 = .{ @as(f32, @floatFromInt(rect.x + render.width)) / altas_size, @as(f32, @floatFromInt(rect.y + render.height)) / altas_size },

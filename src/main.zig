@@ -121,22 +121,12 @@ pub fn main() !void {
         img.deinit(allocator);
     };
 
-    {
-        var it = try fat.iterateFonts(allocator, .{ .codepoint = 'H' });
-        defer it.deinit();
-
-        const deffered_face = (try it.next()).?;
-        defer deffered_face.deinit();
-
-        std.debug.print("{s}\n", .{deffered_face.family});
-    }
-
     var modified: u32 = 0;
     while (true) {
         try hook.newFrame();
         defer hook.endFrame();
 
-        try gui.text(.{ 0.0, 0.0 }, "Hello World!");
+        try gui.text(.{ 0.0, 0.0 }, "HelloWorld!");
 
         blk: {
             context.mutex.lock();

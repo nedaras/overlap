@@ -1,4 +1,6 @@
 const std = @import("std");
+const Backend = @import("Backend.zig");
+const Image = @import("Image.zig");
 const heap = std.heap;
 const math = std.math;
 
@@ -7,7 +9,8 @@ const assert = std.debug.assert;
 
 allocator: Allocator,
 
-data: []u8,
+backend: Backend,
+image: Image,
 
 size: u32,
 
@@ -33,10 +36,20 @@ const Region = struct {
 
 // todo: we need to allow growing it
 
-pub fn init(allocator: Allocator, size: u32) Allocator.Error!Atlas {
+pub fn init(allocator: Allocator, backend: Backend, size: u32) !Atlas {
+    const data = try allocator.alloc(u8, size * size);
+    defer allocator.free(data);
+
     var self: Atlas = .{
         .allocator = allocator,
-        .data = try allocator.alloc(u8, size * size),
+        .backend = backend,
+        .image = try backend.loadImage(allocator, .{
+            .width = size,
+            .height = size,
+            .data = data,
+            .format = .r,
+            .usage = .dynamic,
+        }),
         .size = size,
         .nodes = .{},
         .nodes_pool = .init(allocator),
@@ -44,20 +57,23 @@ pub fn init(allocator: Allocator, size: u32) Allocator.Error!Atlas {
     errdefer self.deinit();
 
     try self.nodes_pool.preheat(64);
-    self.clear();
+    try self.clear();
 
     return self;
 }
 
 pub fn deinit(self: *Atlas) void {
-    self.allocator.free(self.data);
+    self.image.deinit(self.allocator);
     self.nodes_pool.deinit();
 
     self.* = undefined;
 }
 
-pub fn clear(self: *Atlas) void {
-    @memset(self.data, 0);
+pub fn clear(self: *Atlas) !void {
+    const resource = try self.backend.mapImage(self.image);
+    defer self.backend.unmapImage(self.image);
+
+    @memset(resource.buffer, 0);
 
     _ = self.nodes_pool.reset(.retain_capacity);
 
@@ -70,6 +86,32 @@ pub fn clear(self: *Atlas) void {
     } };
 
     self.nodes.prepend(node);
+}
+
+pub fn fill(
+    self: *Atlas,
+    region: Region,
+    data: []u8
+) !void {
+    assert(data.len == region.width * region.height);
+    assert(self.image.width > region.x);
+    assert(self.image.height > region.y);
+
+    const resource = try self.backend.mapImage(self.image);
+    defer self.backend.unmapImage(self.image);
+
+    if (resource.buffer.len == data.len) {
+        @memcpy(resource.buffer, data);
+    } else {
+        @branchHint(.cold);
+
+        for (0..region.height) |y| {
+            const src_i = y * region.width;
+            const dst_i = (y + region.y) * resource.pitch + region.x;
+
+            @memcpy(resource.buffer[dst_i..dst_i + region.width], data[src_i..src_i + region.width]);
+        }
+    }
 }
 
 pub fn reserve(
