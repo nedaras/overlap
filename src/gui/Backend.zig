@@ -43,10 +43,12 @@ pub inline fn updateImage(self: Backend, image: Image, bytes: []const u8) Error!
     return self.vtable.updateImage(self.ptr, image, bytes);
 }
 
+// todo: remove this
 pub inline fn mapImage(self: Backend, image: Image) Error!MapedResource {
     return self.vtable.mapImage(self.ptr, image);
 }
 
+// todo: remove this
 pub inline fn unmapImage(self: Backend, image: Image) void {
     self.vtable.unmapImage(self.ptr, image);
 }

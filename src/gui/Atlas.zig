@@ -12,6 +12,7 @@ allocator: Allocator,
 backend: Backend,
 image: Image,
 
+data: []u8,
 size: u32,
 
 nodes: std.DoublyLinkedList(Node),
@@ -38,7 +39,7 @@ const Region = struct {
 
 pub fn init(allocator: Allocator, backend: Backend, size: u32) !Atlas {
     const data = try allocator.alloc(u8, size * size);
-    defer allocator.free(data);
+    errdefer allocator.free(data);
 
     var self: Atlas = .{
         .allocator = allocator,
@@ -50,6 +51,7 @@ pub fn init(allocator: Allocator, backend: Backend, size: u32) !Atlas {
             .format = .r,
             .usage = .dynamic,
         }),
+        .data = data,
         .size = size,
         .nodes = .{},
         .nodes_pool = .init(allocator),
@@ -64,16 +66,15 @@ pub fn init(allocator: Allocator, backend: Backend, size: u32) !Atlas {
 
 pub fn deinit(self: *Atlas) void {
     self.image.deinit(self.allocator);
+    self.allocator.free(self.data);
     self.nodes_pool.deinit();
 
     self.* = undefined;
 }
 
 pub fn clear(self: *Atlas) !void {
-    const resource = try self.backend.mapImage(self.image);
-    defer self.backend.unmapImage(self.image);
-
-    @memset(resource.buffer, 0);
+    @memset(self.data, 0);
+    try self.backend.updateImage(self.image, self.data);
 
     _ = self.nodes_pool.reset(.retain_capacity);
 
@@ -97,21 +98,14 @@ pub fn fill(
     assert(self.image.width > region.x);
     assert(self.image.height > region.y);
 
-    const resource = try self.backend.mapImage(self.image);
-    defer self.backend.unmapImage(self.image);
+    for (0..region.height) |y| {
+        const src_i = y * region.width;
+        const dst_i = (y + region.y) * self.size + region.x;
 
-    if (resource.buffer.len == data.len) {
-        @memcpy(resource.buffer, data);
-    } else {
-        @branchHint(.cold);
-
-        for (0..region.height) |y| {
-            const src_i = y * region.width;
-            const dst_i = (y + region.y) * resource.pitch + region.x;
-
-            @memcpy(resource.buffer[dst_i..dst_i + region.width], data[src_i..src_i + region.width]);
-        }
+        @memcpy(self.data[dst_i..dst_i + region.width], data[src_i..src_i + region.width]);
     }
+
+    try self.backend.updateImage(self.image, self.data);
 }
 
 pub fn reserve(
