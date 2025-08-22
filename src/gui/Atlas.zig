@@ -4,6 +4,8 @@ const Image = @import("Image.zig");
 const heap = std.heap;
 const math = std.math;
 
+// tood: upgrade with 0.15.1
+
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 
@@ -15,16 +17,17 @@ image: Image,
 data: []u8,
 size: u32,
 
-nodes: std.DoublyLinkedList(Node),
-nodes_pool: heap.MemoryPoolExtra(std.DoublyLinkedList(Node).Node, .{ .growable = true }),
+nodes: std.DoublyLinkedList,
+nodes_pool: heap.MemoryPoolExtra(Data, .{ .growable = true }),
 
 const Atlas = @This();
 
-const Node = struct {
+const Data = struct {
     x: u32,
     y: u32,
 
     width: u32,
+    node: std.DoublyLinkedList.Node,
 };
 
 const Region = struct {
@@ -78,15 +81,19 @@ pub fn clear(self: *Atlas) !void {
 
     _ = self.nodes_pool.reset(.retain_capacity);
 
-    const node = self.nodes_pool.create() catch unreachable;
-    node.* = .{ .data = .{
+    self.nodes.first = null;
+    self.nodes.last = null;
+
+    var data = self.nodes_pool.create() catch unreachable;
+    data.* = .{
         .x = 0,
         .y = 0,
 
         .width = self.size,
-    } };
+        .node = .{},
+    };
 
-    self.nodes.prepend(node);
+    self.nodes.prepend(&data.node);
 }
 
 pub fn fill(
@@ -119,19 +126,21 @@ pub fn reserve(
         var best_width: u32 = math.maxInt(u32);
         var best_height: u32 = math.maxInt(u32);
 
-        var selected: ?*std.DoublyLinkedList(Node).Node = null;
+        var selected: ?*Data = null;
 
         var curr = self.nodes.first;
         while (curr) |node| {
             defer curr = node.next;
-            const y = self.baseline(node, width, height) orelse continue;
 
-            if (y + height < best_height or (y + height == best_height and node.data.width < best_width)) {
-                selected = node;
-                best_width = node.data.width;
+            const data: *Data = @fieldParentPtr("node", node);
+            const y = self.baseline(data, width, height) orelse continue;
+
+            if (y + height < best_height or (y + height == best_height and data.width < best_width)) {
+                selected = data;
+                best_width = data.width;
                 best_height = y + height;
 
-                region.x = node.data.x;
+                region.x = data.x;
                 region.y = y;
             }
         }
@@ -140,87 +149,89 @@ pub fn reserve(
     };
 
     const new_node = try self.nodes_pool.create();
-    new_node.* = .{ .data = .{
+    new_node.* = .{
         .x = region.x,
         .y = region.y + region.height,
         .width = region.width,
-    } };
+        .node = .{},
+    };
 
-    self.nodes.insertBefore(best_node, new_node);
+    self.nodes.insertBefore(&best_node.node, &new_node.node);
 
     var prev = new_node;
-    var curr: ?*std.DoublyLinkedList(Node).Node = best_node;
+    var curr: ?*Data = best_node;
 
     // loop till we're inside
     while (curr) |node| {
         // inside
-        if (prev.data.x + prev.data.width > node.data.x) {
-            const move = prev.data.x + prev.data.width - node.data.x;
+        if (prev.x + prev.width > node.x) {
+            const move = prev.x + prev.width - node.x;
 
-            node.data.x += move;
-            node.data.width -|= move;
+            node.x += move;
+            node.width -|= move;
 
-            if (node.data.width == 0) {
-                curr = node.next;
+            if (node.width == 0) {
+                curr = if (node.node.next) |c| @fieldParentPtr("node", c) else null;
 
-                self.nodes.remove(node);
+                self.nodes.remove(&node.node);
                 self.nodes_pool.destroy(node);
 
                 continue;
             }
 
             prev = node;
-            curr = node.next;
+            curr = if (node.node.next) |n| @fieldParentPtr("node", n) else null;
 
             continue;
         }
         break;
     }
 
-    if (new_node.next) |nn| {
-        self.merge(new_node, nn);
+    if (new_node.node.next) |nn| {
+        self.merge(new_node, @fieldParentPtr("node", nn));
     }
 
-    if (new_node.prev) |pp| {
-        self.merge(pp, new_node);
+    if (new_node.node.prev) |pp| {
+        self.merge(@fieldParentPtr("node", pp), new_node);
     }
 
     return region;
 }
 
-fn merge(self: *Atlas, left: *std.DoublyLinkedList(Node).Node, right: *std.DoublyLinkedList(Node).Node) void {
-    if (left.data.y == right.data.y) {
+fn merge(self: *Atlas, left: *Data, right: *Data) void {
+    if (left.y == right.y) {
         @branchHint(.cold);
 
-        left.data.width += right.data.width;
+        left.width += right.width;
 
-        self.nodes.remove(right);
+        self.nodes.remove(&right.node);
         self.nodes_pool.destroy(right);
     }
 }
 
 fn baseline(
     self: Atlas,
-    node: *std.DoublyLinkedList(Node).Node,
+    node: *Data,
     width: u32,
     height: u32,
 ) ?u32 {
-    if (node.data.x + width > self.size) {
+    if (node.x + width > self.size) {
         return null;
     }
 
-    var y = node.data.y;
+    var y = node.y;
     var width_left = width;
 
-    var curr: ?*std.DoublyLinkedList(Node).Node = node;
+    var curr: ?*std.DoublyLinkedList.Node = &node.node;
     while (width_left > 0) {
         defer curr = curr.?.next;
-        if (curr.?.data.y + height > self.size) {
+        const data: *Data = @fieldParentPtr("node", curr.?);
+        if (data.y + height > self.size) {
             return null;
         }
 
-        y = @max(y, curr.?.data.y);
-        width_left -|= curr.?.data.width;
+        y = @max(y, data.y);
+        width_left -|= data.width;
     }
 
     return y;

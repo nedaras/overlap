@@ -38,7 +38,7 @@ fn hkWNDPROC(
     uMsg: windows.UINT,
     wParam: windows.WPARAM,
     lParam: windows.LPARAM,
-) callconv(windows.WINAPI) windows.LRESULT {
+) callconv(.winapi) windows.LRESULT {
     const self = zelf.?;
     const mutex = &self.hook.gateway.mutex;
     const input = &self.hook.gateway.input;

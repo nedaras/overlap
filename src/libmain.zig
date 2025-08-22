@@ -20,15 +20,17 @@ fn entry(instance: windows.HINSTANCE) void {
     };
 
     if (builtin.mode == .Debug) {
-        const stdin = std.io.getStdIn();
-        _ = stdin.reader().readByte() catch {};
+        var byte: [1]u8 = undefined;
+        const stdin: std.fs.File = .stdin();
+
+        _ = stdin.read(&byte) catch {};
         windows.FreeConsole() catch {};
     }
 
     windows.FreeLibraryAndExitThread(@ptrCast(instance), 0);
 }
 
-pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(windows.WINAPI) windows.BOOL {
+pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
     if (builtin.mode == .Debug) {
         if (reason == windows.DLL_PROCESS_ATTACH) {
             windows.AllocConsole() catch |err| switch (err) {

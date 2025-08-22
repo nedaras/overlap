@@ -11,7 +11,6 @@ const BOOL = windows.BOOL;
 const UINT = windows.UINT;
 const ULONG = windows.ULONG;
 const HRESULT = windows.HRESULT;
-const WINAPI = windows.WINAPI;
 const REFIID = windows.REFIID;
 
 pub const IDXGIAdapter = *opaque {};
@@ -68,14 +67,14 @@ pub const IDXGISwapChain = extern struct {
     vtable: *const [18]*const anyopaque,
 
     pub inline fn AddRef(self: *IDXGISwapChain) void {
-        const FnType = fn (*IDXGISwapChain) callconv(WINAPI) ULONG;
+        const FnType = fn (*IDXGISwapChain) callconv(.winapi) ULONG;
         const add_ref: *const FnType = @ptrCast(self.vtable[1]);
 
         _ = add_ref(self);
     }
 
     pub inline fn Release(self: *IDXGISwapChain) void {
-        const FnType = fn (*IDXGISwapChain) callconv(WINAPI) ULONG;
+        const FnType = fn (*IDXGISwapChain) callconv(.winapi) ULONG;
         const release: *const FnType = @ptrCast(self.vtable[2]);
 
         _ = release(self);
@@ -88,7 +87,7 @@ pub const IDXGISwapChain = extern struct {
         riid: REFIID,
         ppDevice: **anyopaque,
     ) GetDeviceError!void {
-        const FnType = fn (*IDXGISwapChain, REFIID, **anyopaque) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IDXGISwapChain, REFIID, **anyopaque) callconv(.winapi) HRESULT;
         const get_device: *const FnType = @ptrCast(self.vtable[7]);
 
         const hr = get_device(self, riid, ppDevice);
@@ -106,7 +105,7 @@ pub const IDXGISwapChain = extern struct {
         riid: REFIID,
         ppSurface: **anyopaque,
     ) GetBufferError!void {
-        const FnType = fn (*IDXGISwapChain, UINT, REFIID, **anyopaque) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IDXGISwapChain, UINT, REFIID, **anyopaque) callconv(.winapi) HRESULT;
         const get_buffer: *const FnType = @ptrCast(self.vtable[9]);
 
         const hr = get_buffer(self, Buffer, riid, ppSurface);

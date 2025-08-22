@@ -145,7 +145,7 @@ fn hkPresent(
     pSwapChain: *dxgi.IDXGISwapChain,
     SyncInterval: windows.UINT,
     Flags: windows.UINT,
-) callconv(windows.WINAPI) windows.HRESULT {
+) callconv(.winapi) windows.HRESULT {
     var self = &zelf.?;
     if (self.forward) blk: {
         if (self.backend == null) {
@@ -173,7 +173,7 @@ fn hkResizeBuffers(
     Height: windows.UINT,
     NewFormat: dxgi.DXGI_FORMAT,
     SwapChainFlags: windows.UINT,
-) callconv(windows.WINAPI) windows.HRESULT {
+) callconv(.winapi) windows.HRESULT {
     var self = &zelf.?;
     if (!self.forward) {
         return self.o_resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);

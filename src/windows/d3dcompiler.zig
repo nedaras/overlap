@@ -3,7 +3,6 @@ const d3dcommon = @import("d3dcommon.zig");
 const windows = std.os.windows;
 
 const UINT = windows.UINT;
-const WINAPI = windows.WINAPI;
 const SIZE_T = windows.SIZE_T;
 const LPCSTR = windows.LPCSTR;
 const HRESULT = windows.HRESULT;
@@ -29,4 +28,4 @@ pub extern "d3dcompiler_47" fn D3DCompile(
     Flags2: UINT,
     ppCode: **ID3DBlob,
     ppErrorMsgs: ?**ID3DBlob,
-) callconv(WINAPI) HRESULT;
+) callconv(.winapi) HRESULT;

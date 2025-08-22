@@ -11,8 +11,6 @@ const winhttp = @import("windows/winhttp.zig");
 const winrt = @import("windows/winrt.zig");
 const Allocator = mem.Allocator;
 
-pub usingnamespace windows;
-
 pub const combase = @import("windows/combase.zig");
 pub const user32 = @import("windows/user32.zig");
 pub const dxgi = @import("windows/dxgi.zig");
@@ -20,24 +18,37 @@ pub const d3d11 = @import("windows/d3d11.zig");
 pub const d3dcommon = @import("windows/d3dcommon.zig");
 pub const d3dcompiler = @import("windows/d3dcompiler.zig");
 
-const INT = windows.INT;
-const UINT = windows.UINT;
-const S_OK = windows.S_OK;
-const WPARAM = windows.WPARAM;
-const LPARAM = windows.LPARAM;
-const TRUE = windows.TRUE;
-const HWND = windows.HWND;
-const GUID = windows.GUID;
-const FALSE = windows.FALSE;
-const ULONG = windows.ULONG;
-const DWORD = windows.DWORD;
-const WINAPI = windows.WINAPI;
-const LPDWORD = *windows.DWORD;
-const LPCWSTR = windows.LPCWSTR;
-const LRESULT = windows.LRESULT;
-const HRESULT = windows.HRESULT;
-const LPCVOID = windows.LPCVOID;
-const LONG_PTR = windows.LONG_PTR;
+pub const INT = windows.INT;
+pub const UINT = windows.UINT;
+pub const S_OK = windows.S_OK;
+pub const TRUE = windows.TRUE;
+pub const HWND = windows.HWND;
+pub const GUID = windows.GUID;
+pub const BOOL = windows.BOOL;
+pub const RECT = windows.RECT;
+pub const BYTE = windows.BYTE;
+pub const FLOAT = windows.FLOAT;
+pub const FALSE = windows.FALSE;
+pub const ULONG = windows.ULONG;
+pub const DWORD = windows.DWORD;
+pub const WPARAM = windows.WPARAM;
+pub const LPARAM = windows.LPARAM;
+pub const SIZE_T = windows.SIZE_T;
+pub const LPCSTR = windows.LPCSTR;
+pub const LPDWORD = *windows.DWORD;
+pub const LPCWSTR = windows.LPCWSTR;
+pub const LRESULT = windows.LRESULT;
+pub const HMODULE = windows.HMODULE;
+pub const HRESULT = windows.HRESULT;
+pub const LPVOID = windows.LPVOID;
+pub const LPCVOID = windows.LPCVOID;
+pub const LONG_PTR = windows.LONG_PTR;
+pub const HINSTANCE = windows.HINSTANCE;
+pub const HRESULT_CODE = windows.HRESULT_CODE;
+pub const E_NOINTERFACE = windows.E_NOINTERFACE;
+
+pub const unexpectedError = windows.unexpectedError;
+
 const Win32Error = windows.Win32Error;
 const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
 const IGlobalSystemMediaTransportControlsSessionMediaProperties = media.IGlobalSystemMediaTransportControlsSessionMediaProperties;
@@ -93,7 +104,7 @@ pub const WNDPROC = *const fn (
     uMsg: UINT,
     wParam: WPARAM,
     lParam: LPARAM,
-) callconv(WINAPI) LRESULT;
+) callconv(.winapi) LRESULT;
 
 pub const BitmapPixelFormat = INT;
 pub const BitmapPixelFormat_Rgba8 = 30;
@@ -198,9 +209,9 @@ pub const IUnknown = extern struct {
 };
 
 const IUnknownVTable = extern struct {
-    QueryInterface: *const fn (self: *IUnknown, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT,
-    AddRef: *const fn (self: *IUnknown) callconv(WINAPI) ULONG,
-    Release: *const fn (self: *IUnknown) callconv(WINAPI) ULONG,
+    QueryInterface: *const fn (self: *IUnknown, riid: REFIID, ppvObject: **anyopaque) callconv(.winapi) HRESULT,
+    AddRef: *const fn (self: *IUnknown) callconv(.winapi) ULONG,
+    Release: *const fn (self: *IUnknown) callconv(.winapi) ULONG,
 };
 
 pub const DisableThreadLibraryCallsError = error{Unexpected};
@@ -755,7 +766,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
 
                 context: Context,
 
-                fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
+                fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(.winapi) HRESULT {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
 
                     const guids = &[_]REFIID{
@@ -779,7 +790,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                 }
 
                 // todo: reusize this
-                pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
+                pub fn AddRef(ctx: *anyopaque) callconv(.winapi) ULONG {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
 
                     const prev = self.ref_count.fetchAdd(1, .monotonic);
@@ -787,7 +798,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                 }
 
                 // todo: reusize this
-                fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
+                fn Release(ctx: *anyopaque) callconv(.winapi) ULONG {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
                     const prev = self.ref_count.fetchSub(1, .release);
 
@@ -799,7 +810,7 @@ pub fn AsyncOperationCompletedHandler(comptime TResult: type) type {
                     return prev - 1;
                 }
 
-                pub fn Invoke(ctx: *anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT {
+                pub fn Invoke(ctx: *anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(.winapi) HRESULT {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
                     invokeFn(self.context, asyncInfo, status);
 
@@ -1042,7 +1053,7 @@ pub const IActivationFactory = extern struct {
     pub const ActivateInstanceError = error{Unexpected};
 
     pub fn ActivateInstance(self: *IActivationFactory, instance: **anyopaque) ActivateInstanceError!void {
-        const FnType = fn (*IActivationFactory, **anyopaque) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IActivationFactory, **anyopaque) callconv(.winapi) HRESULT;
         const activate_instance: *const FnType = @ptrCast(self.vtable[6]);
 
         const hr = activate_instance(self, instance);

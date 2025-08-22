@@ -6,7 +6,6 @@ const assert = std.debug.assert;
 
 const GUID = windows.GUID;
 const BYTE = windows.BYTE;
-const WINAPI = windows.WINAPI;
 const UINT32 = windows.UINT32;
 const HRESULT = windows.HRESULT;
 const IUnknown = windows.IUnknown;
@@ -61,7 +60,7 @@ pub const IBitmapDecoderStatics = extern struct {
     pub const CreateAsyncError = error{Unexpected};
 
     pub fn CreateAsync(self: *IBitmapDecoderStatics, stream: *IRandomAccessStream) CreateAsyncError!*IAsyncOperation(*IBitmapDecoder) {
-        const FnType = fn (*IBitmapDecoderStatics, *IRandomAccessStream, **IAsyncOperation(*IBitmapDecoder)) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IBitmapDecoderStatics, *IRandomAccessStream, **IAsyncOperation(*IBitmapDecoder)) callconv(.winapi) HRESULT;
         const create_async: *const FnType = @ptrCast(self.vtable[14]);
 
         var operation: *IAsyncOperation(*IBitmapDecoder) = undefined;
@@ -87,7 +86,7 @@ pub const IBitmapDecoder = extern struct {
     pub const GetFrameAsyncError = error{Unexpected};
 
     pub fn GetFrameAsync(self: *IBitmapDecoder, frameIndex: UINT32) GetFrameAsyncError!*IAsyncOperation(*IBitmapFrame) {
-        const FnType = fn (*IBitmapDecoder, UINT32, **IAsyncOperation(*IBitmapFrame)) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IBitmapDecoder, UINT32, **IAsyncOperation(*IBitmapFrame)) callconv(.winapi) HRESULT;
         const get_frame_async: *const FnType = @ptrCast(self.vtable[10]);
 
         var operation: *IAsyncOperation(*IBitmapFrame) = undefined;
@@ -111,7 +110,7 @@ pub const IBitmapFrame = extern struct {
     }
 
     pub fn get_PixelWidth(self: *IBitmapFrame) UINT32 {
-        const FnType = fn (*IBitmapFrame, *UINT32) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IBitmapFrame, *UINT32) callconv(.winapi) HRESULT;
         const get_pixel_width: *const FnType = @ptrCast(self.vtable[12]);
 
         var value: UINT32 = undefined;
@@ -121,7 +120,7 @@ pub const IBitmapFrame = extern struct {
     }
 
     pub fn get_PixelHeight(self: *IBitmapFrame) UINT32 {
-        const FnType = fn (*IBitmapFrame, *UINT32) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IBitmapFrame, *UINT32) callconv(.winapi) HRESULT;
         const get_pixel_height: *const FnType = @ptrCast(self.vtable[13]);
 
         var value: UINT32 = undefined;
@@ -148,7 +147,7 @@ pub const IBitmapFrame = extern struct {
             ExifOrientationMode,
             ColorManagementMode,
             **IAsyncOperation(*IPixelDataProvider),
-        ) callconv(WINAPI) HRESULT;
+        ) callconv(.winapi) HRESULT;
 
         const get_pixel_data_transformed_async: *const FnType = @ptrCast(self.vtable[17]);
         var operation: *IAsyncOperation(*IPixelDataProvider) = undefined;
@@ -175,7 +174,7 @@ pub const IPixelDataProvider = extern struct {
 
     // todo: add PixelDataProvider that would just return []const u8
     pub fn DetachPixelData(self: *IPixelDataProvider, pixelDataLength: *UINT32, pixelData: *[*]const BYTE) void {
-        const FnType = fn (*IPixelDataProvider, *UINT32, *[*]const BYTE) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IPixelDataProvider, *UINT32, *[*]const BYTE) callconv(.winapi) HRESULT;
         const detach_pixel_data: *const FnType = @ptrCast(self.vtable[6]);
 
         assert(detach_pixel_data(self, pixelDataLength, pixelData) == windows.S_OK);

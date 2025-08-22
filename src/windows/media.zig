@@ -1,1 +1,8 @@
-pub usingnamespace @import("media/controls.zig");
+const controls = @import("media/controls.zig");
+
+pub const ICurrentSessionChangedEventArgs = controls.ICurrentSessionChangedEventArgs;
+pub const IMediaPropertiesChangedEventArgs = controls.IMediaPropertiesChangedEventArgs;
+pub const IGlobalSystemMediaTransportControlsSession = controls.IGlobalSystemMediaTransportControlsSession;
+pub const IGlobalSystemMediaTransportControlsSessionManager = controls.IGlobalSystemMediaTransportControlsSessionManager;
+pub const IGlobalSystemMediaTransportControlsSessionManagerStatics = controls.IGlobalSystemMediaTransportControlsSessionManagerStatics;
+pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = controls.IGlobalSystemMediaTransportControlsSessionMediaProperties;

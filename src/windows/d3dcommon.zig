@@ -3,7 +3,6 @@ const windows = std.os.windows;
 
 const INT = windows.INT;
 const ULONG = windows.ULONG;
-const WINAPI = windows.WINAPI;
 const LPVOID = windows.LPVOID;
 const SIZE_T = windows.SIZE_T;
 
@@ -34,21 +33,21 @@ pub const ID3DBlob = extern struct {
     }
 
     pub inline fn Release(self: *ID3DBlob) void {
-        const FnType = fn (*ID3DBlob) callconv(WINAPI) ULONG;
+        const FnType = fn (*ID3DBlob) callconv(.winapi) ULONG;
         const release: *const FnType = @ptrCast(self.vtable[2]);
 
         _ = release(self);
     }
 
     pub inline fn GetBufferPointer(self: *ID3DBlob) LPVOID {
-        const FnType = fn (*ID3DBlob) callconv(WINAPI) LPVOID;
+        const FnType = fn (*ID3DBlob) callconv(.winapi) LPVOID;
         const get_buffer_pointer: *const FnType = @ptrCast(self.vtable[3]);
 
         return get_buffer_pointer(self);
     }
 
     pub inline fn GetBufferSize(self: *ID3DBlob) SIZE_T {
-        const FnType = fn (*ID3DBlob) callconv(WINAPI) SIZE_T;
+        const FnType = fn (*ID3DBlob) callconv(.winapi) SIZE_T;
         const get_buffer_size: *const FnType = @ptrCast(self.vtable[4]);
 
         return get_buffer_size(self);

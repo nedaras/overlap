@@ -5,7 +5,6 @@ const assert = std.debug.assert;
 
 const INT64 = i64;
 const GUID = windows.GUID;
-const WINAPI = windows.WINAPI;
 const HRESULT = windows.HRESULT;
 const HSTRING = windows.HSTRING;
 const IUnknown = windows.IUnknown;
@@ -45,7 +44,7 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
     }
 
     pub fn get_Title(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) HSTRING {
-        const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, *HSTRING) callconv(WINAPI) HRESULT;
+        const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, *HSTRING) callconv(.winapi) HRESULT;
         const get_title: *const FnType = @ptrCast(self.vtable[6]);
 
         var title: HSTRING = undefined;
@@ -54,7 +53,7 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
     }
 
     pub fn get_Artist(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) HSTRING {
-        const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, *HSTRING) callconv(WINAPI) HRESULT;
+        const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, *HSTRING) callconv(.winapi) HRESULT;
         const get_artist: *const FnType = @ptrCast(self.vtable[9]);
 
         var artist: HSTRING = undefined;
@@ -65,7 +64,7 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
     pub const GetThumbnailError = error{Unexpected};
 
     pub fn get_Thumbnail(self: *IGlobalSystemMediaTransportControlsSessionMediaProperties) GetThumbnailError!?*IRandomAccessStreamReference {
-        const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, *?*IRandomAccessStreamReference) callconv(WINAPI) HRESULT;
+        const FnType = fn (self: *IGlobalSystemMediaTransportControlsSessionMediaProperties, *?*IRandomAccessStreamReference) callconv(.winapi) HRESULT;
         const get_thumbnail: *const FnType = @ptrCast(self.vtable[15]);
 
         var thumbnail: ?*IRandomAccessStreamReference = undefined;
@@ -93,7 +92,7 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
     pub fn TryGetMediaPropertiesAsync(
         self: *IGlobalSystemMediaTransportControlsSession,
     ) TryGetMediaPropertiesAsyncError!*IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionMediaProperties) {
-        const FnType = fn (*IGlobalSystemMediaTransportControlsSession, **IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionMediaProperties)) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSession, **IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionMediaProperties)) callconv(.winapi) HRESULT;
         const try_get_media_properties_async: *const FnType = @ptrCast(self.vtable[7]);
 
         var operation: *IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionMediaProperties) = undefined;
@@ -111,7 +110,7 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         self: *IGlobalSystemMediaTransportControlsSession,
         handler: *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs),
     ) AddMediaPropertiesChangedError!EventRegistrationToken {
-        const FnType = fn (*IGlobalSystemMediaTransportControlsSession, *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs), *EventRegistrationToken) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSession, *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs), *EventRegistrationToken) callconv(.winapi) HRESULT;
 
         const add_media_proparties_changed: *const FnType = @ptrCast(self.vtable[29]);
 
@@ -142,7 +141,7 @@ pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
     pub const GetCurrentSessionError = error{Unexpected};
 
     pub fn GetCurrentSession(self: *IGlobalSystemMediaTransportControlsSessionManager) GetCurrentSessionError!?*IGlobalSystemMediaTransportControlsSession {
-        const FnType = fn (*IGlobalSystemMediaTransportControlsSessionManager, *?*IGlobalSystemMediaTransportControlsSession) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSessionManager, *?*IGlobalSystemMediaTransportControlsSession) callconv(.winapi) HRESULT;
         const get_current_session: *const FnType = @ptrCast(self.vtable[6]);
 
         var val: ?*IGlobalSystemMediaTransportControlsSession = undefined;
@@ -164,7 +163,7 @@ pub const IGlobalSystemMediaTransportControlsSessionManager = extern struct {
             *IGlobalSystemMediaTransportControlsSessionManager,
             *TypedEventHandler(*IGlobalSystemMediaTransportControlsSessionManager, *ICurrentSessionChangedEventArgs),
             *EventRegistrationToken,
-        ) callconv(WINAPI) HRESULT;
+        ) callconv(.winapi) HRESULT;
 
         const add_current_session_chnaged: *const FnType = @ptrCast(self.vtable[8]);
 
@@ -195,7 +194,7 @@ pub const IGlobalSystemMediaTransportControlsSessionManagerStatics = extern stru
     pub fn RequestAsync(
         self: *IGlobalSystemMediaTransportControlsSessionManagerStatics,
     ) RequestAsyncError!*IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionManager) {
-        const FnType = fn (*IGlobalSystemMediaTransportControlsSessionManagerStatics, **IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionManager)) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSessionManagerStatics, **IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionManager)) callconv(.winapi) HRESULT;
         const request_async: *const FnType = @ptrCast(self.vtable[6]);
 
         var operation: *IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionManager) = undefined;

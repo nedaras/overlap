@@ -11,7 +11,6 @@ const INT = windows.INT;
 const GUID = windows.GUID;
 const ULONG = windows.ULONG;
 const REFIID = windows.REFIID;
-const WINAPI = windows.WINAPI;
 const HRESULT = windows.HRESULT;
 const IUnknown = windows.IUnknown;
 const IMarshal = windows.IMarshal;
@@ -58,7 +57,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
 
                 context: Context,
 
-                fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT {
+                fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(.winapi) HRESULT {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
 
                     const guids = &[_]REFIID{
@@ -82,7 +81,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
                 }
 
                 // todo: reusize this
-                pub fn AddRef(ctx: *anyopaque) callconv(WINAPI) ULONG {
+                pub fn AddRef(ctx: *anyopaque) callconv(.winapi) ULONG {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
 
                     const prev = self.ref_count.fetchAdd(1, .monotonic);
@@ -90,7 +89,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
                 }
 
                 // todo: reusize this
-                fn Release(ctx: *anyopaque) callconv(WINAPI) ULONG {
+                fn Release(ctx: *anyopaque) callconv(.winapi) ULONG {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
                     const prev = self.ref_count.fetchSub(1, .release);
 
@@ -102,7 +101,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
                     return prev - 1;
                 }
 
-                pub fn Invoke(ctx: *anyopaque, sender: TSender, args: TResult) callconv(WINAPI) HRESULT {
+                pub fn Invoke(ctx: *anyopaque, sender: TSender, args: TResult) callconv(.winapi) HRESULT {
                     const self: *@This() = @alignCast(@ptrCast(ctx));
                     invokeFn(self.context, sender, args);
 
@@ -124,10 +123,10 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
 
 pub fn TypedEventHandlerVTable(comptime TSender: type, comptime TResult: type) type {
     return extern struct {
-        QueryInterface: *const fn (*anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT,
-        AddRef: *const fn (*anyopaque) callconv(WINAPI) ULONG,
-        Release: *const fn (*anyopaque) callconv(WINAPI) ULONG,
-        Invoke: *const fn (*anyopaque, sender: TSender, args: TResult) callconv(WINAPI) HRESULT,
+        QueryInterface: *const fn (*anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*anyopaque) callconv(.winapi) ULONG,
+        Release: *const fn (*anyopaque) callconv(.winapi) ULONG,
+        Invoke: *const fn (*anyopaque, sender: TSender, args: TResult) callconv(.winapi) HRESULT,
     };
 }
 
@@ -149,10 +148,10 @@ pub fn IAsyncOperationCompletedHandler(comptime TResult: type) type {
 }
 
 pub const IAsyncOperationCompletedHandlerVTable = extern struct {
-    QueryInterface: *const fn (*anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(WINAPI) HRESULT,
-    AddRef: *const fn (*anyopaque) callconv(WINAPI) ULONG,
-    Release: *const fn (*anyopaque) callconv(WINAPI) ULONG,
-    Invoke: *const fn (*anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(WINAPI) HRESULT,
+    QueryInterface: *const fn (*anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(.winapi) HRESULT,
+    AddRef: *const fn (*anyopaque) callconv(.winapi) ULONG,
+    Release: *const fn (*anyopaque) callconv(.winapi) ULONG,
+    Invoke: *const fn (*anyopaque, asyncInfo: *IAsyncInfo, status: AsyncStatus) callconv(.winapi) HRESULT,
 };
 
 pub const IAsyncInfo = extern struct {
@@ -176,7 +175,7 @@ pub const IAsyncInfo = extern struct {
     }
 
     pub fn get_Status(self: *IAsyncInfo) AsyncStatus {
-        const FnType = fn (*IAsyncInfo, *AsyncStatus) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IAsyncInfo, *AsyncStatus) callconv(.winapi) HRESULT;
         const get_status: *const FnType = @ptrCast(self.vtable[7]);
 
         var val: AsyncStatus = undefined;
@@ -186,7 +185,7 @@ pub const IAsyncInfo = extern struct {
     }
 
     pub fn Close(self: *IAsyncInfo) void {
-        const FnType = fn (*IAsyncInfo) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IAsyncInfo) callconv(.winapi) HRESULT;
         const close: *const FnType = @ptrCast(self.vtable[10]);
 
         assert(close(self) == windows.S_OK);
@@ -219,7 +218,7 @@ pub fn IAsyncOperation(comptime T: type) type {
         }
 
         pub fn put_Completed(self: *Self, handler: *IAsyncOperationCompletedHandler(T)) PutCompletedError!void {
-            const FnType = fn (*Self, *IAsyncOperationCompletedHandler(T)) callconv(WINAPI) HRESULT;
+            const FnType = fn (*Self, *IAsyncOperationCompletedHandler(T)) callconv(.winapi) HRESULT;
             const put_completed: *const FnType = @ptrCast(self.vtable[6]);
 
             const hr = put_completed(self, handler);
@@ -232,7 +231,7 @@ pub fn IAsyncOperation(comptime T: type) type {
         pub const GetResultsError = error{Unexpected};
 
         pub fn GetResults(self: *Self) GetResultsError!T {
-            const FnType = fn (*Self, *T) callconv(WINAPI) HRESULT;
+            const FnType = fn (*Self, *T) callconv(.winapi) HRESULT;
             const get_results: *const FnType = @ptrCast(self.vtable[8]);
 
             var val: T = undefined;
@@ -256,7 +255,7 @@ pub const IRandomAccessStreamReference = extern struct {
     pub const OpenReadAsyncError = error{Unexpected};
 
     pub fn OpenReadAsync(self: *IRandomAccessStreamReference) OpenReadAsyncError!*IAsyncOperation(*IRandomAccessStreamWithContentType) {
-        const FnType = fn (*IRandomAccessStreamReference, **IAsyncOperation(*IRandomAccessStreamWithContentType)) callconv(WINAPI) HRESULT;
+        const FnType = fn (*IRandomAccessStreamReference, **IAsyncOperation(*IRandomAccessStreamWithContentType)) callconv(.winapi) HRESULT;
         const open_read_async: *const FnType = @ptrCast(self.vtable[6]);
 
         var operation: *IAsyncOperation(*IRandomAccessStreamWithContentType) = undefined;
