@@ -32,7 +32,7 @@ fn BoundedArray(comptime T: type, N: comptime_int) type {
         }
 
         pub inline fn ensureUnusedCapacity(self: *@This(), n: usize) !void {
-            if (self.inner.unusedCapacitySlice().len > n) return error.OutOfMemory;
+            if (self.inner.unusedCapacitySlice().len < n) return error.OutOfMemory;
         }
 
         pub inline fn get(self: @This(), n: usize) T {
