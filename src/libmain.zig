@@ -66,5 +66,4 @@ inline fn tracedDllMain(instance: windows.HINSTANCE, reason: windows.DWORD, _: w
 }
 
 test {
-    _ = @import("actions.zig");
 }

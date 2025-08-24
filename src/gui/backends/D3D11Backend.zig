@@ -79,7 +79,6 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     const ps = @embedFile("../shaders/ps.hlsl");
 
     var device: *d3d11.ID3D11Device = undefined;
-    var device_context: *d3d11.ID3D11DeviceContext = undefined;
 
     var back_buffer: *d3d11.ID3D11Texture2D = undefined;
 
@@ -88,7 +87,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
 
     try swap_chain.GetDevice(d3d11.ID3D11Device.UUID, @ptrCast(&device));
 
-    device.GetImmediateContext(&device_context);
+    const device_context = device.GetImmediateContext();
     errdefer device_context.Release();
 
     var result = Self{
@@ -273,8 +272,6 @@ const D3D11Backend = struct {
         .frame = &D3D11Backend.frame,
         .loadImage = &D3D11Backend.loadImage,
         .updateImage = &D3D11Backend.updateImage,
-        .mapImage = &D3D11Backend.mapImage,
-        .unmapImage = &D3D11Backend.unmapImage,
     };
 
     fn deinit(context: *const anyopaque) void {
@@ -411,26 +408,6 @@ const D3D11Backend = struct {
         defer self.device_context.Unmap(@ptrCast(d3d11_image.texture), 0);
 
         mapped_resource.write(u8, bytes, image.width * @intFromEnum(image.format));
-    }
-
-    fn mapImage(context: *const anyopaque, image: Image) Backend.Error!Backend.MapedResource {
-        const self: *const Self = @ptrCast(@alignCast(context));
-        const d3d11_image: *const D3D11Image = @ptrCast(@alignCast(image.ptr));
-
-        var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
-        try self.device_context.Map(@ptrCast(d3d11_image.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
-
-        return .{
-            .buffer = mapped_resource.pData[0 .. mapped_resource.RowPitch * image.height],
-            .pitch = mapped_resource.RowPitch,
-        };
-    }
-
-    fn unmapImage(context: *const anyopaque, image: Image) void {
-        const self: *const Self = @ptrCast(@alignCast(context));
-        const d3d11_image: *const D3D11Image = @ptrCast(@alignCast(image.ptr));
-
-        self.device_context.Unmap(@ptrCast(d3d11_image.texture), 0);
     }
 };
 

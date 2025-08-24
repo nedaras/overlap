@@ -13,8 +13,6 @@ const Thread = std.Thread;
 const Allocator = mem.Allocator;
 const assert = std.debug.assert;
 
-// todo: fix some race conditions
-
 const Gateway = struct {
     gui: Gui,
 
@@ -102,9 +100,9 @@ pub inline fn gui(self: *Self) *Gui {
     return &self.gateway.gui;
 }
 
-pub inline fn input(self: *Self) *shared.Input {
-    return &self.gateway.input;
-}
+//pub inline fn input(self: *Self) *shared.Input {
+    //return &self.gateway.input;
+//}
 
 pub const FrameError = D3D11Hook.Error;
 
@@ -114,11 +112,11 @@ pub fn newFrame(self: *Self) FrameError!void {
         @branchHint(.cold);
         return err;
     }
-    self.gateway.mutex.lock();
+    //self.gateway.mutex.lock();
 }
 
 pub fn endFrame(self: *Self) void {
-    self.gateway.mutex.unlock(); // todo: input mutex and this is dumb af why should windproc wait fot present?
+    //self.gateway.mutex.unlock(); // todo: input mutex and this is dumb af why should windproc wait fot present?
     //       just copy the input to temp input that would be used in present func
     self.gateway.main_reset_event.reset();
     self.gateway.hooked_reset_event.set();

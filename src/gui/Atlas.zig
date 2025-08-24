@@ -78,7 +78,8 @@ pub fn deinit(self: *Atlas) void {
 pub fn clear(self: *Atlas) !void {
     @memset(self.data, 0);
 
-    try self.backend.updateImage(self.image, self.data);
+    //try self.backend.updateImage(self.image, self.data);
+    try self.image.update(self.data);
     _ = self.skylines_pool.reset(.retain_capacity);
 
     self.skylines = .{};
@@ -106,7 +107,8 @@ pub fn fill(self: *Atlas, region: Region, data: []u8) !void {
         @memcpy(self.data[dst_i .. dst_i + region.width], data[src_i .. src_i + region.width]);
     }
 
-    try self.backend.updateImage(self.image, self.data);
+    //try self.backend.updateImage(self.image, self.data);
+    try self.image.update(self.data);
 }
 
 pub fn reserve(

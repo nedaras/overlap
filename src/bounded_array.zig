@@ -1,4 +1,4 @@
-const std = @import("st");
+const std = @import("std");
 const assert = std.debug.assert;
 const mem = std.mem;
 const testing = std.testing;

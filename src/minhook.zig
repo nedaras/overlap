@@ -29,6 +29,9 @@ pub fn MH_CreateHook(comptime T: type, pTarget: *const T, pDetour: *const T, ppO
     // and this line makes zig panic
     // though on Unsafe mods like Fast/Small it does not seem to cauz any problems
     // so we can `@setRuntimeSafety(false);` to ignore it, but idk mb this is a bug in minhook
+    //
+    // This bug will probably be gone when we will start using `https://github.com/m417z/minhook-detours`
+    // As we want to add arm support too.
     return switch (minhook.MH_CreateHook(pTarget, pDetour, ppOriginal)) {
         .OK => {},
         else => |err| unexpectedError(err),

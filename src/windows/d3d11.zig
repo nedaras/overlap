@@ -248,6 +248,16 @@ pub const ID3D11Texture2D = extern struct {
 
         _ = release(self);
     }
+
+    pub fn GetDevice(self: *ID3D11Texture2D) *ID3D11Device {
+        const FnType = fn (*ID3D11Texture2D, **ID3D11Device) callconv(.winapi) void;
+        const get_device: *const FnType = @ptrCast(self.vtable[3]);
+
+        var pDevice: *ID3D11Device = undefined;
+        get_device(self, &pDevice);
+
+        return pDevice;
+    }
 };
 
 pub const ID3D11Device = extern struct {
@@ -439,11 +449,14 @@ pub const ID3D11Device = extern struct {
         };
     }
 
-    pub inline fn GetImmediateContext(self: *ID3D11Device, ppImmediateContext: **ID3D11DeviceContext) void {
+    pub fn GetImmediateContext(self: *ID3D11Device) *ID3D11DeviceContext {
         const FnType = fn (*ID3D11Device, **ID3D11DeviceContext) callconv(.winapi) void;
         const get_immediate_context: *const FnType = @ptrCast(self.vtable[40]);
 
-        get_immediate_context(self, ppImmediateContext);
+        var pImmediateContext: *ID3D11DeviceContext = undefined;
+        get_immediate_context(self, &pImmediateContext);
+
+        return pImmediateContext;
     }
 };
 

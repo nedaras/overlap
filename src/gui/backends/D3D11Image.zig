@@ -11,6 +11,12 @@ const Format = Image.Format;
 texture: *d3d11.ID3D11Texture2D,
 resource: *d3d11.ID3D11ShaderResourceView,
 
+       //  void ( STDMETHODCALLTYPE *GetDevice )( 
+       //     ID3D11RenderTargetView * This,
+       //     /* [annotation] */ 
+       //     _Outptr_  ID3D11Device **ppDevice);
+       // 
+
 const Self = @This();
 
 pub fn init(device: *d3d11.ID3D11Device, device_context: *d3d11.ID3D11DeviceContext, allocator: Allocator, desc: Image.Desc) Image.Error!*Self {
@@ -57,9 +63,7 @@ pub fn init(device: *d3d11.ID3D11Device, device_context: *d3d11.ID3D11DeviceCont
             try device.CreateTexture2D(&texture_desc, null, &result.texture);
             errdefer result.texture.Release();
 
-            // todo: we need to fix them pitches here
             var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
-            // mapped_resource.RowPitch
 
             try device_context.Map(@ptrCast(result.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
             defer device_context.Unmap(@ptrCast(result.texture), 0);
@@ -78,6 +82,7 @@ pub fn init(device: *d3d11.ID3D11Device, device_context: *d3d11.ID3D11DeviceCont
 
 pub const vtable = Image.VTable{
     .deinit = &deinit,
+    .update = &update,
 };
 
 fn deinit(context: *anyopaque, allocator: Allocator) void {
@@ -87,4 +92,18 @@ fn deinit(context: *anyopaque, allocator: Allocator) void {
     self.texture.Release();
 
     allocator.destroy(self);
+}
+
+fn update(context: *anyopaque, bytes: []const u8, pitch: u32) Image.Error!void {
+    const self: *Self = @ptrCast(@alignCast(context));
+
+    var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
+
+    const device = self.texture.GetDevice();
+    const device_context = device.GetImmediateContext();
+
+    try device_context.Map(@ptrCast(self.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+    defer device_context.Unmap(@ptrCast(self.texture), 0);
+
+    mapped_resource.write(u8, bytes, pitch);
 }
