@@ -23,6 +23,7 @@ pub const Glyph = struct {
 
 pub const Descriptor = struct {
     codepoint: u21,
+    size: u32,
     // size, weight, slant
 };
 
@@ -94,7 +95,7 @@ fn getFont(self: *FontRenderer, descriptor: Descriptor) !?fat.Face {
             continue;
         }
 
-        try self.fonts.append(self.allocator, try deffered_face.open(.{ .size = .{ .points = 16.0 } }));
+        try self.fonts.append(self.allocator, try deffered_face.open(.{ .size = .{ .points = @bitCast(descriptor.size) } }));
         return self.fonts.getLast();
     }
 

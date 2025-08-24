@@ -86,16 +86,21 @@ pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
     });
 }
 
+pub const Descriptor = struct {
+    size: f32 = 16.0,
+};
+
 // this is cursed this is hell
 // so we should just have gpu image no need to cpu one
-pub fn text(self: *Gui, pos: [2]f32, msg: []const u8) !void {
+pub fn text(self: *Gui, pos: [2]f32, msg: []const u8, descriptor: Descriptor) !void {
     const view = try unicode.Wtf8View.init(msg);
 
     var it = view.iterator();
     var advance: f32 = 0.0;
 
     while (it.nextCodepoint()) |codepoint| {
-        const glyph = try self.font_renderer.getGlyph(.{ .codepoint = codepoint });
+        // todo: this is just stoopid that zig cant hash f32 so i need todo it my self ok
+        const glyph = try self.font_renderer.getGlyph(.{ .size = @bitCast(descriptor.size), .codepoint = codepoint });
         defer advance += @floatFromInt(glyph.metrics.advance_x);
 
         const top = [2]f32{ pos[x] + @as(f32, @floatFromInt(glyph.metrics.bearing_x)) + advance, pos[y] + @as(f32, @floatFromInt(glyph.metrics.bearing_y)) };

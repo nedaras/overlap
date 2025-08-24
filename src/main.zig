@@ -126,7 +126,8 @@ pub fn main() !void {
         try hook.newFrame();
         defer hook.endFrame();
 
-        try gui.text(.{ 0.0, 0.0 }, "HelloWorld!");
+        try gui.text(.{ 0.0, 0.0 }, "HelloWorld!", .{});
+        try gui.text(.{ 0.0, 60.0 }, "MultipleFontSizes!", .{ .size = 32.0 });
 
         blk: {
             context.mutex.lock();
