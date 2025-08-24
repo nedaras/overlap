@@ -4,7 +4,7 @@ const Image = @import("Image.zig");
 const heap = std.heap;
 const math = std.math;
 
-// tood: upgrade with 0.15.1
+// todo: add tests as im clueless
 
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
@@ -17,17 +17,17 @@ image: Image,
 data: []u8,
 size: u32,
 
-nodes: std.DoublyLinkedList,
-nodes_pool: heap.MemoryPoolExtra(Data, .{ .growable = true }),
+skylines: std.DoublyLinkedList,
+skylines_pool: heap.MemoryPoolExtra(Skyline, .{ .growable = true }),
 
 const Atlas = @This();
 
-const Data = struct {
+const Skyline = struct {
     x: u32,
     y: u32,
-
     width: u32,
-    node: std.DoublyLinkedList.Node,
+
+    node: std.DoublyLinkedList.Node = .{},
 };
 
 const Region = struct {
@@ -56,12 +56,12 @@ pub fn init(allocator: Allocator, backend: Backend, size: u32) !Atlas {
         }),
         .data = data,
         .size = size,
-        .nodes = .{},
-        .nodes_pool = .init(allocator),
+        .skylines = .{},
+        .skylines_pool = .init(allocator),
     };
     errdefer self.deinit();
 
-    try self.nodes_pool.preheat(64);
+    try self.skylines_pool.preheat(64);
     try self.clear();
 
     return self;
@@ -70,30 +70,28 @@ pub fn init(allocator: Allocator, backend: Backend, size: u32) !Atlas {
 pub fn deinit(self: *Atlas) void {
     self.image.deinit(self.allocator);
     self.allocator.free(self.data);
-    self.nodes_pool.deinit();
+    self.skylines_pool.deinit();
 
     self.* = undefined;
 }
 
 pub fn clear(self: *Atlas) !void {
     @memset(self.data, 0);
+
     try self.backend.updateImage(self.image, self.data);
+    _ = self.skylines_pool.reset(.retain_capacity);
 
-    _ = self.nodes_pool.reset(.retain_capacity);
+    self.skylines = .{};
 
-    self.nodes.first = null;
-    self.nodes.last = null;
-
-    var data = self.nodes_pool.create() catch unreachable;
-    data.* = .{
+    var skyline = self.skylines_pool.create() catch unreachable;
+    skyline.* = .{
         .x = 0,
         .y = 0,
 
         .width = self.size,
-        .node = .{},
     };
 
-    self.nodes.prepend(&data.node);
+    self.skylines.prepend(&skyline.node);
 }
 
 pub fn fill(
@@ -122,25 +120,25 @@ pub fn reserve(
 ) !Region {
     var region: Region = .{ .x = 0, .y = 0, .width = width, .height = height };
 
-    const best_node = blk: {
+    const best_skyline = blk: {
         var best_width: u32 = math.maxInt(u32);
         var best_height: u32 = math.maxInt(u32);
 
-        var selected: ?*Data = null;
+        var selected: ?*Skyline = null;
 
-        var curr = self.nodes.first;
+        var curr = self.skylines.first;
         while (curr) |node| {
             defer curr = node.next;
 
-            const data: *Data = @fieldParentPtr("node", node);
-            const y = self.baseline(data, width, height) orelse continue;
+            const skyline: *Skyline= @fieldParentPtr("node", node);
+            const y = self.baseline(skyline, width, height) orelse continue;
 
-            if (y + height < best_height or (y + height == best_height and data.width < best_width)) {
-                selected = data;
-                best_width = data.width;
+            if (y + height < best_height or (y + height == best_height and skyline.width < best_width)) {
+                selected = skyline;
+                best_width = skyline.width;
                 best_height = y + height;
 
-                region.x = data.x;
+                region.x = skyline.x;
                 region.y = y;
             }
         }
@@ -148,105 +146,97 @@ pub fn reserve(
         break :blk selected orelse return error.NoSpaceLeft;
     };
 
-    const new_node = try self.nodes_pool.create();
-    new_node.* = .{
+    const new_skyline = try self.skylines_pool.create();
+    new_skyline.* = .{
         .x = region.x,
         .y = region.y + region.height,
         .width = region.width,
-        .node = .{},
     };
 
-    self.nodes.insertBefore(&best_node.node, &new_node.node);
+    self.skylines.insertBefore(&best_skyline.node, &new_skyline.node);
 
-    var prev = new_node;
-    var curr: ?*Data = best_node;
+    var prev = &new_skyline.node;
+    var curr: ?*std.DoublyLinkedList.Node = &best_skyline.node;
 
     // loop till we're inside
     while (curr) |node| {
+        const skyline: *Skyline = @fieldParentPtr("node", node);
+        const prev_skyline: *Skyline = @fieldParentPtr("node", prev);
+
         // inside
-        if (prev.x + prev.width > node.x) {
-            const move = prev.x + prev.width - node.x;
+        if (prev_skyline.x + prev_skyline.width > skyline.x) {
+            const move = prev_skyline.x + prev_skyline.width - skyline.x;
 
-            node.x += move;
-            node.width -|= move;
+            skyline.x += move;
+            skyline.width -|= move;
 
-            if (node.width == 0) {
-                curr = if (node.node.next) |c| @fieldParentPtr("node", c) else null;
+            if (skyline.width == 0) {
+                curr = node.next;
 
-                self.nodes.remove(&node.node);
-                self.nodes_pool.destroy(node);
+                self.skylines.remove(node);
+                self.skylines_pool.destroy(skyline);
 
                 continue;
             }
 
             prev = node;
-            curr = if (node.node.next) |n| @fieldParentPtr("node", n) else null;
+            curr = node.next;
 
             continue;
         }
         break;
     }
 
-    if (new_node.node.next) |nn| {
-        self.merge(new_node, @fieldParentPtr("node", nn));
+    if (new_skyline.node.next) |nn| {
+        self.merge(&new_skyline.node, nn);
     }
 
-    if (new_node.node.prev) |pp| {
-        self.merge(@fieldParentPtr("node", pp), new_node);
+    if (new_skyline.node.prev) |pp| {
+        self.merge(pp, &new_skyline.node);
     }
 
     return region;
 }
 
-fn merge(self: *Atlas, left: *Data, right: *Data) void {
-    if (left.y == right.y) {
+fn merge(self: *Atlas, left: *std.DoublyLinkedList.Node, right: *std.DoublyLinkedList.Node) void {
+    const left_skyline: *Skyline = @fieldParentPtr("node", left);
+    const right_skyline: *Skyline = @fieldParentPtr("node", right);
+
+    if (left_skyline.y == right_skyline.y) {
         @branchHint(.cold);
 
-        left.width += right.width;
+        left_skyline.width += right_skyline.width;
 
-        self.nodes.remove(&right.node);
-        self.nodes_pool.destroy(right);
+        self.skylines.remove(right);
+        self.skylines_pool.destroy(right_skyline);
     }
 }
 
 fn baseline(
     self: Atlas,
-    node: *Data,
+    skyline: *Skyline,
     width: u32,
     height: u32,
 ) ?u32 {
-    if (node.x + width > self.size) {
+    if (skyline.x + width > self.size) {
         return null;
     }
 
-    var y = node.y;
+    var y = skyline.y;
     var width_left = width;
 
-    var curr: ?*std.DoublyLinkedList.Node = &node.node;
+    var curr: ?*std.DoublyLinkedList.Node = &skyline.node;
     while (width_left > 0) {
         defer curr = curr.?.next;
-        const data: *Data = @fieldParentPtr("node", curr.?);
-        if (data.y + height > self.size) {
+        const curr_skyline: *Skyline = @fieldParentPtr("node", curr.?);
+
+        if (curr_skyline.y + height > self.size) {
             return null;
         }
 
-        y = @max(y, data.y);
-        width_left -|= data.width;
+        y = @max(y, curr_skyline.y);
+        width_left -|= curr_skyline.width;
     }
 
     return y;
-}
-
-pub fn dump(self: Atlas, writer: anytype) !void {
-    try writer.print(
-        \\P{c}
-        \\{d} {d}
-        \\255
-        \\
-    , .{
-        '5',
-        self.size,
-        self.size,
-    });
-    try writer.writeAll(self.data);
 }

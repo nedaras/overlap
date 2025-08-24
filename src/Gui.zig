@@ -21,7 +21,10 @@ fn BoundedArray(comptime T: type, N: comptime_int) type {
         buffer: [N]T,
         inner: std.ArrayListUnmanaged(T),
 
-        pub fn init() @This() {
+        pub inline fn init() @This() {
+            // todo: this is not safe as we're giving a pointer to this stacks buffer after return stack can move sideways
+            // inline perhaps will help out a bit
+            
             var self: @This() = .{
                 .buffer = undefined,
                 .inner = undefined,
@@ -68,9 +71,6 @@ fn BoundedArray(comptime T: type, N: comptime_int) type {
 const DrawCommands = BoundedArray(shared.DrawCommand, shared.max_draw_commands);
 const DrawVerticies = BoundedArray(shared.DrawVertex, shared.max_verticies);
 const DrawIndecies = BoundedArray(shared.DrawIndex, shared.max_indicies);
-
-// as we need backend now in gui i see no point to simulate that 1x1 pixel by checking if it's null
-// just make that one our self here in gui
 
 allocator: Allocator,
 
