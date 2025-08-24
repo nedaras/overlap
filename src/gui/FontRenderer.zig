@@ -79,9 +79,10 @@ pub fn getGlyph(self: *FontRenderer, descriptor: Descriptor) !Glyph {
 }
 
 fn getFont(self: *FontRenderer, descriptor: Descriptor) !?fat.Face {
-    for (self.fonts.items) |font| {
+    for (self.fonts.items) |*font| {
         if (font.glyphIndex(descriptor.codepoint) != null) {
-            return font;
+            try font.setSize(.{ .points = @bitCast(descriptor.size) });
+            return font.*;
         }
     }
 
