@@ -99,6 +99,7 @@ fn update(context: *anyopaque, bytes: []const u8, pitch: u32) Image.Error!void {
 
     var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
 
+    // if this happens to be bad we could just store context in this struct
     const device = self.texture.GetDevice();
     const device_context = device.GetImmediateContext();
 

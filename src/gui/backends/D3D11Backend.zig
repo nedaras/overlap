@@ -271,7 +271,6 @@ const D3D11Backend = struct {
         .deinit = &D3D11Backend.deinit,
         .frame = &D3D11Backend.frame,
         .loadImage = &D3D11Backend.loadImage,
-        .updateImage = &D3D11Backend.updateImage,
     };
 
     fn deinit(context: *const anyopaque) void {
@@ -394,20 +393,6 @@ const D3D11Backend = struct {
             .height = desc.height,
             .format = desc.format,
         };
-    }
-
-    fn updateImage(context: *const anyopaque, image: Image, bytes: []const u8) Backend.Error!void {
-        assert(image.width * image.height * @intFromEnum(image.format) == bytes.len);
-
-        const self: *const Self = @ptrCast(@alignCast(context));
-        const d3d11_image: *const D3D11Image = @ptrCast(@alignCast(image.ptr));
-
-        var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
-
-        try self.device_context.Map(@ptrCast(d3d11_image.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
-        defer self.device_context.Unmap(@ptrCast(d3d11_image.texture), 0);
-
-        mapped_resource.write(u8, bytes, image.width * @intFromEnum(image.format));
     }
 };
 

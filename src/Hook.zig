@@ -127,11 +127,6 @@ pub inline fn loadImage(self: *Self, allocator: Allocator, desc: Image.Desc) Ima
     return self.d3d11_hook.?.backend.?.backend().loadImage(allocator, desc);
 }
 
-pub inline fn updateImage(self: *Self, image: Image, bytes: []const u8) Backend.Error!void {
-    // todo: idk???
-    return self.d3d11_hook.?.backend.?.backend().updateImage(image, bytes);
-}
-
 // hooked thread
 // only after this call backend becomes invalid
 fn errored(context: *anyopaque, err: D3D11Hook.Error) void {

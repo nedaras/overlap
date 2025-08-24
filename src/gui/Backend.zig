@@ -20,7 +20,6 @@ pub const VTable = struct {
     deinit: *const fn (*const anyopaque) void,
     frame: *const fn (*const anyopaque, verticies: []const shared.DrawVertex, indecies: []const u16, draw_commands: []const shared.DrawCommand) Error!void,
     loadImage: *const fn (*const anyopaque, allocator: Allocator, desc: Image.Desc) Image.Error!Image,
-    updateImage: *const fn (*const anyopaque, image: Image, bytes: []const u8) Error!void,
 };
 
 const Backend = @This();
@@ -35,8 +34,4 @@ pub inline fn frame(self: Backend, verticies: []const shared.DrawVertex, indecie
 
 pub inline fn loadImage(self: Backend, allocator: Allocator, desc: Image.Desc) Image.Error!Image {
     return self.vtable.loadImage(self.ptr, allocator, desc);
-}
-
-pub inline fn updateImage(self: Backend, image: Image, bytes: []const u8) Error!void {
-    return self.vtable.updateImage(self.ptr, image, bytes);
 }

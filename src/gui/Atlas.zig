@@ -11,7 +11,6 @@ const assert = std.debug.assert;
 
 allocator: Allocator,
 
-backend: Backend,
 image: Image,
 
 data: []u8,
@@ -46,7 +45,6 @@ pub fn init(allocator: Allocator, backend: Backend, size: u32) !Atlas {
 
     var self: Atlas = .{
         .allocator = allocator,
-        .backend = backend,
         .image = try backend.loadImage(allocator, .{
             .width = size,
             .height = size,
@@ -78,7 +76,6 @@ pub fn deinit(self: *Atlas) void {
 pub fn clear(self: *Atlas) !void {
     @memset(self.data, 0);
 
-    //try self.backend.updateImage(self.image, self.data);
     try self.image.update(self.data);
     _ = self.skylines_pool.reset(.retain_capacity);
 
@@ -107,7 +104,6 @@ pub fn fill(self: *Atlas, region: Region, data: []u8) !void {
         @memcpy(self.data[dst_i .. dst_i + region.width], data[src_i .. src_i + region.width]);
     }
 
-    //try self.backend.updateImage(self.image, self.data);
     try self.image.update(self.data);
 }
 
