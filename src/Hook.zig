@@ -36,16 +36,13 @@ gateway: Gateway,
 const Self = @This();
 
 pub fn init() !Self {
-    return .{
-        .d3d11_hook = null,
-        .gateway = .{
-            .gui = undefined,
-            .main_reset_event = .{},
-            .hooked_reset_event = .{},
-            .err = null,
-            .exiting = false,
-        }
-    };
+    return .{ .d3d11_hook = null, .gateway = .{
+        .gui = undefined,
+        .main_reset_event = .{},
+        .hooked_reset_event = .{},
+        .err = null,
+        .exiting = false,
+    } };
 }
 
 pub fn deinit(self: *Self) void {

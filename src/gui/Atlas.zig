@@ -94,11 +94,7 @@ pub fn clear(self: *Atlas) !void {
     self.skylines.prepend(&skyline.node);
 }
 
-pub fn fill(
-    self: *Atlas,
-    region: Region,
-    data: []u8
-) !void {
+pub fn fill(self: *Atlas, region: Region, data: []u8) !void {
     assert(data.len == region.width * region.height);
     assert(self.image.width > region.x);
     assert(self.image.height > region.y);
@@ -107,7 +103,7 @@ pub fn fill(
         const src_i = y * region.width;
         const dst_i = (y + region.y) * self.size + region.x;
 
-        @memcpy(self.data[dst_i..dst_i + region.width], data[src_i..src_i + region.width]);
+        @memcpy(self.data[dst_i .. dst_i + region.width], data[src_i .. src_i + region.width]);
     }
 
     try self.backend.updateImage(self.image, self.data);
@@ -130,7 +126,7 @@ pub fn reserve(
         while (curr) |node| {
             defer curr = node.next;
 
-            const skyline: *Skyline= @fieldParentPtr("node", node);
+            const skyline: *Skyline = @fieldParentPtr("node", node);
             const y = self.baseline(skyline, width, height) orelse continue;
 
             if (y + height < best_height or (y + height == best_height and skyline.width < best_width)) {

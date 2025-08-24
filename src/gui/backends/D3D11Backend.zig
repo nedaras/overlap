@@ -421,7 +421,7 @@ const D3D11Backend = struct {
         try self.device_context.Map(@ptrCast(d3d11_image.texture), 0, d3d11.D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
 
         return .{
-            .buffer = mapped_resource.pData[0..mapped_resource.RowPitch * image.height],
+            .buffer = mapped_resource.pData[0 .. mapped_resource.RowPitch * image.height],
             .pitch = mapped_resource.RowPitch,
         };
     }

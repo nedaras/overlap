@@ -4,10 +4,9 @@ const shared = @import("gui/shared.zig");
 const Backend = @import("gui/Backend.zig");
 const Image = @import("gui/Image.zig");
 const FontRenderer = @import("gui/FontRenderer.zig");
+const bounded_array = @import("bounded_array.zig");
 const Allocator = std.mem.Allocator;
 const unicode = std.unicode;
-
-// tood: upgrade with 0.15.1
 
 // We can have a potential probelm in the future
 // What if Directx and Opengl calls frame at the same time
@@ -16,61 +15,9 @@ const unicode = std.unicode;
 const x = 0;
 const y = 1;
 
-fn BoundedArray(comptime T: type, N: comptime_int) type {
-    return struct {
-        buffer: [N]T,
-        inner: std.ArrayListUnmanaged(T),
-
-        pub inline fn init() @This() {
-            // todo: this is not safe as we're giving a pointer to this stacks buffer after return stack can move sideways
-            // inline perhaps will help out a bit
-            
-            var self: @This() = .{
-                .buffer = undefined,
-                .inner = undefined,
-            };
-
-            self.inner = .initBuffer(&self.buffer);
-            return self;
-        }
-
-        pub inline fn ensureUnusedCapacity(self: *@This(), n: usize) !void {
-            if (self.inner.unusedCapacitySlice().len < n) return error.OutOfMemory;
-        }
-
-        pub inline fn get(self: @This(), n: usize) T {
-            return self.inner.items[n];
-        }
-
-        pub inline fn appendSliceAssumeCapacity(self: *@This(), s: []const T) void {
-            return self.inner.appendSliceAssumeCapacity(s);
-        }
-
-        pub inline fn appendAssumeCapacity(self: *@This(), item: T) void {
-            return self.inner.appendAssumeCapacity(item);
-        }
-
-        pub inline fn len(self: @This()) usize {
-            return self.inner.items.len;
-        }
-
-        pub inline fn slice(self: @This()) []T {
-            return self.inner.items;
-        }
-
-        pub inline fn constSlice(self: @This()) []const T {
-            return self.inner.items;
-        }
-
-        pub inline fn clear(self: *@This()) void {
-            self.inner.items.len = 0;
-        }
-    };
-}
-
-const DrawCommands = BoundedArray(shared.DrawCommand, shared.max_draw_commands);
-const DrawVerticies = BoundedArray(shared.DrawVertex, shared.max_verticies);
-const DrawIndecies = BoundedArray(shared.DrawIndex, shared.max_indicies);
+const DrawCommands = bounded_array.BoundedArray(shared.DrawCommand, shared.max_draw_commands);
+const DrawVerticies = bounded_array.BoundedArray(shared.DrawVertex, shared.max_verticies);
+const DrawIndecies = bounded_array.BoundedArray(shared.DrawIndex, shared.max_indicies);
 
 allocator: Allocator,
 
@@ -87,9 +34,9 @@ const Gui = @This();
 pub fn init(allocator: Allocator, backend: Backend) !Gui {
     return .{
         .allocator = allocator,
-        .draw_commands = .init(),
-        .draw_verticies = .init(),
-        .draw_indecies = .init(),
+        .draw_commands = .{},
+        .draw_verticies = .{},
+        .draw_indecies = .{},
         .font_renderer = try FontRenderer.init(allocator, backend),
     };
 }
@@ -143,7 +90,7 @@ pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
 // so we should just have gpu image no need to cpu one
 pub fn text(self: *Gui, pos: [2]f32, msg: []const u8) !void {
     const view = try unicode.Wtf8View.init(msg);
-    
+
     var it = view.iterator();
     var advance: f32 = 0.0;
 
@@ -151,8 +98,8 @@ pub fn text(self: *Gui, pos: [2]f32, msg: []const u8) !void {
         const glyph = try self.font_renderer.getGlyph(.{ .codepoint = codepoint });
         defer advance += @floatFromInt(glyph.metrics.advance_x);
 
-        const top = [2]f32{pos[x] + @as(f32, @floatFromInt(glyph.metrics.bearing_x)) + advance, pos[y] + @as(f32, @floatFromInt(glyph.metrics.bearing_y))};
-        const bot = [2]f32{top[x] + @as(f32, @floatFromInt(glyph.width)), top[y] + @as(f32, @floatFromInt(glyph.height))};
+        const top = [2]f32{ pos[x] + @as(f32, @floatFromInt(glyph.metrics.bearing_x)) + advance, pos[y] + @as(f32, @floatFromInt(glyph.metrics.bearing_y)) };
+        const bot = [2]f32{ top[x] + @as(f32, @floatFromInt(glyph.width)), top[y] + @as(f32, @floatFromInt(glyph.height)) };
 
         const verticies = [_]shared.DrawVertex{
             .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv0[x], glyph.uv0[y] }, .col = 0xFFFFFFFF, .flags = 5 },
@@ -188,14 +135,14 @@ const DrawCommand = struct {
 
 // todo: on debug we can check if indecie are like in bounds
 fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
-    const amt: u16 = @intCast(self.draw_verticies.len());
+    const amt: u16 = @intCast(self.draw_verticies.len);
 
     self.draw_verticies.ensureUnusedCapacity(draw_cmd.verticies.len) catch return;
     self.draw_indecies.ensureUnusedCapacity(draw_cmd.indecies.len) catch return;
 
     const reuse_image = blk: {
-        if (self.draw_commands.len() == 0) break :blk false;
-        const last_draw_cmd = self.draw_commands.get(self.draw_commands.len() - 1);
+        if (self.draw_commands.len == 0) break :blk false;
+        const last_draw_cmd = self.draw_commands.get(self.draw_commands.len - 1);
         break :blk equalImages(last_draw_cmd.image, draw_cmd.image);
     };
 
@@ -213,7 +160,7 @@ fn addDrawCommand(self: *Gui, draw_cmd: DrawCommand) void {
     }
 
     if (reuse_image) {
-        const last_draw_cmd = &self.draw_commands.slice()[self.draw_commands.len() - 1];
+        const last_draw_cmd = &self.draw_commands.slice()[self.draw_commands.len - 1];
         last_draw_cmd.index_len += @intCast(draw_cmd.indecies.len);
 
         return;

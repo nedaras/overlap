@@ -58,7 +58,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
                 context: Context,
 
                 fn QueryInterface(ctx: *anyopaque, riid: REFIID, ppvObject: **anyopaque) callconv(.winapi) HRESULT {
-                    const self: *@This() = @alignCast(@ptrCast(ctx));
+                    const self: *@This() = @ptrCast(@alignCast(ctx));
 
                     const guids = &[_]REFIID{
                         UUID,
@@ -82,7 +82,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
 
                 // todo: reusize this
                 pub fn AddRef(ctx: *anyopaque) callconv(.winapi) ULONG {
-                    const self: *@This() = @alignCast(@ptrCast(ctx));
+                    const self: *@This() = @ptrCast(@alignCast(ctx));
 
                     const prev = self.ref_count.fetchAdd(1, .monotonic);
                     return prev + 1;
@@ -90,7 +90,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
 
                 // todo: reusize this
                 fn Release(ctx: *anyopaque) callconv(.winapi) ULONG {
-                    const self: *@This() = @alignCast(@ptrCast(ctx));
+                    const self: *@This() = @ptrCast(@alignCast(ctx));
                     const prev = self.ref_count.fetchSub(1, .release);
 
                     if (prev == 1) {
@@ -102,7 +102,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
                 }
 
                 pub fn Invoke(ctx: *anyopaque, sender: TSender, args: TResult) callconv(.winapi) HRESULT {
-                    const self: *@This() = @alignCast(@ptrCast(ctx));
+                    const self: *@This() = @ptrCast(@alignCast(ctx));
                     invokeFn(self.context, sender, args);
 
                     return windows.S_OK;
