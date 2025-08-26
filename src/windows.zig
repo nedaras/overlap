@@ -67,6 +67,7 @@ const IBitmapFrame = graphics.IBitmapFrame;
 
 pub const IPixelDataProvider = graphics.IPixelDataProvider;
 pub const IBitmapTransform = graphics.IBitmapTransform;
+pub const BitmapInterpolationMode = graphics.BitmapInterpolationMode;
 
 pub const RO_INIT_TYPE = INT;
 pub const RO_INIT_SINGLETHREADED = 0;

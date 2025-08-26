@@ -5,3 +5,4 @@ pub const IBitmapDecoder = imaging.IBitmapDecoder;
 pub const IBitmapTransform = imaging.IBitmapTransform;
 pub const IPixelDataProvider = imaging.IPixelDataProvider;
 pub const IBitmapDecoderStatics = imaging.IBitmapDecoderStatics;
+pub const BitmapInterpolationMode = imaging.BitmapInterpolationMode;

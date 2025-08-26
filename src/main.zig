@@ -47,6 +47,11 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
 
     const transform = try windows.IBitmapTransform.new();
     defer transform.Release();
+    
+    transform.put_ScaledHeight(64);
+    transform.put_ScaledWidth(64);
+
+    transform.put_InterpolationMode(.Fant);
 
     const pixels = try (try frame.GetPixelDataTransformedAsync(
         windows.BitmapPixelFormat_Rgba8,
@@ -70,8 +75,8 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     context.title = try context.allocator.dupe(u16, properties.Title());
     context.artist = try context.allocator.dupe(u16, properties.Artist());
 
-    context.image_width = frame.PixelWidth();
-    context.image_height = frame.PixelHeight();
+    context.image_width = 64;
+    context.image_height = 64;
     context.image_pixels = pixels;
 
     context.modified +%= 1;

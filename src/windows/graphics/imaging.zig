@@ -4,6 +4,7 @@ const winrt = @import("../winrt.zig");
 const unicode = std.unicode;
 const assert = std.debug.assert;
 
+const INT = windows.INT;
 const GUID = windows.GUID;
 const BYTE = windows.BYTE;
 const UINT32 = windows.UINT32;
@@ -17,6 +18,13 @@ const IRandomAccessStream = windows.IRandomAccessStream;
 const IActivationFactory = windows.IActivationFactory;
 const ExifOrientationMode = windows.ExifOrientationMode;
 const ColorManagementMode = windows.ColorManagementMode;
+
+pub const BitmapInterpolationMode = enum(INT) {
+    NearestNeighbor = 0,
+    Linear = 1,
+    Cubic = 2,
+    Fant = 3,
+};
 
 pub const IBitmapTransform = extern struct {
     vtable: [*]const *const anyopaque,
@@ -47,7 +55,7 @@ pub const IBitmapTransform = extern struct {
         return transform;
     }
 
-    pub fn put_ScaleddWidth(self: *IBitmapTransform, value: UINT32) void {
+    pub fn put_ScaledWidth(self: *IBitmapTransform, value: UINT32) void {
         const FnType = fn (*IBitmapTransform, UINT32) callconv(.winapi) HRESULT;
         const put_scaled_width: *const FnType = @ptrCast(self.vtable[7]);
 
@@ -59,6 +67,13 @@ pub const IBitmapTransform = extern struct {
         const put_scaled_width: *const FnType = @ptrCast(self.vtable[9]);
 
         assert(put_scaled_width(self, value) == windows.S_OK);
+    }
+
+    pub fn put_InterpolationMode(self: *IBitmapTransform, value: BitmapInterpolationMode ) void {
+        const FnType = fn (*IBitmapTransform, BitmapInterpolationMode) callconv(.winapi) HRESULT;
+        const put_interpolation_mode: *const FnType = @ptrCast(self.vtable[11]);
+
+        assert(put_interpolation_mode(self, value) == windows.S_OK);
     }
 };
 
