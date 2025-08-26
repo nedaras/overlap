@@ -46,6 +46,20 @@ pub const IBitmapTransform = extern struct {
 
         return transform;
     }
+
+    pub fn put_ScaleddWidth(self: *IBitmapTransform, value: UINT32) void {
+        const FnType = fn (*IBitmapTransform, UINT32) callconv(.winapi) HRESULT;
+        const put_scaled_width: *const FnType = @ptrCast(self.vtable[7]);
+
+        assert(put_scaled_width(self, value) == windows.S_OK);
+    }
+
+    pub fn put_ScaledHeight(self: *IBitmapTransform, value: UINT32) void {
+        const FnType = fn (*IBitmapTransform, UINT32) callconv(.winapi) HRESULT;
+        const put_scaled_width: *const FnType = @ptrCast(self.vtable[9]);
+
+        assert(put_scaled_width(self, value) == windows.S_OK);
+    }
 };
 
 pub const IBitmapDecoderStatics = extern struct {

@@ -17,12 +17,14 @@ const Context = struct {
     image_pixels: ?*windows.IPixelDataProvider = null,
 
     title: []const u16 = &.{},
+    artist: []const u16 = &.{},
 
     pub fn deinit(self: *Context) void {
         if (self.image_pixels) |image_pixels| {
             image_pixels.Release();
         }
         self.allocator.free(self.title);
+        self.allocator.free(self.artist);
         self.* = undefined;
     }
 };
@@ -46,7 +48,8 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     const transform = try windows.IBitmapTransform.new();
     defer transform.Release();
 
-    // todo: add those PutScale stuff for better image quality
+    transform.put_ScaleddWidth(56);
+    transform.put_ScaledHeight(56);
 
     const pixels = try (try frame.GetPixelDataTransformedAsync(
         windows.BitmapPixelFormat_Rgba8,
@@ -65,7 +68,10 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     }
 
     context.allocator.free(context.title);
+    context.allocator.free(context.artist);
+
     context.title = try context.allocator.dupe(u16, properties.Title());
+    context.artist = try context.allocator.dupe(u16, properties.Artist());
 
     context.image_width = frame.PixelWidth();
     context.image_height = frame.PixelHeight();
@@ -175,6 +181,8 @@ pub fn main() !void {
         // it kinda looks bad as we're rendering in smaller size, but it should be a simple fix
         gui.image(.{ 10.0 + pos[x], 10.0 + pos[y] }, .{ 10.0 + pos[x] + 56.0, 10.0 + pos[y] + 56.0 }, cover); // cover
 
-        try gui.textW(.{ 0.0, 0.0 }, context.title, .{});
+        // todo: add color option
+        try gui.textW(.{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + pos[y] }, context.title, .{ .size = 12.0 });
+        try gui.textW(.{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + 20.0 + pos[y] }, context.artist, .{ .size = 10.0 });
     }
 }
