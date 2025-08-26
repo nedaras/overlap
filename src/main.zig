@@ -16,10 +16,13 @@ const Context = struct {
     image_height: u32 = 0,
     image_pixels: ?*windows.IPixelDataProvider = null,
 
+    title: []const u16 = &.{},
+
     pub fn deinit(self: *Context) void {
         if (self.image_pixels) |image_pixels| {
             image_pixels.Release();
         }
+        self.allocator.free(self.title);
         self.* = undefined;
     }
 };
@@ -60,6 +63,9 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     if (context.image_pixels) |image_pixels| {
         image_pixels.Release();
     }
+
+    context.allocator.free(context.title);
+    context.title = try context.allocator.dupe(u16, properties.Title());
 
     context.image_width = frame.PixelWidth();
     context.image_height = frame.PixelHeight();
@@ -131,9 +137,10 @@ pub fn main() !void {
         //try gui.text(.{ 0.0, 0.0 }, "HelloWorld!", .{});
         //try gui.text(.{ 0.0, 60.0 }, "MultipleFontSizes!", .{ .size = 64.0 });
 
+        context.mutex.lock();
+        defer context.mutex.unlock();
+
         blk: {
-            context.mutex.lock();
-            defer context.mutex.unlock();
             defer modified = context.modified;
 
             if (modified == context.modified) break :blk;
@@ -167,5 +174,7 @@ pub fn main() !void {
         gui.rect(.{ pos[x], pos[y] }, .{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + pos[y] + 56.0 + 10.0 }, 0x10191EFF); // background
         // it kinda looks bad as we're rendering in smaller size, but it should be a simple fix
         gui.image(.{ 10.0 + pos[x], 10.0 + pos[y] }, .{ 10.0 + pos[x] + 56.0, 10.0 + pos[y] + 56.0 }, cover); // cover
+
+        try gui.textW(.{ 0.0, 0.0 }, context.title, .{});
     }
 }

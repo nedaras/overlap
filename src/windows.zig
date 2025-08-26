@@ -32,6 +32,7 @@ pub const FALSE = windows.FALSE;
 pub const ULONG = windows.ULONG;
 pub const DWORD = windows.DWORD;
 pub const WPARAM = windows.WPARAM;
+pub const PCWSTR = windows.PCWSTR;
 pub const LPARAM = windows.LPARAM;
 pub const SIZE_T = windows.SIZE_T;
 pub const LPCSTR = windows.LPCSTR;

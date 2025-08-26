@@ -92,10 +92,9 @@ pub const Descriptor = struct {
 
 pub fn text(self: *Gui, pos: [2]f32, msg: []const u8, descriptor: Descriptor) !void {
     const view = try unicode.Wtf8View.init(msg);
-
     var it = view.iterator();
-    var advance: f32 = 0.0;
 
+    var advance: f32 = 0.0;
     while (it.nextCodepoint()) |codepoint| {
         // todo: this is just stoopid that zig cant hash f32 so i need todo it my self ok
         const glyph = try self.font_renderer.getGlyph(.{ .size = @bitCast(descriptor.size), .codepoint = codepoint });
@@ -125,10 +124,13 @@ pub fn text(self: *Gui, pos: [2]f32, msg: []const u8, descriptor: Descriptor) !v
 }
 
 pub fn textW(self: *Gui, pos: [2]f32, msg: []const u16, descriptor: Descriptor) !void {
-    var it = try unicode.Wtf16LeIterator.init(msg);
-    var advance: f32 = 0.0;
+    var it = unicode.Wtf16LeIterator.init(msg);
 
+    var advance: f32 = 0.0;
     while (it.nextCodepoint()) |codepoint| {
+        // todo: fix this man on libfat
+        if (codepoint == ' ') continue;
+
         // todo: this is just stoopid that zig cant hash f32 so i need todo it my self ok
         const glyph = try self.font_renderer.getGlyph(.{ .size = @bitCast(descriptor.size), .codepoint = codepoint });
         defer advance += @floatFromInt(glyph.metrics.advance_x);
