@@ -43,6 +43,8 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     const transform = try windows.IBitmapTransform.new();
     defer transform.Release();
 
+    // todo: add those PutScale stuff for better image quality
+
     const pixels = try (try frame.GetPixelDataTransformedAsync(
         windows.BitmapPixelFormat_Rgba8,
         windows.BitmapAlphaMode_Premultiplied,
@@ -126,8 +128,8 @@ pub fn main() !void {
         try hook.newFrame();
         defer hook.endFrame();
 
-        try gui.text(.{ 0.0, 0.0 }, "HelloWorld!", .{});
-        try gui.text(.{ 0.0, 60.0 }, "MultipleFontSizes!", .{ .size = 64.0 });
+        //try gui.text(.{ 0.0, 0.0 }, "HelloWorld!", .{});
+        //try gui.text(.{ 0.0, 60.0 }, "MultipleFontSizes!", .{ .size = 64.0 });
 
         blk: {
             context.mutex.lock();
@@ -154,9 +156,16 @@ pub fn main() !void {
                 .format = .rgba,
             });
         }
+        
+        const cover = image orelse continue;
+        const pos = &[2]f32{ 100.0, 100.0 };
 
-        if (image) |img| {
-            gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(img.width), @floatFromInt(img.height) }, img);
-        }
+        const x = 0;
+        const y = 1;
+
+        gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ 10.0 + pos[x] + 56.0 + 10.0 + 1.0, 10.0 + pos[y] + 56.0 + 10.0 + 1.0 }, 0x202E36FF); // border
+        gui.rect(.{ pos[x], pos[y] }, .{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + pos[y] + 56.0 + 10.0 }, 0x10191EFF); // background
+        // it kinda looks bad as we're rendering in smaller size, but it should be a simple fix
+        gui.image(.{ 10.0 + pos[x], 10.0 + pos[y] }, .{ 10.0 + pos[x] + 56.0, 10.0 + pos[y] + 56.0 }, cover); // cover
     }
 }

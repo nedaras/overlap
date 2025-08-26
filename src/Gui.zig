@@ -90,12 +90,42 @@ pub const Descriptor = struct {
     size: f32 = 16.0,
 };
 
-// this is cursed this is hell
-// so we should just have gpu image no need to cpu one
 pub fn text(self: *Gui, pos: [2]f32, msg: []const u8, descriptor: Descriptor) !void {
     const view = try unicode.Wtf8View.init(msg);
 
     var it = view.iterator();
+    var advance: f32 = 0.0;
+
+    while (it.nextCodepoint()) |codepoint| {
+        // todo: this is just stoopid that zig cant hash f32 so i need todo it my self ok
+        const glyph = try self.font_renderer.getGlyph(.{ .size = @bitCast(descriptor.size), .codepoint = codepoint });
+        defer advance += @floatFromInt(glyph.metrics.advance_x);
+
+        const top = [2]f32{ pos[x] + @as(f32, @floatFromInt(glyph.metrics.bearing_x)) + advance, pos[y] + @as(f32, @floatFromInt(glyph.metrics.bearing_y)) };
+        const bot = [2]f32{ top[x] + @as(f32, @floatFromInt(glyph.width)), top[y] + @as(f32, @floatFromInt(glyph.height)) };
+
+        const verticies = [_]shared.DrawVertex{
+            .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv0[x], glyph.uv0[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ bot[x], top[y] }, .uv = .{ glyph.uv1[x], glyph.uv0[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ glyph.uv1[x], glyph.uv1[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ top[x], bot[y] }, .uv = .{ glyph.uv0[x], glyph.uv1[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+        };
+
+        const indecies = [_]u16{
+            0, 1, 2,
+            0, 2, 3,
+        };
+
+        self.addDrawCommand(.{
+            .image = self.font_renderer.atlas.image,
+            .verticies = &verticies,
+            .indecies = &indecies,
+        });
+    }
+}
+
+pub fn textW(self: *Gui, pos: [2]f32, msg: []const u16, descriptor: Descriptor) !void {
+    var it = try unicode.Wtf16LeIterator.init(msg);
     var advance: f32 = 0.0;
 
     while (it.nextCodepoint()) |codepoint| {
