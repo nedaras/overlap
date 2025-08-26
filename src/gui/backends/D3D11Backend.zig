@@ -236,7 +236,8 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     errdefer result.white_pixel_resource.Release();
 
     var sampler_desc = mem.zeroes(d3d11.D3D11_SAMPLER_DESC);
-    sampler_desc.Filter = d3d11.D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    sampler_desc.Filter = d3d11.D3D11_FILTER_ANISOTROPIC;
+    sampler_desc.MaxAnisotropy = 16;
     sampler_desc.AddressU = d3d11.D3D11_TEXTURE_ADDRESS_CLAMP;
     sampler_desc.AddressV = d3d11.D3D11_TEXTURE_ADDRESS_CLAMP;
     sampler_desc.AddressW = d3d11.D3D11_TEXTURE_ADDRESS_CLAMP;
