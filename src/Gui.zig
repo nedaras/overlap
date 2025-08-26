@@ -88,6 +88,7 @@ pub fn image(self: *Gui, top: [2]f32, bot: [2]f32, src: Image) void {
 
 pub const Descriptor = struct {
     size: f32 = 16.0,
+    color: u32 = 0xFFFFFFFF,
 };
 
 pub fn text(self: *Gui, pos: [2]f32, msg: []const u8, descriptor: Descriptor) !void {
@@ -104,10 +105,10 @@ pub fn text(self: *Gui, pos: [2]f32, msg: []const u8, descriptor: Descriptor) !v
         const bot = [2]f32{ top[x] + @as(f32, @floatFromInt(glyph.width)), top[y] + @as(f32, @floatFromInt(glyph.height)) };
 
         const verticies = [_]shared.DrawVertex{
-            .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv0[x], glyph.uv0[y] }, .col = 0xFFFFFFFF, .flags = 5 },
-            .{ .pos = .{ bot[x], top[y] }, .uv = .{ glyph.uv1[x], glyph.uv0[y] }, .col = 0xFFFFFFFF, .flags = 5 },
-            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ glyph.uv1[x], glyph.uv1[y] }, .col = 0xFFFFFFFF, .flags = 5 },
-            .{ .pos = .{ top[x], bot[y] }, .uv = .{ glyph.uv0[x], glyph.uv1[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv0[x], glyph.uv0[y] }, .col = descriptor.color, .flags = 5 },
+            .{ .pos = .{ bot[x], top[y] }, .uv = .{ glyph.uv1[x], glyph.uv0[y] }, .col = descriptor.color, .flags = 5 },
+            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ glyph.uv1[x], glyph.uv1[y] }, .col = descriptor.color, .flags = 5 },
+            .{ .pos = .{ top[x], bot[y] }, .uv = .{ glyph.uv0[x], glyph.uv1[y] }, .col = descriptor.color, .flags = 5 },
         };
 
         const indecies = [_]u16{
@@ -139,10 +140,10 @@ pub fn textW(self: *Gui, pos: [2]f32, msg: []const u16, descriptor: Descriptor) 
         const bot = [2]f32{ top[x] + @as(f32, @floatFromInt(glyph.width)), top[y] + @as(f32, @floatFromInt(glyph.height)) };
 
         const verticies = [_]shared.DrawVertex{
-            .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv0[x], glyph.uv0[y] }, .col = 0xFFFFFFFF, .flags = 5 },
-            .{ .pos = .{ bot[x], top[y] }, .uv = .{ glyph.uv1[x], glyph.uv0[y] }, .col = 0xFFFFFFFF, .flags = 5 },
-            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ glyph.uv1[x], glyph.uv1[y] }, .col = 0xFFFFFFFF, .flags = 5 },
-            .{ .pos = .{ top[x], bot[y] }, .uv = .{ glyph.uv0[x], glyph.uv1[y] }, .col = 0xFFFFFFFF, .flags = 5 },
+            .{ .pos = .{ top[x], top[y] }, .uv = .{ glyph.uv0[x], glyph.uv0[y] }, .col = descriptor.color, .flags = 5 },
+            .{ .pos = .{ bot[x], top[y] }, .uv = .{ glyph.uv1[x], glyph.uv0[y] }, .col = descriptor.color, .flags = 5 },
+            .{ .pos = .{ bot[x], bot[y] }, .uv = .{ glyph.uv1[x], glyph.uv1[y] }, .col = descriptor.color, .flags = 5 },
+            .{ .pos = .{ top[x], bot[y] }, .uv = .{ glyph.uv0[x], glyph.uv1[y] }, .col = descriptor.color, .flags = 5 },
         };
 
         const indecies = [_]u16{

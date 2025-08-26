@@ -48,9 +48,6 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     const transform = try windows.IBitmapTransform.new();
     defer transform.Release();
 
-    transform.put_ScaleddWidth(56);
-    transform.put_ScaledHeight(56);
-
     const pixels = try (try frame.GetPixelDataTransformedAsync(
         windows.BitmapPixelFormat_Rgba8,
         windows.BitmapAlphaMode_Premultiplied,
@@ -176,13 +173,15 @@ pub fn main() !void {
         const x = 0;
         const y = 1;
 
+        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cover.width), @floatFromInt(cover.height) }, cover); // cover
+
         gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ 10.0 + pos[x] + 56.0 + 10.0 + 1.0, 10.0 + pos[y] + 56.0 + 10.0 + 1.0 }, 0x202E36FF); // border
         gui.rect(.{ pos[x], pos[y] }, .{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + pos[y] + 56.0 + 10.0 }, 0x10191EFF); // background
-        // it kinda looks bad as we're rendering in smaller size, but it should be a simple fix
+        // it kinda looks bad as we're rendering in smaller size, but it should be a simple fix, ok it's harder now
         gui.image(.{ 10.0 + pos[x], 10.0 + pos[y] }, .{ 10.0 + pos[x] + 56.0, 10.0 + pos[y] + 56.0 }, cover); // cover
 
         // todo: add color option
         try gui.textW(.{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + pos[y] }, context.title, .{ .size = 12.0 });
-        try gui.textW(.{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + 20.0 + pos[y] }, context.artist, .{ .size = 10.0 });
+        try gui.textW(.{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + 20.0 + pos[y] }, context.artist, .{ .size = 10.0, .color = 0x808080FF });
     }
 }
