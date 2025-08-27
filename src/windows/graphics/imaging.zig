@@ -69,7 +69,7 @@ pub const IBitmapTransform = extern struct {
         assert(put_scaled_width(self, value) == windows.S_OK);
     }
 
-    pub fn put_InterpolationMode(self: *IBitmapTransform, value: BitmapInterpolationMode ) void {
+    pub fn put_InterpolationMode(self: *IBitmapTransform, value: BitmapInterpolationMode) void {
         const FnType = fn (*IBitmapTransform, BitmapInterpolationMode) callconv(.winapi) HRESULT;
         const put_interpolation_mode: *const FnType = @ptrCast(self.vtable[11]);
 

@@ -11,11 +11,11 @@ const Format = Image.Format;
 texture: *d3d11.ID3D11Texture2D,
 resource: *d3d11.ID3D11ShaderResourceView,
 
-       //  void ( STDMETHODCALLTYPE *GetDevice )( 
-       //     ID3D11RenderTargetView * This,
-       //     /* [annotation] */ 
-       //     _Outptr_  ID3D11Device **ppDevice);
-       // 
+//  void ( STDMETHODCALLTYPE *GetDevice )(
+//     ID3D11RenderTargetView * This,
+//     /* [annotation] */
+//     _Outptr_  ID3D11Device **ppDevice);
+//
 
 const Self = @This();
 

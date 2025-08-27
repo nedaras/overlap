@@ -101,7 +101,7 @@ pub inline fn gui(self: *Self) *Gui {
 }
 
 //pub inline fn input(self: *Self) *shared.Input {
-    //return &self.gateway.input;
+//return &self.gateway.input;
 //}
 
 pub const FrameError = D3D11Hook.Error;

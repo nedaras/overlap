@@ -9,11 +9,11 @@ const Context = struct {
     /// Must be threadsafe.
     allocator: Allocator,
 
+    image_size: u32,
+
     mutex: std.Thread.Mutex = .{},
     modified: u16 = 0,
 
-    image_width: u32 = 0,
-    image_height: u32 = 0,
     image_pixels: ?*windows.IPixelDataProvider = null,
 
     title: []const u16 = &.{},
@@ -47,9 +47,9 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
 
     const transform = try windows.IBitmapTransform.new();
     defer transform.Release();
-    
-    transform.put_ScaledHeight(64);
-    transform.put_ScaledWidth(64);
+
+    transform.put_ScaledHeight(context.image_size);
+    transform.put_ScaledWidth(context.image_size);
 
     transform.put_InterpolationMode(.Fant);
 
@@ -75,8 +75,6 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     context.title = try context.allocator.dupe(u16, properties.Title());
     context.artist = try context.allocator.dupe(u16, properties.Artist());
 
-    context.image_width = 64;
-    context.image_height = 64;
     context.image_pixels = pixels;
 
     context.modified +%= 1;
@@ -87,10 +85,7 @@ pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTrans
         context.mutex.lock();
         defer context.mutex.unlock();
 
-        context.image_width = 0;
-        context.image_height = 0;
         context.image_pixels = null;
-
         context.modified +%= 1;
 
         return;
@@ -110,6 +105,7 @@ pub fn main() !void {
 
     var context = Context{
         .allocator = allocator,
+        .image_size = 64,
     };
     defer context.deinit();
 
@@ -150,7 +146,6 @@ pub fn main() !void {
 
         blk: {
             defer modified = context.modified;
-
             if (modified == context.modified) break :blk;
 
             if (image) |img| {
@@ -165,28 +160,28 @@ pub fn main() !void {
             pixels.DetachPixelData(&len, &ptr); // todo: add PixelDataProvider
 
             image = try hook.loadImage(allocator, .{
-                .width = context.image_width,
-                .height = context.image_height,
+                .width = context.image_size,
+                .height = context.image_size,
                 .data = ptr[0..len],
                 .format = .rgba,
             });
         }
-        
+
         const cover = image orelse continue;
+
         const pos = &[2]f32{ 100.0, 100.0 };
+        const image_size: f32 = @floatFromInt(context.image_size);
 
         const x = 0;
         const y = 1;
 
         gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cover.width), @floatFromInt(cover.height) }, cover); // cover
 
-        gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ 10.0 + pos[x] + 56.0 + 10.0 + 1.0, 10.0 + pos[y] + 56.0 + 10.0 + 1.0 }, 0x202E36FF); // border
-        gui.rect(.{ pos[x], pos[y] }, .{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + pos[y] + 56.0 + 10.0 }, 0x10191EFF); // background
-        // it kinda looks bad as we're rendering in smaller size, but it should be a simple fix, ok it's harder now
-        gui.image(.{ 10.0 + pos[x], 10.0 + pos[y] }, .{ 10.0 + pos[x] + 56.0, 10.0 + pos[y] + 56.0 }, cover); // cover
+        gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ 10.0 + pos[x] + image_size + 10.0 + 1.0, 10.0 + pos[y] + image_size + 10.0 + 1.0 }, 0x202E36FF); // border
+        gui.rect(.{ pos[x], pos[y] }, .{ 10.0 + pos[x] + image_size + 10.0, 10.0 + pos[y] + image_size + 10.0 }, 0x10191EFF); // background
+        gui.image(.{ 10.0 + pos[x], 10.0 + pos[y] }, .{ 10.0 + pos[x] + image_size, 10.0 + pos[y] + image_size }, cover); // cover
 
-        // todo: add color option
-        try gui.textW(.{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + pos[y] }, context.title, .{ .size = 12.0 });
-        try gui.textW(.{ 10.0 + pos[x] + 56.0 + 10.0, 10.0 + 20.0 + pos[y] }, context.artist, .{ .size = 10.0, .color = 0x808080FF });
+        try gui.textW(.{ 10.0 + pos[x] + image_size + 10.0, 10.0 + pos[y] }, context.title, .{ .size = 12.0 });
+        try gui.textW(.{ 10.0 + pos[x] + image_size + 10.0, 10.0 + 20.0 + pos[y] }, context.artist, .{ .size = 10.0, .color = 0x808080FF });
     }
 }

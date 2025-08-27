@@ -65,5 +65,4 @@ inline fn tracedDllMain(instance: windows.HINSTANCE, reason: windows.DWORD, _: w
     return windows.FALSE;
 }
 
-test {
-}
+test {}
