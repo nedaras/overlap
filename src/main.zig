@@ -170,18 +170,25 @@ pub fn main() !void {
         const cover = image orelse continue;
 
         const pos = &[2]f32{ 100.0, 100.0 };
+
         const image_size: f32 = @floatFromInt(context.image_size);
+        const padding = 8.0;
+        const width = 256.0;
 
         const x = 0;
         const y = 1;
 
         gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cover.width), @floatFromInt(cover.height) }, cover); // cover
 
-        gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ 10.0 + pos[x] + image_size + 10.0 + 1.0, 10.0 + pos[y] + image_size + 10.0 + 1.0 }, 0x202E36FF); // border
-        gui.rect(.{ pos[x], pos[y] }, .{ 10.0 + pos[x] + image_size + 10.0, 10.0 + pos[y] + image_size + 10.0 }, 0x10191EFF); // background
-        gui.image(.{ 10.0 + pos[x], 10.0 + pos[y] }, .{ 10.0 + pos[x] + image_size, 10.0 + pos[y] + image_size }, cover); // cover
+        // background
+        gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ padding + pos[x] + width + padding + 1.0, padding + pos[y] + image_size + padding + 1.0 }, 0x202E36FF);
+        gui.rect(.{ pos[x], pos[y] }, .{ padding + pos[x] + width + padding, padding + pos[y] + image_size + padding }, 0x10191EFF);
 
-        try gui.textW(.{ 10.0 + pos[x] + image_size + 10.0, 10.0 + pos[y] }, context.title, .{ .size = 12.0 });
-        try gui.textW(.{ 10.0 + pos[x] + image_size + 10.0, 10.0 + 20.0 + pos[y] }, context.artist, .{ .size = 10.0, .color = 0x808080FF });
+        // cover
+        gui.image(.{ padding + pos[x], padding + pos[y] }, .{ padding + pos[x] + image_size, padding + pos[y] + image_size }, cover);
+
+        // properties
+        try gui.textW(.{ padding + pos[x] + image_size + padding, padding + pos[y] }, context.title, .{ .size = 12.0 });
+        try gui.textW(.{ padding + pos[x] + image_size + padding, padding + 20.0 + pos[y] }, context.artist, .{ .size = 10.0, .color = 0x808080FF });
     }
 }
