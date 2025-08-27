@@ -178,8 +178,6 @@ pub fn main() !void {
         const x = 0;
         const y = 1;
 
-        gui.image(.{ 0.0, 0.0 }, .{ @floatFromInt(cover.width), @floatFromInt(cover.height) }, cover); // cover
-
         // background
         gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ padding + pos[x] + width + padding + 1.0, padding + pos[y] + image_size + padding + 1.0 }, 0x202E36FF);
         gui.rect(.{ pos[x], pos[y] }, .{ padding + pos[x] + width + padding, padding + pos[y] + image_size + padding }, 0x10191EFF);
