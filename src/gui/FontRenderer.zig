@@ -62,13 +62,17 @@ pub fn getGlyph(self: *FontRenderer, descriptor: Descriptor) !Glyph {
     defer render.deinit(self.allocator);
 
     if (render.width == 0 or render.height == 0) {
-        return .{
+        const glyph: Glyph = .{
             .uv0 = .{ 0.0, 0.0 },
             .uv1 = .{ 0.0, 0.0 },
             .width = 0,
             .height = 0,
             .metrics = try font.glyphMetrics(idx),
         };
+
+        try self.glyphs.put(self.allocator, descriptor, glyph);
+
+        return glyph;
     }
 
     const rect = try self.atlas.reserve(render.width, render.height);
@@ -91,7 +95,7 @@ pub fn getGlyph(self: *FontRenderer, descriptor: Descriptor) !Glyph {
 fn getFont(self: *FontRenderer, descriptor: Descriptor) !?fat.Face {
     for (self.fonts.items) |*font| {
         if (font.glyphIndex(descriptor.codepoint) != null) {
-            try font.setSize(.{ .points = @bitCast(descriptor.size) });
+            try font.setSize(.{ .points = @bitCast(descriptor.size)});
             return font.*;
         }
     }
