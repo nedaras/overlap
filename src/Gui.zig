@@ -129,9 +129,6 @@ pub fn textW(self: *Gui, pos: [2]f32, msg: []const u16, descriptor: Descriptor) 
 
     var advance: f32 = 0.0;
     while (it.nextCodepoint()) |codepoint| {
-        // todo: fix this man on libfat
-        if (codepoint == ' ') continue;
-
         // todo: this is just stoopid that zig cant hash f32 so i need todo it my self ok
         const glyph = try self.font_renderer.getGlyph(.{ .size = @bitCast(descriptor.size), .codepoint = codepoint });
         defer advance += @floatFromInt(glyph.metrics.advance_x);

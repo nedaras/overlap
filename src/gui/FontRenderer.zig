@@ -61,6 +61,16 @@ pub fn getGlyph(self: *FontRenderer, descriptor: Descriptor) !Glyph {
     const render = try font.renderGlyph(self.allocator, idx);
     defer render.deinit(self.allocator);
 
+    if (render.width == 0 or render.height == 0) {
+        return .{
+            .uv0 = .{ 0.0, 0.0 },
+            .uv1 = .{ 0.0, 0.0 },
+            .width = 0,
+            .height = 0,
+            .metrics = try font.glyphMetrics(idx),
+        };
+    }
+
     const rect = try self.atlas.reserve(render.width, render.height);
     try self.atlas.fill(rect, render.bitmap);
 
