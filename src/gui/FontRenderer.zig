@@ -100,7 +100,7 @@ fn getFont(self: *FontRenderer, descriptor: Descriptor) !?fat.Face {
         }
     }
 
-    var it = try fat.iterateFonts(self.allocator, .{ .family = "Arial", .codepoint = descriptor.codepoint });
+    var it = try fat.iterateFonts(self.allocator, .{ .family = "Segoe UI", .codepoint = descriptor.codepoint });
     defer it.deinit();
 
     while (try it.next()) |deffered_face| {
