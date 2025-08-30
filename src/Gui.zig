@@ -15,6 +15,7 @@ const unicode = std.unicode;
 const x = 0;
 const y = 1;
 
+// todo: perhaps we should allocate this stuff as on stack it may be kinda heavy
 const DrawCommands = bounded_array.BoundedArray(shared.DrawCommand, shared.max_draw_commands);
 const DrawVerticies = bounded_array.BoundedArray(shared.DrawVertex, shared.max_verticies);
 const DrawIndecies = bounded_array.BoundedArray(shared.DrawIndex, shared.max_indicies);
@@ -23,7 +24,6 @@ allocator: Allocator,
 
 draw_commands: DrawCommands,
 
-// todo: move text stuff somewhere else
 draw_verticies: DrawVerticies,
 draw_indecies: DrawIndecies,
 
@@ -90,6 +90,18 @@ pub const Descriptor = struct {
     size: f32 = 16.0,
     color: u32 = 0xFFFFFFFF,
 };
+
+pub fn calcTextWidthW(self: *Gui, msg: []const u16, descriptor: Descriptor) !u32 {
+    var it = unicode.Wtf16LeIterator.init(msg);
+
+    var width: u32 = 0.0;
+    while (it.nextCodepoint()) |codepoint| {
+        const glyph = try self.font_renderer.getGlyph(.{ .size = @bitCast(descriptor.size), .codepoint = codepoint });
+        width += glyph.metrics.advance_x;
+    }
+
+    return width;
+}
 
 pub fn text(self: *Gui, pos: [2]f32, msg: []const u8, descriptor: Descriptor) !void {
     const view = try unicode.Wtf8View.init(msg);

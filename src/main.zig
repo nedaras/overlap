@@ -29,14 +29,15 @@ const Context = struct {
     }
 };
 
+// todo: idk we need like a way to handle if thumbnail is null
 pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
     const properties = try (try session.TryGetMediaPropertiesAsync()).getAndForget(context.allocator);
     defer properties.Release();
 
-    const thubnail = (try properties.Thumbnail()) orelse return;
-    defer thubnail.Release();
+    const thumbnail = (try properties.Thumbnail()) orelse return;
+    defer thumbnail.Release();
 
-    const stream = try (try thubnail.OpenReadAsync()).getAndForget(context.allocator);
+    const stream = try (try thumbnail.OpenReadAsync()).getAndForget(context.allocator);
     defer stream.Release();
 
     const decoder = try (try windows.BitmapDecoder.CreateAsync(@ptrCast(stream))).getAndForget(context.allocator);
@@ -169,10 +170,14 @@ pub fn main() !void {
 
         const cover = image orelse continue;
 
-        const pos = &[2]f32{ 100.0, 100.0 };
+        const pos = &[2]f32{ 24.0, 24.0 };
 
         const image_size: f32 = @floatFromInt(context.image_size);
-        const padding = 8.0;
+        const padding = 6.0;
+
+        // fow now i have this idea that we like store bar_width
+        // and try to fit text inthere if it foes not fit suffix it with ...
+        // later when i have smth working perhaps I could make it like go back and forth to show whole songs name
         const width = 256.0;
 
         const x = 0;
@@ -184,6 +189,10 @@ pub fn main() !void {
 
         // cover
         gui.image(.{ padding + pos[x], padding + pos[y] }, .{ padding + pos[x] + image_size, padding + pos[y] + image_size }, cover);
+
+        const w: f32 = @floatFromInt(try gui.calcTextWidthW(context.title, .{ .size = 12.0 }));
+
+        gui.rect(.{ padding + pos[x] + image_size + padding, padding + pos[y] }, .{ padding + pos[x] + image_size + padding + w, padding + pos[y] + 16.0 }, 0xFFFFFFFF);
 
         // properties
         try gui.textW(.{ padding + pos[x] + image_size + padding, padding + pos[y] }, context.title, .{ .size = 12.0 });
