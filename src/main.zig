@@ -193,7 +193,6 @@ pub fn main() !void {
     }
 }
 
-// todo: make like string 'Hello    world' ellipse too 'Hello…', not 'Hello  …'
 fn ellipsisW(gui: *Hook.Gui, pos: [2]f32, msg: []const u16, width: f32, descriptor: Hook.Descriptor) !void {
     const suffix_width = try gui.advanceWidthf('…', descriptor);
 
@@ -209,7 +208,7 @@ fn ellipsisW(gui: *Hook.Gui, pos: [2]f32, msg: []const u16, width: f32, descript
             break;
         }
 
-        if (width >= text_width + suffix_width) {
+        if (codepoint != ' ' and width >= text_width + suffix_width) {
             cut_width = text_width;
             cut_units = it.i >> 1;
         }
