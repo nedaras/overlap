@@ -190,12 +190,33 @@ pub fn main() !void {
         // cover
         gui.image(.{ padding + pos[x], padding + pos[y] }, .{ padding + pos[x] + image_size, padding + pos[y] + image_size }, cover);
 
-        const w: f32 = @floatFromInt(try gui.calcTextWidthW(context.title, .{ .size = 12.0 }));
-
-        gui.rect(.{ padding + pos[x] + image_size + padding, padding + pos[y] }, .{ padding + pos[x] + image_size + padding + w, padding + pos[y] + 16.0 }, 0xFFFFFFFF);
-
         // properties
-        try gui.textW(.{ padding + pos[x] + image_size + padding, padding + pos[y] }, context.title, .{ .size = 12.0 });
-        try gui.textW(.{ padding + pos[x] + image_size + padding, padding + 20.0 + pos[y] }, context.artist, .{ .size = 10.0, .color = 0x808080FF });
+        try ellipsisW(gui, .{ padding + pos[x] + image_size + padding, padding + pos[y] }, context.title, width, .{ .size = 12.0 });
+        try ellipsisW(gui, .{ padding + pos[x] + image_size + padding, padding + 20.0 + pos[y] }, context.artist, width, .{ .size = 10.0, .color = 0x808080FF });
     }
+}
+
+fn ellipsisW(gui: *Hook.Gui, pos: [2]f32, msg: []const u16, width: f32, descriptor: Hook.Descriptor) !void {
+    const suffix_width = (try gui.advanceWidthf('.', descriptor)) * 3.0;
+
+    var text_width: f32 = 0.0;
+    var cut_width: f32 = 0.0;
+    var cut_units: usize = 0;
+
+    var it = unicode.Wtf16LeIterator.init(msg);
+    while (it.nextCodepoint()) |codepoint| {
+        text_width += try gui.advanceWidthf(codepoint, descriptor);
+        if (width >= text_width + suffix_width) {
+            cut_width = text_width;
+            cut_units = it.i >> 1;
+        }
+    }
+
+    if (width >= text_width) {
+        try gui.textW(pos, msg, descriptor);
+        return;
+    }
+
+    try gui.textW(pos, msg[0..cut_units], descriptor);
+    try gui.textW(.{ pos[0] + cut_width, pos[1] }, unicode.wtf8ToWtf16LeStringLiteral("..."), descriptor);
 }

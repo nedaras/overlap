@@ -2,16 +2,18 @@ const std = @import("std");
 const windows = @import("windows.zig");
 const minhook = @import("minhook.zig");
 const shared = @import("gui/shared.zig");
-const Gui = @import("Gui.zig");
 const Backend = @import("gui/Backend.zig");
 const D3D11Hook = @import("hooks/D3D11Hook.zig");
 const Win32Hook = @import("hooks/Win32Hook.zig");
-pub const Image = @import("gui/Image.zig");
 const mem = std.mem;
 const fs = std.fs;
 const Thread = std.Thread;
 const Allocator = mem.Allocator;
 const assert = std.debug.assert;
+
+pub const Image = @import("gui/Image.zig");
+pub const Gui = @import("Gui.zig");
+pub const Descriptor = Gui.Descriptor;
 
 const Gateway = struct {
     gui: Gui,

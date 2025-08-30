@@ -91,16 +91,15 @@ pub const Descriptor = struct {
     color: u32 = 0xFFFFFFFF,
 };
 
-pub fn calcTextWidthW(self: *Gui, msg: []const u16, descriptor: Descriptor) !u32 {
-    var it = unicode.Wtf16LeIterator.init(msg);
+// as now we're not using kerning or shaping it's all good, later if we will choose todo these stuff
+// we will need to pass in a string to compite its width or some other work around
+pub fn advanceWidth(self: *Gui, codepoint: u21, descriptor: Descriptor) !u32 {
+    const glyph = try self.font_renderer.getGlyph(.{ .size = @bitCast(descriptor.size), .codepoint = codepoint });
+    return glyph.metrics.advance_x;
+}
 
-    var width: u32 = 0.0;
-    while (it.nextCodepoint()) |codepoint| {
-        const glyph = try self.font_renderer.getGlyph(.{ .size = @bitCast(descriptor.size), .codepoint = codepoint });
-        width += glyph.metrics.advance_x;
-    }
-
-    return width;
+pub fn advanceWidthf(self: *Gui, codepoint: u21, descriptor: Descriptor) !f32 {
+    return @floatFromInt(try advanceWidth(self, codepoint, descriptor));
 }
 
 pub fn text(self: *Gui, pos: [2]f32, msg: []const u8, descriptor: Descriptor) !void {
