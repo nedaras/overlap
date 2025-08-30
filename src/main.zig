@@ -175,29 +175,27 @@ pub fn main() !void {
         const image_size: f32 = @floatFromInt(context.image_size);
         const padding = 6.0;
 
-        // fow now i have this idea that we like store bar_width
-        // and try to fit text inthere if it foes not fit suffix it with ...
-        // later when i have smth working perhaps I could make it like go back and forth to show whole songs name
-        const width = 256.0;
+        const width = 198.0;
 
         const x = 0;
         const y = 1;
 
         // background
-        gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ padding + pos[x] + width + padding + 1.0, padding + pos[y] + image_size + padding + 1.0 }, 0x202E36FF);
-        gui.rect(.{ pos[x], pos[y] }, .{ padding + pos[x] + width + padding, padding + pos[y] + image_size + padding }, 0x10191EFF);
+        gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ pos[x] + padding + image_size + padding + width + padding + 1.0, pos[y] + padding + image_size + padding + 1.0 }, 0x202E36FF);
+        gui.rect(.{ pos[x], pos[y] }, .{ pos[x] + padding + image_size + padding + width + padding, pos[y] + padding + image_size + padding }, 0x10191EFF);
 
         // cover
-        gui.image(.{ padding + pos[x], padding + pos[y] }, .{ padding + pos[x] + image_size, padding + pos[y] + image_size }, cover);
+        gui.image(.{ pos[x] + padding, pos[y] + padding }, .{ pos[x] + padding + image_size, pos[y] + padding + image_size }, cover);
 
         // properties
-        try ellipsisW(gui, .{ padding + pos[x] + image_size + padding, padding + pos[y] }, context.title, width, .{ .size = 12.0 });
-        try ellipsisW(gui, .{ padding + pos[x] + image_size + padding, padding + 20.0 + pos[y] }, context.artist, width, .{ .size = 10.0, .color = 0x808080FF });
+        try ellipsisW(gui, .{ pos[x] + padding + image_size + padding, pos[y] + padding }, context.title, width, .{ .size = 12.0 });
+        try ellipsisW(gui, .{ pos[x] + padding + image_size + padding, pos[y] + padding + 20.0 }, context.artist, width, .{ .size = 10.0, .color = 0x808080FF });
     }
 }
 
+// todo: make like string 'Hello    world' ellipse too 'Hello…', not 'Hello  …'
 fn ellipsisW(gui: *Hook.Gui, pos: [2]f32, msg: []const u16, width: f32, descriptor: Hook.Descriptor) !void {
-    const suffix_width = (try gui.advanceWidthf('.', descriptor)) * 3.0;
+    const suffix_width = try gui.advanceWidthf('…', descriptor);
 
     var text_width: f32 = 0.0;
     var cut_width: f32 = 0.0;
@@ -206,6 +204,11 @@ fn ellipsisW(gui: *Hook.Gui, pos: [2]f32, msg: []const u16, width: f32, descript
     var it = unicode.Wtf16LeIterator.init(msg);
     while (it.nextCodepoint()) |codepoint| {
         text_width += try gui.advanceWidthf(codepoint, descriptor);
+
+        if (text_width > width) {
+            break;
+        }
+
         if (width >= text_width + suffix_width) {
             cut_width = text_width;
             cut_units = it.i >> 1;
@@ -218,5 +221,5 @@ fn ellipsisW(gui: *Hook.Gui, pos: [2]f32, msg: []const u16, width: f32, descript
     }
 
     try gui.textW(pos, msg[0..cut_units], descriptor);
-    try gui.textW(.{ pos[0] + cut_width, pos[1] }, unicode.wtf8ToWtf16LeStringLiteral("..."), descriptor);
+    try gui.textW(.{ pos[0] + cut_width, pos[1] }, unicode.wtf8ToWtf16LeStringLiteral("…"), descriptor);
 }
