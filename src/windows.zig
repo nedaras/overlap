@@ -48,6 +48,7 @@ pub const HINSTANCE = windows.HINSTANCE;
 pub const HRESULT_CODE = windows.HRESULT_CODE;
 pub const E_NOINTERFACE = windows.E_NOINTERFACE;
 
+pub const GetCurrentProcessId = windows.GetCurrentProcessId;
 pub const unexpectedError = windows.unexpectedError;
 pub const FindWindowExA = user32.FindWindowExA;
 
@@ -225,6 +226,21 @@ pub fn DisableThreadLibraryCalls(hLibModule: windows.HMODULE) DisableThreadLibra
             else => |err| return windows.unexpectedError(err),
         }
     }
+}
+
+pub const GetWindowThreadProcessIdError = error{
+    Unexpected,
+};
+
+pub fn GetWindowThreadProcessId(hWnd: HWND) GetWindowThreadProcessIdError!u32 {
+    var pid: DWORD = 0;
+    if (user32.GetWindowThreadProcessId(hWnd, &pid) != 0) {
+        return pid;
+    }
+
+    return switch (windows.kernel32.GetLastError()) {
+        else => |err| return windows.unexpectedError(err),
+    };
 }
 
 pub const AllocConsoleError = error{

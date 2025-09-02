@@ -3,6 +3,7 @@ const windows = @import("../windows.zig");
 const HWND = windows.HWND;
 const BOOL = windows.BOOL;
 const UINT = windows.UINT;
+const DWORD = windows.DWORD;
 const WPARAM = windows.WPARAM;
 const LPARAM = windows.LPARAM;
 const LPRECT = *windows.RECT;
@@ -10,6 +11,7 @@ const LPCSTR = windows.LPCSTR;
 const WNDPROC = windows.WNDPROC;
 const LRESULT = windows.LRESULT;
 const LONG_PTR = windows.LONG_PTR;
+const LPDWORD = windows.LPDWORD;
 
 pub extern "user32" fn GetForegroundWindow() callconv(.winapi) ?HWND;
 
@@ -38,3 +40,5 @@ pub extern "user32" fn FindWindowExA(
     lpszClass: ?LPCSTR,
     lpszWindow: ?LPCSTR,
 ) callconv(.winapi) ?HWND;
+
+pub extern "user32" fn GetWindowThreadProcessId(hWnd: HWND, lpdwProcessId: ?LPDWORD) callconv(.winapi) DWORD;
