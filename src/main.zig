@@ -109,7 +109,7 @@ pub fn main() !void {
     var hwnd = windows.FindWindowExA(null, null, null, null);
     while (hwnd != null) {
         defer hwnd = windows.FindWindowExA(null, hwnd, null, null);
-        if (pid == try windows.GetWindowThreadProcessId(hwnd.?)) {
+        if (pid == try windows.GetWindowThreadProcessId(hwnd.?) and windows.GetWindow(hwnd.?, windows.GW_OWNER) == null) {
             const rect = try windows.GetWindowRect(hwnd.?);
             std.debug.print("{}\n", .{rect});
         }

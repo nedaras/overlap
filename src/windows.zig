@@ -51,6 +51,7 @@ pub const E_NOINTERFACE = windows.E_NOINTERFACE;
 pub const GetCurrentProcessId = windows.GetCurrentProcessId;
 pub const unexpectedError = windows.unexpectedError;
 pub const FindWindowExA = user32.FindWindowExA;
+pub const GetWindow = user32.GetWindow;
 
 const Win32Error = windows.Win32Error;
 const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
@@ -70,6 +71,8 @@ const IBitmapFrame = graphics.IBitmapFrame;
 pub const IPixelDataProvider = graphics.IPixelDataProvider;
 pub const IBitmapTransform = graphics.IBitmapTransform;
 pub const BitmapInterpolationMode = graphics.BitmapInterpolationMode;
+
+pub const GW_OWNER = 4;
 
 pub const RO_INIT_TYPE = INT;
 pub const RO_INIT_SINGLETHREADED = 0;
