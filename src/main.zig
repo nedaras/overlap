@@ -113,7 +113,7 @@ pub fn main() !void {
             
             const root = windows.GetAncestor(hwnd.?, windows.GA_ROOT);
             if (root != null) {
-                const rect = try windows.GetWindowRect(root);
+                const rect = try windows.GetWindowRect(root.?);
                 std.debug.print("{}\n", .{rect});
             } else {
                 std.debug.print("nahh!!\n", .{});
