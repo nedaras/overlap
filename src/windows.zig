@@ -49,6 +49,7 @@ pub const HRESULT_CODE = windows.HRESULT_CODE;
 pub const E_NOINTERFACE = windows.E_NOINTERFACE;
 
 pub const unexpectedError = windows.unexpectedError;
+pub const FindWindowExA = user32.FindWindowExA;
 
 const Win32Error = windows.Win32Error;
 const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;

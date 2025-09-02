@@ -104,6 +104,14 @@ pub fn main() !void {
     const allocator = debug_allocator.allocator();
     defer _ = debug_allocator.deinit(); // unsafe as those COM objects can have longer lifespan than this stack function
 
+    var hwnd = windows.FindWindowExA(null, null, null, null);
+    while (hwnd != null) {
+        defer hwnd = windows.FindWindowExA(null, hwnd, null, null);
+
+        const rect = try windows.GetWindowRect(hwnd.?);
+        std.debug.print("{}\n", .{rect});
+    }
+
     var context = Context{
         .allocator = allocator,
         .image_size = 64,

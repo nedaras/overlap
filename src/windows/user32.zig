@@ -31,3 +31,10 @@ pub extern "user32" fn CallWindowProcA(
     wParam: WPARAM,
     lParam: LPARAM,
 ) callconv(.winapi) LRESULT;
+
+pub extern "user32" fn FindWindowExA(
+    hWndParent: ?HWND,
+    hWndChildAfter: ?HWND,
+    lpszClass: ?LPCSTR,
+    lpszWindow: ?LPCSTR,
+) callconv(.winapi) ?HWND;
