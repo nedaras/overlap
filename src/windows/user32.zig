@@ -8,6 +8,7 @@ const WPARAM = windows.WPARAM;
 const LPARAM = windows.LPARAM;
 const LPRECT = *windows.RECT;
 const LPCSTR = windows.LPCSTR;
+const LPSTR = windows.LPSTR;
 const WNDPROC = windows.WNDPROC;
 const LRESULT = windows.LRESULT;
 const LONG_PTR = windows.LONG_PTR;
@@ -46,3 +47,9 @@ pub extern "user32" fn GetWindowThreadProcessId(hWnd: HWND, lpdwProcessId: ?LPDW
 pub extern "user32" fn GetWindow(hWnd: HWND, uCmd: UINT) callconv(.winapi) ?HWND;
 
 pub extern "user32" fn GetAncestor(hWnd: HWND, gaFlags: UINT) callconv(.winapi) ?HWND;
+
+pub extern "user32" fn GetClassNameA(
+    hWnd: HWND,
+    lpClassName: [*]u8,
+    nMaxCount: c_int,
+) callconv(.winapi) c_int;

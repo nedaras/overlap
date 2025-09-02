@@ -36,6 +36,7 @@ pub const PCWSTR = windows.PCWSTR;
 pub const LPARAM = windows.LPARAM;
 pub const SIZE_T = windows.SIZE_T;
 pub const LPCSTR = windows.LPCSTR;
+pub const LPSTR = windows.LPSTR;
 pub const LPDWORD = *windows.DWORD;
 pub const LPCWSTR = windows.LPCWSTR;
 pub const LRESULT = windows.LRESULT;
@@ -354,6 +355,22 @@ pub fn WinHttpOpen(
 
     if (winhttp.WinHttpOpen(pszAgentW_ptr, dwAccessType, pszProxyW_ptr, pszProxyBypassW_ptr, dwFlags)) |session| {
         return session;
+    }
+
+    return switch (windows.kernel32.GetLastError()) {
+        else => |err| windows.unexpectedError(err),
+    };
+}
+
+// tood: we need error checks here
+pub const GetClassNameError = error{
+    Unexpected,
+};
+
+pub fn GetClassNameA(hWnd: HWND, buffer: []u8) GetClassNameError![:0]const u8 {
+    const len = user32.GetClassNameA(hWnd, buffer.ptr, @intCast(buffer.len));
+    if (len != 0) {
+        return buffer[0..@as(usize, @intCast(len)):0];
     }
 
     return switch (windows.kernel32.GetLastError()) {

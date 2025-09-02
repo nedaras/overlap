@@ -110,14 +110,9 @@ pub fn main() !void {
     while (hwnd != null) {
         defer hwnd = windows.FindWindowExA(null, hwnd, null, null);
         if (pid == try windows.GetWindowThreadProcessId(hwnd.?) and windows.GetWindow(hwnd.?, windows.GW_OWNER) == null) {
-            
-            const root = windows.GetAncestor(hwnd.?, windows.GA_ROOT);
-            if (root != null) {
-                const rect = try windows.GetWindowRect(root.?);
-                std.debug.print("{}\n", .{rect});
-            } else {
-                std.debug.print("nahh!!\n", .{});
-            }
+            var buf: [256]u8 = undefined;
+            const name = try windows.GetClassNameA(hwnd.?, &buf);
+            std.debug.print("{s}\n", .{name});
         }
     }
 
