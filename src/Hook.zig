@@ -49,8 +49,22 @@ pub fn deinit(self: *Self) void {
     _ = self;
 }
 
+// todo: use enum windows
+fn findWindow(proc_id: u32) ?windows.HWND {
+    var hwnd = windows.FindWindowExA(null, null, null, null);
+    // i need to test zig a bit like how does this `: ()` work is it executed on breaks and/or returns
+    while (hwnd != null) {
+        if (proc_id == windows.GetWindowThreadProcessId(hwnd.?) catch unreachable and windows.GetWindow(hwnd.?, windows.GW_OWNER) == null) {
+            break;
+        }
+        hwnd = windows.FindWindowExA(null, hwnd, null, null);
+    }
+
+    return hwnd;
+}
+
 pub fn attach(self: *Self, allocator: Allocator) !void {
-    const window = windows.FindWindow(null, "...") orelse return error.NoWindow;
+    const window = findWindow(windows.GetCurrentProcessId()) orelse return error.WindowNotFound;
 
     try minhook.MH_Initialize();
     errdefer minhook.MH_Uninitialize() catch {};

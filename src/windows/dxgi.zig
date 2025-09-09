@@ -121,7 +121,7 @@ pub const IDXGISwapChain = extern struct {
 
     pub fn GetDesc(self: *IDXGISwapChain) GetDescError!DXGI_SWAP_CHAIN_DESC {
         const FnType = fn (*IDXGISwapChain, *DXGI_SWAP_CHAIN_DESC) callconv(.winapi) HRESULT;
-        const get_desc: *const FnType = @ptrCast(self.vtable[13]);
+        const get_desc: *const FnType = @ptrCast(self.vtable[12]);
 
         var pDesc: DXGI_SWAP_CHAIN_DESC = undefined;
 

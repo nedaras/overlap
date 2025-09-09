@@ -104,18 +104,6 @@ pub fn main() !void {
     const allocator = debug_allocator.allocator();
     defer _ = debug_allocator.deinit(); // unsafe as those COM objects can have longer lifespan than this stack function
 
-    const pid = windows.GetCurrentProcessId();
-
-    var hwnd = windows.FindWindowExA(null, null, null, null);
-    while (hwnd != null) {
-        defer hwnd = windows.FindWindowExA(null, hwnd, null, null);
-        if (pid == try windows.GetWindowThreadProcessId(hwnd.?) and windows.GetWindow(hwnd.?, windows.GW_OWNER) == null) {
-            var buf: [256]u8 = undefined;
-            const name = try windows.GetClassNameA(hwnd.?, &buf);
-            std.debug.print("{s}\n", .{name});
-        }
-    }
-
     var context = Context{
         .allocator = allocator,
         .image_size = 64,

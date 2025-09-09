@@ -15,6 +15,8 @@ const assert = std.debug.assert;
 device: *d3d11.ID3D11Device,
 device_context: *d3d11.ID3D11DeviceContext,
 
+target_window: windows.HWND,
+
 render_target_view: *d3d11.ID3D11RenderTargetView,
 
 vertex_shader: *d3d11.ID3D11VertexShader,
@@ -93,6 +95,7 @@ pub fn init(swap_chain: *dxgi.IDXGISwapChain) Error!Self {
     var result = Self{
         .device = device,
         .device_context = device_context,
+        .target_window = (try swap_chain.GetDesc()).OutputWindow,
         .render_target_view = undefined,
         .vertex_shader = undefined,
         .pixel_shader = undefined,
@@ -310,10 +313,10 @@ const D3D11Backend = struct {
         defer loadState(self.device_context, &backup_state);
 
         {
-            // yee this thing does look simple but it aint idead:
-            // try to get like processed window and get its rect
-            const width = 1920.0;
-            const height = 1080.0;
+            const rect = try windows.GetWindowRect(self.target_window);
+
+            const width: f32 = @floatFromInt(rect.right - rect.left);
+            const height: f32 = @floatFromInt(rect.bottom - rect.top);
 
             var mapped_resource: d3d11.D3D11_MAPPED_SUBRESOURCE = undefined;
 
