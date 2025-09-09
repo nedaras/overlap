@@ -163,6 +163,9 @@ fn hkPresent(
         }
     }
 
+    const desc = pSwapChain.GetDesc() catch unreachable;
+    std.debug.print("{}\n", .{desc.OutputWindow});
+
     return self.o_present(pSwapChain, SyncInterval, Flags);
 }
 

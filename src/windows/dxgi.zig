@@ -114,6 +114,23 @@ pub const IDXGISwapChain = extern struct {
             else => |err| unexpectedError(err),
         };
     }
+
+    pub const GetDescError = error{
+        Unexpected,
+    };
+
+    pub fn GetDesc(self: *IDXGISwapChain) GetDescError!DXGI_SWAP_CHAIN_DESC {
+        const FnType = fn (*IDXGISwapChain, *DXGI_SWAP_CHAIN_DESC) callconv(.winapi) HRESULT;
+        const get_desc: *const FnType = @ptrCast(self.vtable[13]);
+
+        var pDesc: DXGI_SWAP_CHAIN_DESC = undefined;
+
+        const hr = get_desc(self, &pDesc);
+        return switch (DXGI_ERROR_CODE(hr)) {
+            .SUCCESS => pDesc,
+            else => |err| unexpectedError(err),
+        };
+    }
 };
 
 pub inline fn DXGI_ERROR_CODE(hr: HRESULT) DXGI_ERROR {
