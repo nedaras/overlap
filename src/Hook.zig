@@ -49,18 +49,31 @@ pub fn deinit(self: *Self) void {
     _ = self;
 }
 
-// todo: use enum windows
 fn findWindow(proc_id: u32) ?windows.HWND {
-    var hwnd = windows.FindWindowExA(null, null, null, null);
-    // i need to test zig a bit like how does this `: ()` work is it executed on breaks and/or returns
-    while (hwnd != null) {
-        if (proc_id == windows.GetWindowThreadProcessId(hwnd.?) catch unreachable and windows.GetWindow(hwnd.?, windows.GW_OWNER) == null) {
-            break;
-        }
-        hwnd = windows.FindWindowExA(null, hwnd, null, null);
-    }
+    const Context = struct {
+        hwnd: ?windows.HWND,
+        proc: u32,
+    };
 
-    return hwnd;
+    var context: Context = .{
+        .hwnd = null,
+        .proc = proc_id,
+    };
+
+    _ = windows.EnumWindows(struct {
+        fn inner(hwnd: windows.HWND, lParam: windows.LPARAM) callconv(.winapi) windows.BOOL {
+            const ctx: *Context = @ptrFromInt(@as(usize, @bitCast(lParam)));
+            const proc = windows.GetWindowThreadProcessId(hwnd) catch return windows.TRUE;
+
+            if (proc != ctx.proc) return windows.TRUE;
+            if (windows.GetWindow(hwnd, windows.GW_OWNER) != null) return windows.TRUE;
+
+            ctx.hwnd = hwnd;
+            return windows.FALSE;
+        }
+    }.inner, @bitCast(@intFromPtr(&context)));
+
+    return context.hwnd;
 }
 
 pub fn attach(self: *Self, allocator: Allocator) !void {
@@ -105,8 +118,8 @@ pub fn detach(self: *Self) void {
     }
 
     //if (self.win32_hook) |win32_hook| {
-        //win32_hook.deinit();
-        //self.win32_hook = null;
+    //win32_hook.deinit();
+    //self.win32_hook = null;
     //}
 
     minhook.MH_Uninitialize() catch {};

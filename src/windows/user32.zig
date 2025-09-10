@@ -13,6 +13,7 @@ const WNDPROC = windows.WNDPROC;
 const LRESULT = windows.LRESULT;
 const LONG_PTR = windows.LONG_PTR;
 const LPDWORD = windows.LPDWORD;
+const WNDENUMPROC = windows.WNDENUMPROC;
 
 pub extern "user32" fn GetForegroundWindow() callconv(.winapi) ?HWND;
 
@@ -53,3 +54,8 @@ pub extern "user32" fn GetClassNameA(
     lpClassName: [*]u8,
     nMaxCount: c_int,
 ) callconv(.winapi) c_int;
+
+pub extern "user32" fn EnumWindows(
+    lpEnumFunc: WNDENUMPROC,
+    lParam: LPARAM,
+) callconv(.winapi) BOOL;

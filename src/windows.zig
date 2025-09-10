@@ -54,6 +54,7 @@ pub const unexpectedError = windows.unexpectedError;
 pub const FindWindowExA = user32.FindWindowExA;
 pub const GetWindow = user32.GetWindow;
 pub const GetAncestor = user32.GetAncestor;
+pub const EnumWindows = user32.EnumWindows;
 
 const Win32Error = windows.Win32Error;
 const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
@@ -115,6 +116,11 @@ pub const WNDPROC = *const fn (
     wParam: WPARAM,
     lParam: LPARAM,
 ) callconv(.winapi) LRESULT;
+
+pub const WNDENUMPROC = *const fn (
+    hwnd: HWND,
+    lParam: LPARAM,
+) callconv(.winapi) BOOL;
 
 pub const BitmapPixelFormat = INT;
 pub const BitmapPixelFormat_Rgba8 = 30;
@@ -370,7 +376,7 @@ pub const GetClassNameError = error{
 pub fn GetClassNameA(hWnd: HWND, buffer: []u8) GetClassNameError![:0]const u8 {
     const len = user32.GetClassNameA(hWnd, buffer.ptr, @intCast(buffer.len));
     if (len != 0) {
-        return buffer[0..@as(usize, @intCast(len)):0];
+        return buffer[0..@as(usize, @intCast(len)) :0];
     }
 
     return switch (windows.kernel32.GetLastError()) {
@@ -936,6 +942,8 @@ pub const GlobalSystemMediaTransportControlsSessionManager = struct {
 
 pub const GlobalSystemMediaTransportControlsSession = struct {
     handle: *IGlobalSystemMediaTransportControlsSession,
+
+    // todo: add GetPlaybackInfo
 
     pub inline fn Release(self: GlobalSystemMediaTransportControlsSession) void {
         self.handle.Release();
