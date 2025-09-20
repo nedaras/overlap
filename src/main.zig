@@ -34,6 +34,9 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     const properties = try (try session.TryGetMediaPropertiesAsync()).getAndForget(context.allocator);
     defer properties.Release();
 
+    const timeline = try session.GetTimelineProperties();
+    defer timeline.Release();
+
     const thumbnail = (try properties.Thumbnail()) orelse return;
     defer thumbnail.Release();
 

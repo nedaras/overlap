@@ -77,6 +77,22 @@ pub const IGlobalSystemMediaTransportControlsSessionMediaProperties = extern str
     }
 };
 
+pub const IGlobalSystemMediaTransportControlsSessionPlaybackInfo = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub inline fn Release(self: *IGlobalSystemMediaTransportControlsSessionPlaybackInfo) void {
+        IUnknown.Release(@ptrCast(self));
+    }
+};
+
+pub const IGlobalSystemMediaTransportControlsSessionTimelineProperties = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub inline fn Release(self: *IGlobalSystemMediaTransportControlsSessionTimelineProperties) void {
+        IUnknown.Release(@ptrCast(self));
+    }
+};
+
 pub const IGlobalSystemMediaTransportControlsSession = extern struct {
     vtable: [*]const *const anyopaque,
 
@@ -100,6 +116,40 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         const hr = try_get_media_properties_async(self, &operation);
         return switch (hr) {
             windows.S_OK => operation,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+
+    pub const GetTimelinePropertiesError = error {
+        Unexpected,
+    };
+
+    pub fn GetTimelineProperties(self: *IGlobalSystemMediaTransportControlsSession) GetPlaybackInfoError!*IGlobalSystemMediaTransportControlsSessionTimelineProperties {
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSession, **IGlobalSystemMediaTransportControlsSessionTimelineProperties) callconv(.winapi) HRESULT;
+        const get_playback_info: *const FnType = @ptrCast(self.vtable[8]);
+
+        var result: *IGlobalSystemMediaTransportControlsSessionTimelineProperties = undefined;
+
+        const hr = get_playback_info(self, &result);
+        return switch (hr) {
+            windows.S_OK => result,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+
+    pub const GetPlaybackInfoError = error{
+        Unexpected,
+    };
+
+    pub fn GetPlaybackInfo(self: *IGlobalSystemMediaTransportControlsSession) GetPlaybackInfoError!*IGlobalSystemMediaTransportControlsSessionPlaybackInfo {
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSession, **IGlobalSystemMediaTransportControlsSessionPlaybackInfo) callconv(.winapi) HRESULT;
+        const get_playback_info: *const FnType = @ptrCast(self.vtable[9]);
+
+        var result: *IGlobalSystemMediaTransportControlsSessionPlaybackInfo = undefined;
+
+        const hr = get_playback_info(self, &result);
+        return switch (hr) {
+            windows.S_OK => result,
             else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
         };
     }

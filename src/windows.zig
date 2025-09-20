@@ -56,6 +56,10 @@ pub const GetWindow = user32.GetWindow;
 pub const GetAncestor = user32.GetAncestor;
 pub const EnumWindows = user32.EnumWindows;
 
+pub const TimeSpan = extern struct {
+    Duration: i64,
+};
+
 const Win32Error = windows.Win32Error;
 const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
 const IGlobalSystemMediaTransportControlsSessionMediaProperties = media.IGlobalSystemMediaTransportControlsSessionMediaProperties;
@@ -67,9 +71,11 @@ const IGlobalSystemMediaTransportControlsSession = media.IGlobalSystemMediaTrans
 const ICurrentSessionChangedEventArgs = media.ICurrentSessionChangedEventArgs;
 const IRandomAccessStreamReference = winrt.IRandomAccessStreamReference;
 const IRandomAccessStreamWithContentType = winrt.IRandomAccessStreamWithContentType;
+const IGlobalSystemMediaTransportControlsSessionPlaybackInfo = media.IGlobalSystemMediaTransportControlsSessionPlaybackInfo;
 const IBitmapDecoder = graphics.IBitmapDecoder;
 const IBitmapDecoderStatics = graphics.IBitmapDecoderStatics;
 const IBitmapFrame = graphics.IBitmapFrame;
+const IGlobalSystemMediaTransportControlsSessionTimelineProperties = media.IGlobalSystemMediaTransportControlsSessionTimelineProperties;
 
 pub const IPixelDataProvider = graphics.IPixelDataProvider;
 pub const IBitmapTransform = graphics.IBitmapTransform;
@@ -940,10 +946,24 @@ pub const GlobalSystemMediaTransportControlsSessionManager = struct {
     }
 };
 
+pub const GlobalSystemMediaTransportControlsSessionPlaybackInfo = struct {
+    handle: *IGlobalSystemMediaTransportControlsSessionPlaybackInfo,
+
+    pub inline fn Release(self: GlobalSystemMediaTransportControlsSessionPlaybackInfo) void {
+        self.handle.Release();
+    }
+};
+
+pub const GlobalSystemMediaTransportControlsSessionTimelineProperties = struct {
+    handle: *IGlobalSystemMediaTransportControlsSessionTimelineProperties,
+
+    pub inline fn Release(self: GlobalSystemMediaTransportControlsSessionTimelineProperties) void {
+        self.handle.Release();
+    }
+};
+
 pub const GlobalSystemMediaTransportControlsSession = struct {
     handle: *IGlobalSystemMediaTransportControlsSession,
-
-    // todo: add GetPlaybackInfo
 
     pub inline fn Release(self: GlobalSystemMediaTransportControlsSession) void {
         self.handle.Release();
@@ -953,6 +973,14 @@ pub const GlobalSystemMediaTransportControlsSession = struct {
         return .{
             .handle = @ptrCast(try self.handle.TryGetMediaPropertiesAsync()),
         };
+    }
+
+    pub fn GetTimelineProperties(self: GlobalSystemMediaTransportControlsSession) !GlobalSystemMediaTransportControlsSessionTimelineProperties {
+        return .{ .handle = try self.handle.GetTimelineProperties() };
+    }
+
+    pub fn GetPlaybackInfo(self: GlobalSystemMediaTransportControlsSession) !GlobalSystemMediaTransportControlsSessionPlaybackInfo {
+        return .{ .handle = try self.handle.GetPlaybackInfo() };
     }
 
     pub fn MediaPropertiesChanged(
