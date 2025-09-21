@@ -190,7 +190,7 @@ pub fn main() !void {
         const pos = &[2]f32{ 24.0, 24.0 };
 
         const image_size: f32 = @floatFromInt(context.image_size);
-        const padding = 6.0;
+        const padding = 16.0;
 
         const width = 198.0;
 
@@ -198,20 +198,20 @@ pub fn main() !void {
         const y = 1;
 
         // background
-        gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ pos[x] + padding + image_size + padding + width + padding + 1.0, pos[y] + padding + image_size + padding + 1.0 }, 0x202E36FF);
-        gui.rect(.{ pos[x], pos[y] }, .{ pos[x] + padding + image_size + padding + width + padding, pos[y] + padding + image_size + padding }, 0x10191EFF);
+        gui.rect(.{ -1.0 + pos[x], -1.0 + pos[y] }, .{ pos[x] + image_size + padding + width + padding + 1.0, pos[y] + image_size + 1.0 }, 0x202E36FF);
+        gui.rect(.{ pos[x], pos[y] }, .{ pos[x] + image_size + padding + width + padding, pos[y] + image_size }, 0x10191EFF);
 
         // cover
-        gui.image(.{ pos[x] + padding, pos[y] + padding }, .{ pos[x] + padding + image_size, pos[y] + padding + image_size }, cover);
+        gui.image(.{ pos[x], pos[y] }, .{ pos[x] + image_size, pos[y] + image_size }, cover);
 
         // progress bar
-        const bar_max_width = padding + width + padding;
+        const bar_max_width = image_size + padding + width + padding + 2.0;
         const bar_width = @as(f32, @floatFromInt(context.timeline.position)) / @as(f32, @floatFromInt(context.timeline.end_time)) * bar_max_width;
-        gui.rect(.{ pos[x], pos[y] + padding + image_size }, .{ pos[x] + bar_width, pos[y] + padding + image_size + padding }, 0x3DD35FFF);
+        gui.rect(.{ -1.0 + pos[x], pos[y] + image_size }, .{ -1.0 + pos[x] + bar_width, pos[y] + image_size + 1.0 }, 0x3DD35FFF);
 
         // properties
-        try ellipsisW(gui, .{ pos[x] + padding + image_size + padding, pos[y] + padding }, context.title, width, .{ .size = 12.0 });
-        try ellipsisW(gui, .{ pos[x] + padding + image_size + padding, pos[y] + padding + 20.0 }, context.artist, width, .{ .size = 10.0, .color = 0x808080FF });
+        try ellipsisW(gui, .{ pos[x] + image_size + padding, pos[y] + padding }, context.title, width, .{ .size = 12.0 });
+        try ellipsisW(gui, .{ pos[x] + image_size + padding, pos[y] + padding + 20.0 }, context.artist, width, .{ .size = 10.0, .color = 0x808080FF });
     }
 }
 
