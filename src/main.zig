@@ -34,7 +34,11 @@ pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTran
     const timeline = try session.GetTimelineProperties();
     defer timeline.Release();
 
-    std.debug.print("{}, {}, {}\n", .{timeline.StartTime(), timeline.EndTime(), timeline.Position()});
+    const duration = timeline.StartTime() - timeline.EndTime();
+    const pos = timeline.Position();
+
+    const percentage = (@as(f32, @floatFromInt(pos)) / @as(f32, @floatFromInt(duration))) * 100.0;
+    std.debug.print("percent: {d}%\n", .{@as(i64, @intFromFloat(percentage))});
 }
 
 // todo: idk we need like a way to handle if thumbnail is null

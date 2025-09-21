@@ -158,7 +158,7 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         };
     }
 
-    pub const GetTimelinePropertiesError = error {
+    pub const GetTimelinePropertiesError = error{
         Unexpected,
     };
 
@@ -192,13 +192,12 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         };
     }
 
-
     pub const AddTimelinePropertiesChangedError = error{Unexpected};
 
     pub fn add_TimelinePropertiesChanged(
         self: *IGlobalSystemMediaTransportControlsSession,
         handler: *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *ITimelinePropertiesChangedEventArgs),
-    ) AddTimelinePropertiesChangedError!EventRegistrationToken  {
+    ) AddTimelinePropertiesChangedError!EventRegistrationToken {
         const FnType = fn (*IGlobalSystemMediaTransportControlsSession, *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *ITimelinePropertiesChangedEventArgs), *EventRegistrationToken) callconv(.winapi) HRESULT;
         const add_timeline_properties_changed: *const FnType = @ptrCast(self.vtable[25]);
 
