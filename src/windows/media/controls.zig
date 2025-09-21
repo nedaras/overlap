@@ -10,6 +10,7 @@ const HSTRING = windows.HSTRING;
 const IUnknown = windows.IUnknown;
 const IAsyncOperation = windows.IAsyncOperation;
 const TypedEventHandler = windows.TypedEventHandler;
+const TimeSpan = windows.TimeSpan;
 const IRandomAccessStreamReference = winrt.IRandomAccessStreamReference;
 
 pub const EventRegistrationToken = extern struct {
@@ -90,6 +91,36 @@ pub const IGlobalSystemMediaTransportControlsSessionTimelineProperties = extern 
 
     pub inline fn Release(self: *IGlobalSystemMediaTransportControlsSessionTimelineProperties) void {
         IUnknown.Release(@ptrCast(self));
+    }
+
+    pub inline fn get_StartTime(self: *IGlobalSystemMediaTransportControlsSessionTimelineProperties) TimeSpan {
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSessionTimelineProperties, *TimeSpan) callconv(.winapi) HRESULT;
+        const get_start_time: *const FnType = @ptrCast(self.vtable[6]);
+
+        var value: TimeSpan = undefined;
+        assert(get_start_time(self, &value) == windows.S_OK);
+
+        return value;
+    }
+
+    pub inline fn get_EndTime(self: *IGlobalSystemMediaTransportControlsSessionTimelineProperties) TimeSpan {
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSessionTimelineProperties, *TimeSpan) callconv(.winapi) HRESULT;
+        const get_end_time: *const FnType = @ptrCast(self.vtable[7]);
+
+        var value: TimeSpan = undefined;
+        assert(get_end_time(self, &value) == windows.S_OK);
+
+        return value;
+    }
+
+    pub inline fn get_Position(self: *IGlobalSystemMediaTransportControlsSessionTimelineProperties) TimeSpan {
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSessionTimelineProperties, *TimeSpan) callconv(.winapi) HRESULT;
+        const get_position: *const FnType = @ptrCast(self.vtable[10]);
+
+        var value: TimeSpan = undefined;
+        assert(get_position(self, &value) == windows.S_OK);
+
+        return value;
     }
 };
 

@@ -960,6 +960,18 @@ pub const GlobalSystemMediaTransportControlsSessionTimelineProperties = struct {
     pub inline fn Release(self: GlobalSystemMediaTransportControlsSessionTimelineProperties) void {
         self.handle.Release();
     }
+
+    pub inline fn StartTime(self: GlobalSystemMediaTransportControlsSessionTimelineProperties) i64 {
+        return self.handle.get_StartTime().Duration;
+    }
+
+    pub inline fn EndTime(self: GlobalSystemMediaTransportControlsSessionTimelineProperties) i64 {
+        return self.handle.get_EndTime().Duration;
+    }
+
+    pub inline fn Position(self: GlobalSystemMediaTransportControlsSessionTimelineProperties) i64 {
+        return self.handle.get_Position().Duration;
+    }
 };
 
 pub const GlobalSystemMediaTransportControlsSession = struct {

@@ -37,6 +37,8 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     const timeline = try session.GetTimelineProperties();
     defer timeline.Release();
 
+    std.debug.print("{}, {}, {}\n", .{timeline.StartTime(), timeline.EndTime(), timeline.Position()});
+
     const thumbnail = (try properties.Thumbnail()) orelse return;
     defer thumbnail.Release();
 
