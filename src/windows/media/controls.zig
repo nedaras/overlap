@@ -17,6 +17,13 @@ pub const EventRegistrationToken = extern struct {
     value: INT64,
 };
 
+pub const ITimelinePropertiesChangedEventArgs = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const NAME = "Windows.Media.Control.TimelinePropertiesChangedEventArgs";
+    pub const SIGNATURE = "rc(" ++ NAME ++ ";{29033a2f-c923-5a77-bcaf-055ff415ad32})";
+};
+
 pub const IMediaPropertiesChangedEventArgs = extern struct {
     vtable: [*]const *const anyopaque,
 
@@ -185,6 +192,25 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         };
     }
 
+
+    pub const AddTimelinePropertiesChangedError = error{Unexpected};
+
+    pub fn add_TimelinePropertiesChanged(
+        self: *IGlobalSystemMediaTransportControlsSession,
+        handler: *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *ITimelinePropertiesChangedEventArgs),
+    ) AddTimelinePropertiesChangedError!EventRegistrationToken  {
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSession, *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *ITimelinePropertiesChangedEventArgs), *EventRegistrationToken) callconv(.winapi) HRESULT;
+        const add_timeline_properties_changed: *const FnType = @ptrCast(self.vtable[25]);
+
+        var token: EventRegistrationToken = undefined;
+
+        const hr = add_timeline_properties_changed(self, handler, &token);
+        return switch (hr) {
+            windows.S_OK => token,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+
     pub const AddMediaPropertiesChangedError = error{Unexpected};
 
     pub fn add_MediaPropertiesChanged(
@@ -192,7 +218,6 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         handler: *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs),
     ) AddMediaPropertiesChangedError!EventRegistrationToken {
         const FnType = fn (*IGlobalSystemMediaTransportControlsSession, *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IMediaPropertiesChangedEventArgs), *EventRegistrationToken) callconv(.winapi) HRESULT;
-
         const add_media_proparties_changed: *const FnType = @ptrCast(self.vtable[29]);
 
         var token: EventRegistrationToken = undefined;

@@ -29,15 +29,18 @@ const Context = struct {
     }
 };
 
-// todo: idk we need like a way to handle if thumbnail is null
-pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
-    const properties = try (try session.TryGetMediaPropertiesAsync()).getAndForget(context.allocator);
-    defer properties.Release();
-
+pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
+    _ = context;
     const timeline = try session.GetTimelineProperties();
     defer timeline.Release();
 
     std.debug.print("{}, {}, {}\n", .{timeline.StartTime(), timeline.EndTime(), timeline.Position()});
+}
+
+// todo: idk we need like a way to handle if thumbnail is null
+pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
+    const properties = try (try session.TryGetMediaPropertiesAsync()).getAndForget(context.allocator);
+    defer properties.Release();
 
     const thumbnail = (try properties.Thumbnail()) orelse return;
     defer thumbnail.Release();
@@ -99,8 +102,10 @@ pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTrans
     defer session.Release();
 
     try propartiesChanged(context, session);
+    try timelineChanged(context, session);
 
     _ = try session.MediaPropertiesChanged(context.allocator, context, propartiesChanged);
+    _ = try session.TimelinePropertiesChanged(context.allocator, context, timelineChanged);
 }
 
 pub fn main() !void {

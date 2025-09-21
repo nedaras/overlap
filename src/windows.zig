@@ -62,6 +62,7 @@ pub const TimeSpan = extern struct {
 
 const Win32Error = windows.Win32Error;
 const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
+const ITimelinePropertiesChangedEventArgs = media.ITimelinePropertiesChangedEventArgs;
 const IGlobalSystemMediaTransportControlsSessionMediaProperties = media.IGlobalSystemMediaTransportControlsSessionMediaProperties;
 const IAsyncOperationCompletedHandler = winrt.IAsyncOperationCompletedHandler;
 const IAsyncOperationCompletedHandlerVTable = winrt.IAsyncOperationCompletedHandlerVTable;
@@ -993,6 +994,32 @@ pub const GlobalSystemMediaTransportControlsSession = struct {
 
     pub fn GetPlaybackInfo(self: GlobalSystemMediaTransportControlsSession) !GlobalSystemMediaTransportControlsSessionPlaybackInfo {
         return .{ .handle = try self.handle.GetPlaybackInfo() };
+    }
+
+    pub fn TimelinePropertiesChanged(
+        self: GlobalSystemMediaTransportControlsSession,
+        allocator: Allocator,
+        context: anytype,
+        comptime invokeFn: fn (@TypeOf(context), session: GlobalSystemMediaTransportControlsSession) anyerror!void,
+    ) !i64 {
+        const Handler = *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *ITimelinePropertiesChangedEventArgs);
+        const WrappedContext = struct {
+            original: @TypeOf(context),
+
+            fn wrappedInvokeFn(ctx: @This(), sender: *IGlobalSystemMediaTransportControlsSession, _: *ITimelinePropertiesChangedEventArgs) void {
+                invokeFn(ctx.original, .{ .handle = sender }) catch |err| {
+                    std.debug.print("error: {s}\n", .{@errorName(err)});
+                    if (@errorReturnTrace()) |trace| {
+                        std.debug.dumpStackTrace(trace.*);
+                    }
+                };
+            }
+        };
+
+        const handler: Handler = try .init(allocator, WrappedContext{ .original = context }, WrappedContext.wrappedInvokeFn);
+        defer handler.Release();
+
+        return (try self.handle.add_TimelinePropertiesChanged(handler)).value;
     }
 
     pub fn MediaPropertiesChanged(

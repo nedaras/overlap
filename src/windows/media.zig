@@ -2,6 +2,7 @@ const controls = @import("media/controls.zig");
 
 pub const ICurrentSessionChangedEventArgs = controls.ICurrentSessionChangedEventArgs;
 pub const IMediaPropertiesChangedEventArgs = controls.IMediaPropertiesChangedEventArgs;
+pub const ITimelinePropertiesChangedEventArgs = controls.ITimelinePropertiesChangedEventArgs;
 pub const IGlobalSystemMediaTransportControlsSession = controls.IGlobalSystemMediaTransportControlsSession;
 pub const IGlobalSystemMediaTransportControlsSessionManager = controls.IGlobalSystemMediaTransportControlsSessionManager;
 pub const IGlobalSystemMediaTransportControlsSessionPlaybackInfo = controls.IGlobalSystemMediaTransportControlsSessionPlaybackInfo;
