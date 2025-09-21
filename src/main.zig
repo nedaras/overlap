@@ -19,6 +19,11 @@ const Context = struct {
     title: []const u16 = &.{},
     artist: []const u16 = &.{},
 
+    timeline: struct {
+        end_time: i64 = 0,
+        position: i64 = 0,
+    } = .{},
+
     pub fn deinit(self: *Context) void {
         if (self.image_pixels) |image_pixels| {
             image_pixels.Release();
@@ -30,18 +35,19 @@ const Context = struct {
 };
 
 pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
-    _ = context;
     const timeline = try session.GetTimelineProperties();
     defer timeline.Release();
 
-    const duration = timeline.StartTime() - timeline.EndTime();
-    const pos = timeline.Position();
+    context.mutex.lock();
+    defer context.mutex.unlock();
 
-    const percentage = (@as(f32, @floatFromInt(pos)) / @as(f32, @floatFromInt(duration))) * 100.0;
-    std.debug.print("percent: {d}%\n", .{@as(i64, @intFromFloat(percentage))});
+    context.timeline.end_time = timeline.EndTime();
+    context.timeline.position = timeline.Position();
 }
 
 // todo: idk we need like a way to handle if thumbnail is null
+// todo: remove extra branding from spotify as wtf man
+// todo: fix a bug where we do not update our props if thumbnail is not a thing
 pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
     const properties = try (try session.TryGetMediaPropertiesAsync()).getAndForget(context.allocator);
     defer properties.Release();
@@ -153,9 +159,6 @@ pub fn main() !void {
         try hook.newFrame();
         defer hook.endFrame();
 
-        //try gui.text(.{ 0.0, 0.0 }, "HelloWorld!", .{});
-        //try gui.text(.{ 0.0, 60.0 }, "MultipleFontSizes!", .{ .size = 64.0 });
-
         context.mutex.lock();
         defer context.mutex.unlock();
 
@@ -200,6 +203,11 @@ pub fn main() !void {
 
         // cover
         gui.image(.{ pos[x] + padding, pos[y] + padding }, .{ pos[x] + padding + image_size, pos[y] + padding + image_size }, cover);
+
+        // progress bar
+        const bar_max_width = padding + width + padding;
+        const bar_width = @as(f32, @floatFromInt(context.timeline.position)) / @as(f32, @floatFromInt(context.timeline.end_time)) * bar_max_width;
+        gui.rect(.{ pos[x], pos[y] + padding + image_size }, .{ pos[x] + bar_width, pos[y] + padding + image_size + padding }, 0x3DD35FFF);
 
         // properties
         try ellipsisW(gui, .{ pos[x] + padding + image_size + padding, pos[y] + padding }, context.title, width, .{ .size = 12.0 });
