@@ -2,6 +2,7 @@ const std = @import("std");
 const fat = @import("fat");
 const Hook = @import("Hook.zig");
 const windows = @import("windows.zig");
+const mem = std.mem;
 const unicode = std.unicode;
 const Allocator = std.mem.Allocator;
 
@@ -72,6 +73,20 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
 
     transform.put_InterpolationMode(.Fant);
 
+    const spotify_packaged_id = unicode.utf8ToUtf16LeStringLiteral("SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify");
+    const spotify_unpackaged_id = unicode.utf8ToUtf16LeStringLiteral("Spotify.exe");
+
+    const model_id = try session.SourceAppUserModelId();
+
+    if (mem.eql(u16, model_id, spotify_packaged_id) or mem.eql(u16, model_id, spotify_unpackaged_id)) {
+        transform.put_Bounds(.{
+            .X = 32,
+            .Y = 0,
+            .Width = 234,
+            .Height = 234,
+        });
+    }
+
     const pixels = try (try frame.GetPixelDataTransformedAsync(
         windows.BitmapPixelFormat_Rgba8,
         windows.BitmapAlphaMode_Premultiplied,
@@ -110,8 +125,6 @@ pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTrans
         return;
     };
     defer session.Release();
-
-    std.debug.print("{f}\n", .{unicode.fmtUtf16Le(try session.SourceAppUserModelId())});
 
     try propartiesChanged(context, session);
     try timelineChanged(context, session);

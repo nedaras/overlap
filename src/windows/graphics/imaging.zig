@@ -10,6 +10,7 @@ const BYTE = windows.BYTE;
 const UINT32 = windows.UINT32;
 const HRESULT = windows.HRESULT;
 const IUnknown = windows.IUnknown;
+const BitmapBounds = windows.BitmapBounds;
 const HSTRING_HEADER = windows.HSTRING_HEADER;
 const IAsyncOperation = winrt.IAsyncOperation;
 const BitmapAlphaMode = windows.BitmapAlphaMode;
@@ -74,6 +75,13 @@ pub const IBitmapTransform = extern struct {
         const put_interpolation_mode: *const FnType = @ptrCast(self.vtable[11]);
 
         assert(put_interpolation_mode(self, value) == windows.S_OK);
+    }
+
+    pub fn put_Bounds(self: *IBitmapTransform, value: BitmapBounds) void {
+        const FnType = fn (*IBitmapTransform, BitmapBounds) callconv(.winapi) HRESULT;
+        const put_bounds: *const FnType = @ptrCast(self.vtable[17]);
+
+        assert(put_bounds(self, value) == windows.S_OK);
     }
 };
 

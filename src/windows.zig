@@ -60,6 +60,13 @@ pub const TimeSpan = extern struct {
     Duration: i64,
 };
 
+pub const BitmapBounds = extern struct {
+    X: u32,
+    Y: u32,
+    Width: u32,
+    Height: u32,
+};
+
 const Win32Error = windows.Win32Error;
 const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
 const ITimelinePropertiesChangedEventArgs = media.ITimelinePropertiesChangedEventArgs;
