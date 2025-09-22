@@ -77,6 +77,7 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
 
     // Crops out Spotifies branding from original thumbnail's image.
     if (mem.eql(u16, model_id, spotify_packaged_id) or mem.eql(u16, model_id, spotify_unpackaged_id)) {
+        // Perhaps this solution does not look so great, but I think it is the best option.
 
         transform.put_ScaledHeight(@intFromFloat(@as(f32, @floatFromInt(context.image_size)) * 1.2821));
         transform.put_ScaledWidth(@intFromFloat(@as(f32, @floatFromInt(context.image_size)) * 1.2821));
