@@ -68,9 +68,6 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     const transform = try windows.IBitmapTransform.new();
     defer transform.Release();
 
-    transform.put_ScaledHeight(context.image_size);
-    transform.put_ScaledWidth(context.image_size);
-
     transform.put_InterpolationMode(.Fant);
 
     const spotify_packaged_id = unicode.utf8ToUtf16LeStringLiteral("SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify");
@@ -80,12 +77,19 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
 
     // Crops out Spotifies branding from original thumbnail's image.
     if (mem.eql(u16, model_id, spotify_packaged_id) or mem.eql(u16, model_id, spotify_unpackaged_id)) {
+
+        transform.put_ScaledHeight(@intFromFloat(@as(f32, @floatFromInt(context.image_size)) * 1.28));
+        transform.put_ScaledWidth(@intFromFloat(@as(f32, @floatFromInt(context.image_size)) * 1.28));
+
         transform.put_Bounds(.{
-            .X = 32,
+            .X = 0,
             .Y = 0,
-            .Width = 234,
-            .Height = 234,
+            .Width = context.image_size,
+            .Height = context.image_size,
         });
+    } else {
+        transform.put_ScaledHeight(context.image_size);
+        transform.put_ScaledWidth(context.image_size);
     }
 
     const pixels = try (try frame.GetPixelDataTransformedAsync(
