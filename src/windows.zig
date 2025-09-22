@@ -780,7 +780,10 @@ pub fn AsyncOperation(comptime TResult: type) type {
             return switch (async_info.get_Status()) {
                 .Started => unreachable,
                 .Completed => self.handle.GetResults(),
-                .Error => error.UnhandledError, // todo: get error stuff from info
+                .Error => {
+                    std.debug.print("{}\n", .{async_info.get_ErrorCode()});
+                    return error.UnhandledError;
+                }, // todo: get error stuff from info
                 .Canceled => error.Canceled,
             };
         }

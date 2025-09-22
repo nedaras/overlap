@@ -184,6 +184,16 @@ pub const IAsyncInfo = extern struct {
         return val;
     }
 
+    pub fn get_ErrorCode(self: *IAsyncInfo) HRESULT {
+        const FnType = fn (*IAsyncInfo, *HRESULT) callconv(.winapi) HRESULT;
+        const get_error_code: *const FnType = @ptrCast(self.vtable[8]);
+
+        var errorCode: HRESULT = undefined;
+        assert(get_error_code(self, &errorCode) == windows.S_OK);
+
+        return errorCode;
+    }
+
     pub fn Close(self: *IAsyncInfo) void {
         const FnType = fn (*IAsyncInfo) callconv(.winapi) HRESULT;
         const close: *const FnType = @ptrCast(self.vtable[10]);

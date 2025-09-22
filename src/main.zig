@@ -78,6 +78,7 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
 
     const model_id = try session.SourceAppUserModelId();
 
+    // Crops out Spotifies branding from original thumbnail's image.
     if (mem.eql(u16, model_id, spotify_packaged_id) or mem.eql(u16, model_id, spotify_unpackaged_id)) {
         transform.put_Bounds(.{
             .X = 32,
