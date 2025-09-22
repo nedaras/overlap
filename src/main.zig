@@ -78,11 +78,11 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
     // Crops out Spotifies branding from original thumbnail's image.
     if (mem.eql(u16, model_id, spotify_packaged_id) or mem.eql(u16, model_id, spotify_unpackaged_id)) {
 
-        transform.put_ScaledHeight(@intFromFloat(@as(f32, @floatFromInt(context.image_size)) * 1.28));
-        transform.put_ScaledWidth(@intFromFloat(@as(f32, @floatFromInt(context.image_size)) * 1.28));
+        transform.put_ScaledHeight(@intFromFloat(@as(f32, @floatFromInt(context.image_size)) * 1.2821));
+        transform.put_ScaledWidth(@intFromFloat(@as(f32, @floatFromInt(context.image_size)) * 1.2821));
 
         transform.put_Bounds(.{
-            .X = 0,
+            .X = @intFromFloat(0.11 * 1.2821 * @as(f32, @floatFromInt(context.image_size))),
             .Y = 0,
             .Width = context.image_size,
             .Height = context.image_size,
