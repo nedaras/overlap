@@ -17,6 +17,13 @@ pub const EventRegistrationToken = extern struct {
     value: INT64,
 };
 
+pub const IPlaybackInfoChangedEventArgs = extern struct {
+    vtable: [*]const *const anyopaque,
+
+    pub const NAME = "Windows.Media.Control.TimelinePropertiesChangedEventArgs";
+    pub const SIGNATURE = "rc(" ++ NAME ++ ";{29033a2f-c923-5a77-bcaf-055ff415ad32})";
+};
+
 pub const ITimelinePropertiesChangedEventArgs = extern struct {
     vtable: [*]const *const anyopaque,
 
@@ -143,6 +150,23 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         IUnknown.Release(@ptrCast(self));
     }
 
+    pub const GetSourceAppUserModelIdError = error{
+        Unexpected,
+    };
+
+    pub fn get_SourceAppUserModelId(self: *IGlobalSystemMediaTransportControlsSession) GetSourceAppUserModelIdError!HSTRING {
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSession, *HSTRING) callconv(.winapi) HRESULT;
+        const get_source_app_user_model_id: *const FnType = @ptrCast(self.vtable[6]);
+
+        var value: HSTRING = undefined;
+
+        const hr = get_source_app_user_model_id(self, &value);
+        return switch (hr) {
+            windows.S_OK => value,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+
     pub fn TryGetMediaPropertiesAsync(
         self: *IGlobalSystemMediaTransportControlsSession,
     ) TryGetMediaPropertiesAsyncError!*IAsyncOperation(*IGlobalSystemMediaTransportControlsSessionMediaProperties) {
@@ -192,7 +216,9 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         };
     }
 
-    pub const AddTimelinePropertiesChangedError = error{Unexpected};
+    pub const AddTimelinePropertiesChangedError = error{
+        Unexpected,
+    };
 
     pub fn add_TimelinePropertiesChanged(
         self: *IGlobalSystemMediaTransportControlsSession,
@@ -210,7 +236,29 @@ pub const IGlobalSystemMediaTransportControlsSession = extern struct {
         };
     }
 
-    pub const AddMediaPropertiesChangedError = error{Unexpected};
+    pub const AddPlaybackInfoChangedError = error{
+        Unexpected,
+    };
+
+    pub fn add_PlaybackInfoChanged(
+        self: *IGlobalSystemMediaTransportControlsSession,
+        handler: *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IPlaybackInfoChangedEventArgs),
+    ) AddPlaybackInfoChangedError!EventRegistrationToken {
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSession, *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IPlaybackInfoChangedEventArgs), *EventRegistrationToken) callconv(.winapi) HRESULT;
+        const add_playback_info_changed: *const FnType = @ptrCast(self.vtable[27]);
+
+        var token: EventRegistrationToken = undefined;
+
+        const hr = add_playback_info_changed(self, handler, &token);
+        return switch (hr) {
+            windows.S_OK => token,
+            else => windows.unexpectedError(windows.HRESULT_CODE(hr)),
+        };
+    }
+
+    pub const AddMediaPropertiesChangedError = error{
+        Unexpected,
+    };
 
     pub fn add_MediaPropertiesChanged(
         self: *IGlobalSystemMediaTransportControlsSession,

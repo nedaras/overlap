@@ -32,10 +32,6 @@ pub const IBitmapTransform = extern struct {
     pub const NAME = "Windows.Graphics.Imaging.BitmapTransform";
     pub const UUID = &GUID.parse("{ae755344-e268-4d35-adcf-e995d31a8d34}");
 
-    pub inline fn Release(self: *IBitmapTransform) void {
-        IUnknown.Release(@ptrCast(self));
-    }
-
     pub fn new() !*IBitmapTransform {
         var header: HSTRING_HEADER = undefined;
         const class = try windows.WindowsCreateStringReference(unicode.wtf8ToWtf16LeStringLiteral(NAME), &header);
@@ -53,6 +49,10 @@ pub const IBitmapTransform = extern struct {
         try factory.ActivateInstance(@ptrCast(&transform));
 
         return transform;
+    }
+
+    pub inline fn Release(self: *IBitmapTransform) void {
+        IUnknown.Release(@ptrCast(self));
     }
 
     pub fn put_ScaledWidth(self: *IBitmapTransform, value: UINT32) void {

@@ -982,6 +982,11 @@ pub const GlobalSystemMediaTransportControlsSession = struct {
         self.handle.Release();
     }
 
+    pub fn SourceAppUserModelId(self: GlobalSystemMediaTransportControlsSession) ![:0]const u16 {
+        const hstring = try self.handle.get_SourceAppUserModelId();
+        return WindowsGetStringRawBuffer(hstring);
+    }
+
     pub fn TryGetMediaPropertiesAsync(self: GlobalSystemMediaTransportControlsSession) !AsyncOperation(GlobalSystemMediaTransportControlsSessionMediaProperties) {
         return .{
             .handle = @ptrCast(try self.handle.TryGetMediaPropertiesAsync()),

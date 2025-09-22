@@ -111,9 +111,12 @@ pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTrans
     };
     defer session.Release();
 
+    std.debug.print("{f}\n", .{unicode.fmtUtf16Le(try session.SourceAppUserModelId())});
+
     try propartiesChanged(context, session);
     try timelineChanged(context, session);
 
+    // todo: log life cycles of these hooks as myh guess is we're leaking memory
     _ = try session.MediaPropertiesChanged(context.allocator, context, propartiesChanged);
     _ = try session.TimelinePropertiesChanged(context.allocator, context, timelineChanged);
 }
