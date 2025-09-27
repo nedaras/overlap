@@ -102,7 +102,7 @@ pub const IGlobalSystemMediaTransportControlsSessionPlaybackInfo = extern struct
 
     pub fn get_PlaybackStatus(self: *IGlobalSystemMediaTransportControlsSessionPlaybackInfo) c_int {
         const FnType = fn (*IGlobalSystemMediaTransportControlsSessionPlaybackInfo, *c_int) callconv(.winapi) HRESULT;
-        const get_playback_status: *const FnType = @ptrCast(self.vtable[6]);
+        const get_playback_status: *const FnType = @ptrCast(self.vtable[7]);
 
         var value: c_int = 0;
         const v = get_playback_status(self, &value);
