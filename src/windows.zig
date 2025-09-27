@@ -973,7 +973,7 @@ pub const GlobalSystemMediaTransportControlsSessionPlaybackInfo = struct {
         self.handle.Release();
     }
 
-    pub inline fn PlaybackStatus(self: GlobalSystemMediaTransportControlsSessionPlaybackInfo) MediaPlaybackStatus {
+    pub inline fn PlaybackStatus(self: GlobalSystemMediaTransportControlsSessionPlaybackInfo) c_int {
         return self.handle.get_PlaybackStatus();
     }
 };

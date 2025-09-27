@@ -64,6 +64,8 @@ pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTran
     const info = try session.GetPlaybackInfo();
     defer info.Release();
 
+    @compileLog(@intFromEnum(windows.MediaPlaybackStatus.Closed));
+
     std.debug.print("{}\n", .{info.PlaybackStatus()});
 }
 
