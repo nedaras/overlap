@@ -257,21 +257,23 @@ pub fn main() !void {
         // cover
         gui.image(.{ pos[x], pos[y] }, .{ pos[x] + image_size, pos[y] + image_size }, cover);
 
-        const timeline = try session.GetTimelineProperties();
-        defer timeline.Release();
-
+        // I really do not like calling vtable functions in hot loops
         const playback_info = try session.GetPlaybackInfo();
         defer playback_info.Release();
 
-        std.debug.print("{d}\n", .{ playback_info.PlaybackStatus() });
+        const progress = blk: {
+            if (playback_info.PlaybackStatus() == .Paused) {
+                break :blk context.timeline.position;
+            }
 
-        const timestamp = std.time.milliTimestamp();
-        const elapsed = timestamp - context.timeline.last_updated;
+            const timestamp = std.time.milliTimestamp();
+            const elapsed = timestamp - context.timeline.last_updated;
 
-        const progress = @min(@as(f32, @floatFromInt(context.timeline.position + elapsed)) / @as(f32, @floatFromInt(context.timeline.end_time)), 1.0);
+            break :blk context.timeline.position + elapsed;
+        };
 
         const bar_max_width = image_size + padding + width + padding + 2.0;
-        const bar_width = progress * bar_max_width;
+        const bar_width = @min(@as(f32, @floatFromInt(progress)) / @as(f32, @floatFromInt(context.timeline.end_time)), 1.0) * bar_max_width;
 
         // progress bar
         gui.rect(.{ -1.0 + pos[x], pos[y] + image_size }, .{ -1.0 + pos[x] + bar_width, pos[y] + image_size + 1.0 }, 0x3DD35FFF);
