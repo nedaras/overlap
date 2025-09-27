@@ -14,13 +14,14 @@ const Context = struct {
     /// Must be threadsafe.
     allocator: Allocator,
 
+    session: ?windows.GlobalSystemMediaTransportControlsSession = null,
+
     image_size: u32,
 
     mutex: std.Thread.Mutex = .{},
     modified: u16 = 0,
 
     image_pixels: ?*windows.IPixelDataProvider = null,
-    playback_info: ?windows.GlobalSystemMediaTransportControlsSessionPlaybackInfo = null,
 
     title: []const u16 = &.{},
     artist: []const u16 = &.{},
@@ -35,8 +36,8 @@ const Context = struct {
         if (self.image_pixels) |image_pixels| {
             image_pixels.Release();
         }
-        if (self.playback_info) |playback_info| {
-            playback_info.Release();
+        if (self.session) |session| {
+            session.Release();
         }
         self.allocator.free(self.title);
         self.allocator.free(self.artist);
@@ -140,7 +141,15 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
 }
 
 pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTransportControlsSessionManager) !void {
-    const session = (try manager.GetCurrentSession()) orelse {
+    context.mutex.lock();
+    defer context.mutex.unlock();
+
+    if (context.session) |session| {
+        session.Release();
+        context.session = null;
+    }
+
+    context.session = (try manager.GetCurrentSession()) orelse {
         context.mutex.lock();
         defer context.mutex.unlock();
 
@@ -149,21 +158,13 @@ pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTrans
 
         return;
     };
-    defer session.Release();
 
-    if (context.playback_info) |playback_info| {
-        playback_info.Release();
-        context.playback_info = null;
-    }
-
-    context.playback_info = try session.GetPlaybackInfo();
-
-    try propartiesChanged(context, session);
-    try timelineChanged(context, session);
+    try propartiesChanged(context, context.session.?);
+    try timelineChanged(context, context.session.?);
 
     // todo: log life cycles of these hooks as myh guess is we're leaking memory
-    _ = try session.MediaPropertiesChanged(context.allocator, context, propartiesChanged);
-    _ = try session.TimelinePropertiesChanged(context.allocator, context, timelineChanged);
+    _ = try context.session.?.MediaPropertiesChanged(context.allocator, context, propartiesChanged);
+    _ = try context.session.?.TimelinePropertiesChanged(context.allocator, context, timelineChanged);
 }
 
 pub fn main() !void {
@@ -204,6 +205,8 @@ pub fn main() !void {
 
     var modified: u32 = 0;
     while (true) {
+        const session = context.session orelse continue;
+
         try hook.newFrame();
         defer hook.endFrame();
 
@@ -252,9 +255,10 @@ pub fn main() !void {
         // cover
         gui.image(.{ pos[x], pos[y] }, .{ pos[x] + image_size, pos[y] + image_size }, cover);
 
-        if (context.playback_info) |playback_info| {
-            std.debug.print("{}\n", .{playback_info.PlaybackStatus()});
-        }
+        const timeline = try session.GetTimelineProperties();
+        defer timeline.Release();
+
+        std.debug.print("{d}, {d}\n", .{timeline.Position(), timeline.EndTime()});
 
         const timestamp = std.time.milliTimestamp();
         const elapsed = timestamp - context.timeline.last_updated;
