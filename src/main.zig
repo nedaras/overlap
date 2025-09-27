@@ -207,13 +207,13 @@ pub fn main() !void {
 
     var modified: u32 = 0;
     while (true) {
-        const session = context.session orelse continue;
-
         try hook.newFrame();
         defer hook.endFrame();
 
         context.mutex.lock();
         defer context.mutex.unlock();
+
+        const session = context.session orelse continue;
 
         blk: {
             defer modified = context.modified;
@@ -257,10 +257,10 @@ pub fn main() !void {
         // cover
         gui.image(.{ pos[x], pos[y] }, .{ pos[x] + image_size, pos[y] + image_size }, cover);
 
-        //const timeline = try session.GetTimelineProperties();
-        //defer timeline.Release();
+        const timeline = try session.GetTimelineProperties();
+        defer timeline.Release();
 
-        //std.debug.print("{d}, {d}\n", .{timeline.Position(), timeline.EndTime()});
+        std.debug.print("{d}, {d}\n", .{timeline.Position(), timeline.EndTime()});
 
         const timestamp = std.time.milliTimestamp();
         const elapsed = timestamp - context.timeline.last_updated;
