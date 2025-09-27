@@ -260,7 +260,10 @@ pub fn main() !void {
         const timeline = try session.GetTimelineProperties();
         defer timeline.Release();
 
-        std.debug.print("{d}, {d}\n", .{ timeline.Position(), timeline.EndTime() });
+        const playback_info = try session.GetPlaybackInfo();
+        defer playback_info.Release();
+
+        std.debug.print("{d}\n", .{ playback_info.PlaybackStatus() });
 
         const timestamp = std.time.milliTimestamp();
         const elapsed = timestamp - context.timeline.last_updated;
