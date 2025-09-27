@@ -257,10 +257,10 @@ pub fn main() !void {
         // cover
         gui.image(.{ pos[x], pos[y] }, .{ pos[x] + image_size, pos[y] + image_size }, cover);
 
-        const timeline = try session.GetTimelineProperties();
-        defer timeline.Release();
+        //const timeline = try session.GetTimelineProperties();
+        //defer timeline.Release();
 
-        std.debug.print("{d}, {d}\n", .{timeline.Position(), timeline.EndTime()});
+        //std.debug.print("{d}, {d}\n", .{timeline.Position(), timeline.EndTime()});
 
         const timestamp = std.time.milliTimestamp();
         const elapsed = timestamp - context.timeline.last_updated;
