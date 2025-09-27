@@ -6,6 +6,10 @@ const mem = std.mem;
 const unicode = std.unicode;
 const Allocator = std.mem.Allocator;
 
+// Before alpha...
+//  Handling progressbar
+//  handling non square covers
+
 const Context = struct {
     /// Must be threadsafe.
     allocator: Allocator,
@@ -21,6 +25,7 @@ const Context = struct {
     artist: []const u16 = &.{},
 
     timeline: struct {
+        last_updated: i64 = 0,
         end_time: i64 = 0,
         position: i64 = 0,
     } = .{},
@@ -39,11 +44,14 @@ pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTran
     const timeline = try session.GetTimelineProperties();
     defer timeline.Release();
 
+    const timestamp = std.time.milliTimestamp();
+
     context.mutex.lock();
     defer context.mutex.unlock();
 
-    context.timeline.end_time = timeline.EndTime();
-    context.timeline.position = timeline.Position();
+    context.timeline.last_updated = timestamp;
+    context.timeline.end_time = timeline.EndTime() / 10000;
+    context.timeline.position = timeline.Position() / 10000;
 }
 
 // todo: idk we need like a way to handle if thumbnail is null
@@ -92,6 +100,8 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
         transform.put_ScaledHeight(context.image_size);
         transform.put_ScaledWidth(context.image_size);
     }
+
+    // todo: handle like non square ones
 
     const pixels = try (try frame.GetPixelDataTransformedAsync(
         windows.BitmapPixelFormat_Rgba8,
@@ -226,9 +236,12 @@ pub fn main() !void {
         // cover
         gui.image(.{ pos[x], pos[y] }, .{ pos[x] + image_size, pos[y] + image_size }, cover);
 
+        const timestamp = std.time.milliTimestamp();
+        const end_timestamp = context.timeline.last_updated - context.timeline.position + context.timeline.end_time;
+
         // progress bar
         const bar_max_width = image_size + padding + width + padding + 2.0;
-        const bar_width = @as(f32, @floatFromInt(context.timeline.position)) / @as(f32, @floatFromInt(context.timeline.end_time)) * bar_max_width;
+        const bar_width = @as(f32, @floatFromInt(timestamp)) / @as(f32, @floatFromInt(end_timestamp)) * bar_max_width;
         gui.rect(.{ -1.0 + pos[x], pos[y] + image_size }, .{ -1.0 + pos[x] + bar_width, pos[y] + image_size + 1.0 }, 0x3DD35FFF);
 
         // properties

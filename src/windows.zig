@@ -976,10 +976,12 @@ pub const GlobalSystemMediaTransportControlsSessionTimelineProperties = struct {
         return self.handle.get_StartTime().Duration;
     }
 
+    /// A time period expressed in 100-nanosecond units.
     pub inline fn EndTime(self: GlobalSystemMediaTransportControlsSessionTimelineProperties) i64 {
         return self.handle.get_EndTime().Duration;
     }
 
+    /// A time period expressed in 100-nanosecond units.
     pub inline fn Position(self: GlobalSystemMediaTransportControlsSessionTimelineProperties) i64 {
         return self.handle.get_Position().Duration;
     }
