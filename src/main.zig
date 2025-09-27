@@ -141,30 +141,32 @@ pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTr
 }
 
 pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTransportControlsSessionManager) !void {
-    context.mutex.lock();
-    defer context.mutex.unlock();
-
-    if (context.session) |session| {
-        session.Release();
-        context.session = null;
-    }
-
-    context.session = (try manager.GetCurrentSession()) orelse {
+    const session = blk: {
         context.mutex.lock();
         defer context.mutex.unlock();
 
-        context.image_pixels = null;
-        context.modified +%= 1;
+        if (context.session) |session| {
+            session.Release();
+            context.session = null;
+        }
 
-        return;
+        break :blk (try manager.GetCurrentSession()) orelse {
+            if (context.image_pixels) |image_pixels| {
+                image_pixels.Release();
+                context.image_pixels = null;
+            }
+
+            context.modified +%= 1;
+            return;
+        };
     };
 
-    try propartiesChanged(context, context.session.?);
-    try timelineChanged(context, context.session.?);
+    try propartiesChanged(context, session);
+    try timelineChanged(context, session);
 
     // todo: log life cycles of these hooks as myh guess is we're leaking memory
-    _ = try context.session.?.MediaPropertiesChanged(context.allocator, context, propartiesChanged);
-    _ = try context.session.?.TimelinePropertiesChanged(context.allocator, context, timelineChanged);
+    _ = try session.MediaPropertiesChanged(context.allocator, context, propartiesChanged);
+    _ = try session.TimelinePropertiesChanged(context.allocator, context, timelineChanged);
 }
 
 pub fn main() !void {
