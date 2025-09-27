@@ -20,6 +20,7 @@ const Context = struct {
     modified: u16 = 0,
 
     image_pixels: ?*windows.IPixelDataProvider = null,
+    playback_info: ?windows.GlobalSystemMediaTransportControlsSessionPlaybackInfo = null,
 
     title: []const u16 = &.{},
     artist: []const u16 = &.{},
@@ -34,20 +35,14 @@ const Context = struct {
         if (self.image_pixels) |image_pixels| {
             image_pixels.Release();
         }
+        if (self.playback_info) |playback_info| {
+            playback_info.Release();
+        }
         self.allocator.free(self.title);
         self.allocator.free(self.artist);
         self.* = undefined;
     }
 };
-
-pub fn playbackChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
-    const playback = try session.GetPlaybackInfo();
-    defer playback.Release();
-
-    std.debug.print("pause/play pressed!\n", .{});
-    std.debug.print("{}\n", .{playback.PlaybackStatus()});
-    _ = context;
-}
 
 pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
     const timeline = try session.GetTimelineProperties();
@@ -156,14 +151,19 @@ pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTrans
     };
     defer session.Release();
 
+    if (context.playback_info) |playback_info| {
+        playback_info.Release();
+        context.playback_info = null;
+    }
+
+    context.playback_info = try session.GetPlaybackInfo();
+
     try propartiesChanged(context, session);
     try timelineChanged(context, session);
-    try playbackChanged(context, session);
 
     // todo: log life cycles of these hooks as myh guess is we're leaking memory
     _ = try session.MediaPropertiesChanged(context.allocator, context, propartiesChanged);
     _ = try session.TimelinePropertiesChanged(context.allocator, context, timelineChanged);
-    _ = try session.PlaybackInfoChanged(context.allocator, context, playbackChanged);
 }
 
 pub fn main() !void {
@@ -251,6 +251,10 @@ pub fn main() !void {
 
         // cover
         gui.image(.{ pos[x], pos[y] }, .{ pos[x] + image_size, pos[y] + image_size }, cover);
+
+        if (context.playback_info) |playback_info| {
+            std.debug.print("{}\n", .{playback_info.PlaybackStatus()});
+        }
 
         const timestamp = std.time.milliTimestamp();
         const elapsed = timestamp - context.timeline.last_updated;
