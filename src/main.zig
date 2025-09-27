@@ -45,6 +45,7 @@ pub fn playbackChanged(context: *Context, session: windows.GlobalSystemMediaTran
     defer playback.Release();
 
     std.debug.print("pause/play pressed!\n", .{});
+    std.debug.print("{}\n", .{playback.PlaybackStatus()});
     _ = context;
 }
 
@@ -60,13 +61,6 @@ pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTran
     context.timeline.last_updated = timestamp;
     context.timeline.end_time = @divTrunc(timeline.EndTime(), 10000);
     context.timeline.position = @divTrunc(timeline.Position(), 10000);
-
-    const info = try session.GetPlaybackInfo();
-    defer info.Release();
-
-    @compileLog(@intFromEnum(windows.MediaPlaybackStatus.Closed));
-
-    std.debug.print("{}\n", .{info.PlaybackStatus()});
 }
 
 // todo: idk we need like a way to handle if thumbnail is null

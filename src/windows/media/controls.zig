@@ -105,7 +105,9 @@ pub const IGlobalSystemMediaTransportControlsSessionPlaybackInfo = extern struct
         const get_playback_status: *const FnType = @ptrCast(self.vtable[6]);
 
         var value: c_int = 0;
-        assert(get_playback_status(self, &value) == windows.S_OK);
+        const v = get_playback_status(self, &value);
+
+        std.debug.print("res: {}\n", .{v});
 
         return value;
     }
