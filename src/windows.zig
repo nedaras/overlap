@@ -69,6 +69,7 @@ pub const BitmapBounds = extern struct {
 
 pub const MediaPlaybackStatus = enum(INT) {
     Closed,
+    Opened,
     Changing,
     Stopped,
     Playing,
@@ -973,7 +974,7 @@ pub const GlobalSystemMediaTransportControlsSessionPlaybackInfo = struct {
         self.handle.Release();
     }
 
-    pub inline fn PlaybackStatus(self: GlobalSystemMediaTransportControlsSessionPlaybackInfo) c_int {
+    pub inline fn PlaybackStatus(self: GlobalSystemMediaTransportControlsSessionPlaybackInfo) MediaPlaybackStatus {
         return self.handle.get_PlaybackStatus();
     }
 };

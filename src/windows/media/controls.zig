@@ -100,14 +100,12 @@ pub const IGlobalSystemMediaTransportControlsSessionPlaybackInfo = extern struct
         IUnknown.Release(@ptrCast(self));
     }
 
-    pub fn get_PlaybackStatus(self: *IGlobalSystemMediaTransportControlsSessionPlaybackInfo) c_int {
+    pub fn get_PlaybackStatus(self: *IGlobalSystemMediaTransportControlsSessionPlaybackInfo) MediaPlaybackStatus  {
         const FnType = fn (*IGlobalSystemMediaTransportControlsSessionPlaybackInfo, *c_int) callconv(.winapi) HRESULT;
         const get_playback_status: *const FnType = @ptrCast(self.vtable[7]);
 
-        var value: c_int = 0;
-        const v = get_playback_status(self, &value);
-
-        std.debug.print("res: {}\n", .{v});
+        var value: MediaPlaybackStatus = undefined;
+        assert(get_playback_status(self, &value) == windows.S_OK);
 
         return value;
     }

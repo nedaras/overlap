@@ -61,6 +61,11 @@ pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTran
     context.timeline.last_updated = timestamp;
     context.timeline.end_time = @divTrunc(timeline.EndTime(), 10000);
     context.timeline.position = @divTrunc(timeline.Position(), 10000);
+
+    const playback = try session.GetPlaybackInfo();
+    defer playback.Release();
+
+    std.debug.print("{}\n", .{playback.PlaybackStatus()});
 }
 
 // todo: idk we need like a way to handle if thumbnail is null
