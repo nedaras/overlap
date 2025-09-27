@@ -239,11 +239,12 @@ pub fn main() !void {
         const timestamp = std.time.milliTimestamp();
         const elapsed = timestamp - context.timeline.last_updated;
 
-        const progress = context.timeline.position + elapsed;
+        const progress = @min(@as(f32, @floatFromInt(context.timeline.position + elapsed)) / @as(f32, @floatFromInt(context.timeline.end_time)), 1.0);
+
+        const bar_max_width = image_size + padding + width + padding + 2.0;
+        const bar_width = progress * bar_max_width;
 
         // progress bar
-        const bar_max_width = image_size + padding + width + padding + 2.0;
-        const bar_width = @min(@as(f32, @floatFromInt(progress)) / @as(f32, @floatFromInt(context.timeline.end_time)) * bar_max_width, 1.0);
         gui.rect(.{ -1.0 + pos[x], pos[y] + image_size }, .{ -1.0 + pos[x] + bar_width, pos[y] + image_size + 1.0 }, 0x3DD35FFF);
 
         // properties
