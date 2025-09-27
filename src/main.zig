@@ -60,8 +60,6 @@ pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTran
 
     const playback = try session.GetPlaybackInfo();
     defer playback.Release();
-
-    std.debug.print("{}\n", .{playback.PlaybackStatus()});
 }
 
 // todo: idk we need like a way to handle if thumbnail is null
@@ -150,7 +148,7 @@ pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTrans
             context.session = null;
         }
 
-        break :blk (try manager.GetCurrentSession()) orelse {
+        context.session = (try manager.GetCurrentSession()) orelse {
             if (context.image_pixels) |image_pixels| {
                 image_pixels.Release();
                 context.image_pixels = null;
@@ -159,6 +157,8 @@ pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTrans
             context.modified +%= 1;
             return;
         };
+
+        break :blk context.session.?;
     };
 
     try propartiesChanged(context, session);
@@ -260,7 +260,7 @@ pub fn main() !void {
         const timeline = try session.GetTimelineProperties();
         defer timeline.Release();
 
-        std.debug.print("{d}, {d}\n", .{timeline.Position(), timeline.EndTime()});
+        std.debug.print("{d}, {d}\n", .{ timeline.Position(), timeline.EndTime() });
 
         const timestamp = std.time.milliTimestamp();
         const elapsed = timestamp - context.timeline.last_updated;
