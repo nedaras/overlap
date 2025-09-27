@@ -67,6 +67,14 @@ pub const BitmapBounds = extern struct {
     Height: u32,
 };
 
+pub const MediaPlaybackStatus = enum(INT) {
+    Closed,
+    Changing,
+    Stopped,
+    Playing,
+    Paused,
+};
+
 const Win32Error = windows.Win32Error;
 const IBitmapFrame = graphics.IBitmapFrame;
 const IBitmapDecoder = graphics.IBitmapDecoder;
@@ -963,6 +971,10 @@ pub const GlobalSystemMediaTransportControlsSessionPlaybackInfo = struct {
 
     pub inline fn Release(self: GlobalSystemMediaTransportControlsSessionPlaybackInfo) void {
         self.handle.Release();
+    }
+
+    pub inline fn PlaybackStatus(self: GlobalSystemMediaTransportControlsSessionPlaybackInfo) MediaPlaybackStatus {
+        return self.handle.get_PlaybackStatus();
     }
 };
 

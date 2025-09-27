@@ -8,9 +8,10 @@ const GUID = windows.GUID;
 const HRESULT = windows.HRESULT;
 const HSTRING = windows.HSTRING;
 const IUnknown = windows.IUnknown;
+const TimeSpan = windows.TimeSpan;
 const IAsyncOperation = windows.IAsyncOperation;
 const TypedEventHandler = windows.TypedEventHandler;
-const TimeSpan = windows.TimeSpan;
+const MediaPlaybackStatus = windows.MediaPlaybackStatus;
 const IRandomAccessStreamReference = winrt.IRandomAccessStreamReference;
 
 pub const EventRegistrationToken = extern struct {
@@ -97,6 +98,16 @@ pub const IGlobalSystemMediaTransportControlsSessionPlaybackInfo = extern struct
 
     pub inline fn Release(self: *IGlobalSystemMediaTransportControlsSessionPlaybackInfo) void {
         IUnknown.Release(@ptrCast(self));
+    }
+
+    pub inline fn get_PlaybackStatus(self: *IGlobalSystemMediaTransportControlsSessionPlaybackInfo) MediaPlaybackStatus  {
+        const FnType = fn (*IGlobalSystemMediaTransportControlsSessionPlaybackInfo, *MediaPlaybackStatus) callconv(.winapi) HRESULT;
+        const get_playback_status: *const FnType = @ptrCast(self.vtable[7]);
+
+        var value: MediaPlaybackStatus = undefined;
+        assert(get_playback_status(self, &value) == windows.S_OK);
+
+        return value;
     }
 };
 
