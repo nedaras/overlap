@@ -50,8 +50,8 @@ pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTran
     defer context.mutex.unlock();
 
     context.timeline.last_updated = timestamp;
-    context.timeline.end_time = timeline.EndTime() / 10000;
-    context.timeline.position = timeline.Position() / 10000;
+    context.timeline.end_time = @divTrunc(timeline.EndTime(), 10000);
+    context.timeline.position = @divTrunc(timeline.Position(), 10000);
 }
 
 // todo: idk we need like a way to handle if thumbnail is null
@@ -237,11 +237,13 @@ pub fn main() !void {
         gui.image(.{ pos[x], pos[y] }, .{ pos[x] + image_size, pos[y] + image_size }, cover);
 
         const timestamp = std.time.milliTimestamp();
-        const end_timestamp = context.timeline.last_updated - context.timeline.position + context.timeline.end_time;
+        const elapsed = timestamp - context.timeline.last_updated;
+
+        const progress = context.timeline.position + elapsed;
 
         // progress bar
         const bar_max_width = image_size + padding + width + padding + 2.0;
-        const bar_width = @as(f32, @floatFromInt(timestamp)) / @as(f32, @floatFromInt(end_timestamp)) * bar_max_width;
+        const bar_width = @min(@as(f32, @floatFromInt(progress)) / @as(f32, @floatFromInt(context.timeline.end_time)) * bar_max_width, 1.0);
         gui.rect(.{ -1.0 + pos[x], pos[y] + image_size }, .{ -1.0 + pos[x] + bar_width, pos[y] + image_size + 1.0 }, 0x3DD35FFF);
 
         // properties
