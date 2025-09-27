@@ -40,6 +40,14 @@ const Context = struct {
     }
 };
 
+pub fn playbackChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
+    const playback = try session.GetPlaybackInfo();
+    defer playback.Release();
+
+    std.debug.print("pause/play pressed!\n", .{});
+    _ = context;
+}
+
 pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
     const timeline = try session.GetTimelineProperties();
     defer timeline.Release();
@@ -144,10 +152,12 @@ pub fn sessionChanged(context: *Context, manager: windows.GlobalSystemMediaTrans
 
     try propartiesChanged(context, session);
     try timelineChanged(context, session);
+    try playbackChanged(context, session);
 
     // todo: log life cycles of these hooks as myh guess is we're leaking memory
     _ = try session.MediaPropertiesChanged(context.allocator, context, propartiesChanged);
     _ = try session.TimelinePropertiesChanged(context.allocator, context, timelineChanged);
+    _ = try session.PlaybackInfoChanged(context.allocator, context, playbackChanged);
 }
 
 pub fn main() !void {

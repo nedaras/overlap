@@ -1,5 +1,6 @@
 const controls = @import("media/controls.zig");
 
+pub const IPlaybackInfoChangedEventArgs = controls.IPlaybackInfoChangedEventArgs;
 pub const ICurrentSessionChangedEventArgs = controls.ICurrentSessionChangedEventArgs;
 pub const IMediaPropertiesChangedEventArgs = controls.IMediaPropertiesChangedEventArgs;
 pub const ITimelinePropertiesChangedEventArgs = controls.ITimelinePropertiesChangedEventArgs;

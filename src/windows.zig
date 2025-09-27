@@ -68,21 +68,22 @@ pub const BitmapBounds = extern struct {
 };
 
 const Win32Error = windows.Win32Error;
-const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
-const ITimelinePropertiesChangedEventArgs = media.ITimelinePropertiesChangedEventArgs;
-const IGlobalSystemMediaTransportControlsSessionMediaProperties = media.IGlobalSystemMediaTransportControlsSessionMediaProperties;
-const IAsyncOperationCompletedHandler = winrt.IAsyncOperationCompletedHandler;
-const IAsyncOperationCompletedHandlerVTable = winrt.IAsyncOperationCompletedHandlerVTable;
-const IGlobalSystemMediaTransportControlsSessionManager = media.IGlobalSystemMediaTransportControlsSessionManager;
-const IGlobalSystemMediaTransportControlsSessionManagerStatics = media.IGlobalSystemMediaTransportControlsSessionManagerStatics;
-const IGlobalSystemMediaTransportControlsSession = media.IGlobalSystemMediaTransportControlsSession;
-const ICurrentSessionChangedEventArgs = media.ICurrentSessionChangedEventArgs;
-const IRandomAccessStreamReference = winrt.IRandomAccessStreamReference;
-const IRandomAccessStreamWithContentType = winrt.IRandomAccessStreamWithContentType;
-const IGlobalSystemMediaTransportControlsSessionPlaybackInfo = media.IGlobalSystemMediaTransportControlsSessionPlaybackInfo;
+const IBitmapFrame = graphics.IBitmapFrame;
 const IBitmapDecoder = graphics.IBitmapDecoder;
 const IBitmapDecoderStatics = graphics.IBitmapDecoderStatics;
-const IBitmapFrame = graphics.IBitmapFrame;
+const IRandomAccessStreamReference = winrt.IRandomAccessStreamReference;
+const IPlaybackInfoChangedEventArgs = media.IPlaybackInfoChangedEventArgs;
+const ICurrentSessionChangedEventArgs = media.ICurrentSessionChangedEventArgs;
+const IAsyncOperationCompletedHandler = winrt.IAsyncOperationCompletedHandler;
+const IMediaPropertiesChangedEventArgs = media.IMediaPropertiesChangedEventArgs;
+const IRandomAccessStreamWithContentType = winrt.IRandomAccessStreamWithContentType;
+const ITimelinePropertiesChangedEventArgs = media.ITimelinePropertiesChangedEventArgs;
+const IAsyncOperationCompletedHandlerVTable = winrt.IAsyncOperationCompletedHandlerVTable;
+const IGlobalSystemMediaTransportControlsSession = media.IGlobalSystemMediaTransportControlsSession;
+const IGlobalSystemMediaTransportControlsSessionManager = media.IGlobalSystemMediaTransportControlsSessionManager;
+const IGlobalSystemMediaTransportControlsSessionPlaybackInfo = media.IGlobalSystemMediaTransportControlsSessionPlaybackInfo;
+const IGlobalSystemMediaTransportControlsSessionManagerStatics = media.IGlobalSystemMediaTransportControlsSessionManagerStatics;
+const IGlobalSystemMediaTransportControlsSessionMediaProperties = media.IGlobalSystemMediaTransportControlsSessionMediaProperties;
 const IGlobalSystemMediaTransportControlsSessionTimelineProperties = media.IGlobalSystemMediaTransportControlsSessionTimelineProperties;
 
 pub const IPixelDataProvider = graphics.IPixelDataProvider;
@@ -1011,6 +1012,32 @@ pub const GlobalSystemMediaTransportControlsSession = struct {
 
     pub fn GetPlaybackInfo(self: GlobalSystemMediaTransportControlsSession) !GlobalSystemMediaTransportControlsSessionPlaybackInfo {
         return .{ .handle = try self.handle.GetPlaybackInfo() };
+    }
+
+    pub fn PlaybackInfoChanged(
+        self: GlobalSystemMediaTransportControlsSession,
+        allocator: Allocator,
+        context: anytype,
+        comptime invokeFn: fn (@TypeOf(context), session: GlobalSystemMediaTransportControlsSession) anyerror!void,
+    ) !i64 {
+        const Handler = *TypedEventHandler(*IGlobalSystemMediaTransportControlsSession, *IPlaybackInfoChangedEventArgs);
+        const WrappedContext = struct {
+            original: @TypeOf(context),
+
+            fn wrappedInvokeFn(ctx: @This(), sender: *IGlobalSystemMediaTransportControlsSession, _: *IPlaybackInfoChangedEventArgs) void {
+                invokeFn(ctx.original, .{ .handle = sender }) catch |err| {
+                    std.debug.print("error: {s}\n", .{@errorName(err)});
+                    if (@errorReturnTrace()) |trace| {
+                        std.debug.dumpStackTrace(trace.*);
+                    }
+                };
+            }
+        };
+
+        const handler: Handler = try .init(allocator, WrappedContext{ .original = context }, WrappedContext.wrappedInvokeFn);
+        defer handler.Release();
+
+        return (try self.handle.add_PlaybackInfoChanged(handler)).value;
     }
 
     pub fn TimelinePropertiesChanged(
