@@ -42,6 +42,7 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
     _ = reason;
     _ = reserved;
 
+    windows.OutputDebugStringA("DllMain");
     return windows.TRUE;
     //if (builtin.mode == .Debug) {
         //if (reason == windows.DLL_PROCESS_ATTACH) {

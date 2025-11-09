@@ -20,3 +20,5 @@ pub extern "kernel32" fn GetModuleHandleA(lpModuleName: ?LPCSTR) callconv(.winap
 pub extern "kernel32" fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) callconv(.winapi) ?FARPROC;
 
 pub extern "kernel32" fn SetConsoleTitleA(lpConsoleTitle: LPCSTR) callconv(.winapi) BOOL;
+
+pub extern "kernel32" fn OutputDebugStringA(lpOutputString: LPCSTR) void;

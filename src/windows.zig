@@ -351,6 +351,10 @@ pub inline fn GetForegroundWindow() ?windows.HWND {
     return user32.GetForegroundWindow();
 }
 
+pub inline fn OutputDebugStringA(lpOutputString: [:0]const u8) void {
+    return kernel32.OutputDebugStringA(lpOutputString.ptr);
+}
+
 pub fn FindWindow(ClassName: ?[:0]const u8, WindowName: ?[:0]const u8) ?windows.HWND {
     const lpClassName = if (ClassName) |slice| slice.ptr else null;
     const lpWindowName = if (WindowName) |slice| slice.ptr else null;
