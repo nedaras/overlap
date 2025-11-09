@@ -16,6 +16,7 @@ const Context = struct {
 
     session: ?windows.GlobalSystemMediaTransportControlsSession = null,
 
+    // todo: make this thingy comptime
     image_size: u32,
 
     mutex: std.Thread.Mutex = .{},
@@ -57,13 +58,9 @@ pub fn timelineChanged(context: *Context, session: windows.GlobalSystemMediaTran
     context.timeline.last_updated = timestamp;
     context.timeline.end_time = @divTrunc(timeline.EndTime(), 10000);
     context.timeline.position = @divTrunc(timeline.Position(), 10000);
-
-    const playback = try session.GetPlaybackInfo();
-    defer playback.Release();
 }
 
 // todo: idk we need like a way to handle if thumbnail is null
-// todo: remove extra branding from spotify as wtf man
 // todo: fix a bug where we do not update our props if thumbnail is not a thing
 pub fn propartiesChanged(context: *Context, session: windows.GlobalSystemMediaTransportControlsSession) !void {
     const properties = try (try session.TryGetMediaPropertiesAsync()).getAndForget(context.allocator);
@@ -257,12 +254,11 @@ pub fn main() !void {
         // cover
         gui.image(.{ pos[x], pos[y] }, .{ pos[x] + image_size, pos[y] + image_size }, cover);
 
-        // I really do not like calling vtable functions in hot loops
-        const playback_info = try session.GetPlaybackInfo();
-        defer playback_info.Release();
-
         const progress = blk: {
-            if (playback_info.PlaybackStatus() == .Paused) {
+            const playback_info = try session.GetPlaybackInfo();
+            defer playback_info.Release();
+
+            if (playback_info.PlaybackStatus() != .Playing) {
                 break :blk context.timeline.position;
             }
 
@@ -276,7 +272,7 @@ pub fn main() !void {
         const bar_width = @min(@as(f32, @floatFromInt(progress)) / @as(f32, @floatFromInt(context.timeline.end_time)), 1.0) * bar_max_width;
 
         // progress bar
-        gui.rect(.{ -1.0 + pos[x], pos[y] + image_size }, .{ -1.0 + pos[x] + bar_width, pos[y] + image_size + 1.0 }, 0x3DD35FFF);
+        gui.rect(.{ -1.0 + pos[x], pos[y] + image_size }, .{ -1.0 + pos[x] + bar_width, pos[y] + image_size + 1.0 }, 0x00DFA2FF);
 
         // properties
         try ellipsisW(gui, .{ pos[x] + image_size + padding, pos[y] + padding }, context.title, width, .{ .size = 12.0 });

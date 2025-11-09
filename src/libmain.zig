@@ -6,7 +6,10 @@ const Thread = std.Thread;
 
 comptime {
     if (!builtin.is_test) switch (builtin.os.tag) {
-        .windows => @export(&DllMain, .{ .name = "DllMain" }),
+        .windows => {
+            @export(&__overlap_hook_proc, .{ .name = "__overlap_hook_proc" });
+            @export(&DllMain, .{ .name = "DllMain" });
+        },
         else => |os| @compileError("unsupported operating system: " ++ @tagName(os)),
     };
 }
@@ -28,6 +31,10 @@ fn entry(instance: windows.HINSTANCE) void {
     }
 
     windows.FreeLibraryAndExitThread(@ptrCast(instance), 0);
+}
+
+pub fn __overlap_hook_proc(code: c_int ,wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
+    return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
 pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(.winapi) windows.BOOL {

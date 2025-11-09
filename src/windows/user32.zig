@@ -9,6 +9,7 @@ const LPARAM = windows.LPARAM;
 const LPRECT = *windows.RECT;
 const LPCSTR = windows.LPCSTR;
 const LPSTR = windows.LPSTR;
+const HHOOK = windows.HHOOK;
 const WNDPROC = windows.WNDPROC;
 const LRESULT = windows.LRESULT;
 const LONG_PTR = windows.LONG_PTR;
@@ -59,3 +60,10 @@ pub extern "user32" fn EnumWindows(
     lpEnumFunc: WNDENUMPROC,
     lParam: LPARAM,
 ) callconv(.winapi) BOOL;
+
+pub extern "user32" fn CallNextHookEx(
+    hhk: ?HHOOK,
+    nCode: c_int,
+    wParam: WPARAM,
+    lParam: LPARAM,
+) callconv(.winapi) LRESULT;

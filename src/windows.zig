@@ -108,6 +108,7 @@ pub const RO_INIT_MULTITHREADED = 1;
 
 pub const UINT32 = u32;
 pub const HSTRING = *opaque {};
+pub const HHOOK = *opaque {};
 pub const PCNZWCH = windows.PCWSTR;
 pub const REFIID = *const windows.GUID;
 pub const HINTERNET = winhttp.HINTERNET;
