@@ -22,6 +22,8 @@ pub fn MH_Uninitialize() MH_UninitializeError!void {
 pub const MH_CreateHookError = error{Unexpected};
 
 pub fn MH_CreateHook(comptime T: type, pTarget: *const T, pDetour: *const T, ppOriginal: *?*T) MH_CreateHookError!void {
+    @setRuntimeSafety(false);
+
     // todo: FIX, ptob update to lastest minhook branch
     // found like a bug on Debug/Safe modes where there is runtime safety
     // if a function is already hooked by bo some other process zig catches that there is bad alignment in hde64.c
