@@ -38,25 +38,30 @@ pub fn __overlap_hook_proc(code: c_int ,wParam: windows.WPARAM, lParam: windows.
 }
 
 pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
-    if (builtin.mode == .Debug) {
-        if (reason == windows.DLL_PROCESS_ATTACH) {
-            windows.AllocConsole() catch |err| switch (err) {
-                error.AccessDenied => {},
-                else => return windows.FALSE,
-            };
+    _ = instance;
+    _ = reason;
+    _ = reserved;
 
-            windows.SetConsoleTitle("overlap") catch return windows.FALSE;
-        }
-    }
+    return windows.TRUE;
+    //if (builtin.mode == .Debug) {
+        //if (reason == windows.DLL_PROCESS_ATTACH) {
+            //windows.AllocConsole() catch |err| switch (err) {
+                //error.AccessDenied => {},
+                //else => return windows.FALSE,
+            //};
 
-    return tracedDllMain(instance, reason, reserved) catch |err| blk: {
-        std.debug.print("error: {s}\n", .{@errorName(err)});
-        if (@errorReturnTrace()) |trace| {
-            std.debug.dumpStackTrace(trace.*);
-        }
+            //windows.SetConsoleTitle("overlap") catch return windows.FALSE;
+        //}
+    //}
 
-        break :blk windows.FALSE;
-    };
+    //return tracedDllMain(instance, reason, reserved) catch |err| blk: {
+        //std.debug.print("error: {s}\n", .{@errorName(err)});
+        //if (@errorReturnTrace()) |trace| {
+            //std.debug.dumpStackTrace(trace.*);
+        //}
+
+        //break :blk windows.FALSE;
+    //};
 }
 
 inline fn tracedDllMain(instance: windows.HINSTANCE, reason: windows.DWORD, _: windows.LPVOID) (windows.DisableThreadLibraryCallsError || Thread.SpawnError)!windows.BOOL {
