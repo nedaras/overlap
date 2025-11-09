@@ -4,6 +4,7 @@ const windows = std.os.windows;
 const BOOL = windows.BOOL;
 const DWORD = windows.DWORD;
 const LPCSTR = windows.LPCSTR;
+const LPCWSTR = windows.LPCWSTR;
 const HMODULE = windows.HMODULE;
 const FARPROC = windows.FARPROC;
 
@@ -22,3 +23,5 @@ pub extern "kernel32" fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) ca
 pub extern "kernel32" fn SetConsoleTitleA(lpConsoleTitle: LPCSTR) callconv(.winapi) BOOL;
 
 pub extern "kernel32" fn OutputDebugStringA(lpOutputString: LPCSTR) void;
+
+pub extern "kernel32" fn OutputDebugStringW(lpOutputString: LPCWSTR) void;

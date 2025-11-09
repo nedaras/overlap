@@ -2,7 +2,6 @@ const std = @import("std");
 const windows = std.os.windows;
 const unicode = std.unicode;
 const assert = std.debug.assert;
-const kernel32 = @import("windows/kernel32.zig");
 const mem = std.mem;
 const graphics = @import("windows/graphics.zig");
 const media = @import("windows/media.zig");
@@ -11,6 +10,7 @@ const winhttp = @import("windows/winhttp.zig");
 const winrt = @import("windows/winrt.zig");
 const Allocator = mem.Allocator;
 
+pub const kernel32 = @import("windows/kernel32.zig");
 pub const combase = @import("windows/combase.zig");
 pub const user32 = @import("windows/user32.zig");
 pub const dxgi = @import("windows/dxgi.zig");
@@ -351,8 +351,12 @@ pub inline fn GetForegroundWindow() ?windows.HWND {
     return user32.GetForegroundWindow();
 }
 
-pub inline fn OutputDebugStringA(lpOutputString: [:0]const u8) void {
+pub inline fn OutputDebugString(lpOutputString: [:0]const u8) void {
     return kernel32.OutputDebugStringA(lpOutputString.ptr);
+}
+
+pub inline fn OutputDebugStringW(lpOutputString: [:0]const u16) void {
+    return kernel32.OutputDebugStringW(lpOutputString.ptr);
 }
 
 pub fn FindWindow(ClassName: ?[:0]const u8, WindowName: ?[:0]const u8) ?windows.HWND {

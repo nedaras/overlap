@@ -46,7 +46,7 @@ pub extern fn MH_Initialize() callconv(.c) MH_STATUS;
 
 pub extern fn MH_Uninitialize() callconv(.c) MH_STATUS;
 
-pub extern fn MH_CreateHook(pTarget: LPCVOID, pDetour: LPCVOID, ppOriginal: *LPVOID) callconv(.c) MH_STATUS;
+pub extern fn MH_CreateHook(pTarget: LPCVOID, pDetour: LPCVOID, ppOriginal: *?LPVOID) callconv(.c) MH_STATUS;
 
 pub extern fn MH_EnableHook(pTarget: LPCVOID) callconv(.c) MH_STATUS;
 

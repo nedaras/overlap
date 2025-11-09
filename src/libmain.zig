@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 const windows = @import("windows.zig");
 const root = @import("main.zig");
 const Thread = std.Thread;
+const minhook = @import("minhook.zig");
 
 comptime {
     if (!builtin.is_test) switch (builtin.os.tag) {
@@ -39,10 +40,23 @@ pub fn __overlap_hook_proc(code: c_int ,wParam: windows.WPARAM, lParam: windows.
 
 pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
     _ = instance;
-    _ = reason;
     _ = reserved;
 
-    windows.OutputDebugStringA("DllMain");
+    switch (reason) {
+        windows.DLL_PROCESS_ATTACH => {
+            const kernel32 = windows.GetModuleHandle("kernel32") catch return windows.FALSE;
+
+            const load_library_a = windows.GetProcAddress("LoadLibraryA") catch unreachable;
+            const load_library_w = windows.GetProcAddress("LoadLibraryW") catch unreachable;
+        },
+        windows.DLL_PROCESS_DETACH => {
+            minhook.MH_Uninitialize() catch {};
+        },
+        else => {},
+    }
+
+    // hook LoadLibrary
+
     return windows.TRUE;
     //if (builtin.mode == .Debug) {
         //if (reason == windows.DLL_PROCESS_ATTACH) {
@@ -77,5 +91,3 @@ inline fn tracedDllMain(instance: windows.HINSTANCE, reason: windows.DWORD, _: w
 
     return windows.FALSE;
 }
-
-test {}
