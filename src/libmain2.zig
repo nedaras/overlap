@@ -6,6 +6,7 @@ const minhook = @import("minhook.zig");
 extern fn DetourTransactionBegin() callconv(.c) windows.LONG;
 extern fn DetourUpdateThread(hThread: windows.HANDLE) callconv(.c) windows.LONG;
 extern fn DetourAttach(ppPointer: *?*anyopaque, pDetour: ?*const anyopaque) callconv(.c) windows.LONG;
+extern fn DetourDetach(ppPointer: *?*anyopaque, pDetour: ?*const anyopaque) callconv(.c) windows.LONG;
 extern fn DetourTransactionCommit() callconv(.c) windows.LONG;
 
 comptime {
@@ -24,7 +25,7 @@ const LoadLibraryW = @TypeOf(hookedLoadLibraryW);
 var load_library_a: ?*LoadLibraryA = null;
 var load_library_w: ?*LoadLibraryW = null;
 
-pub fn __overlap_hook_proc(code: c_int ,wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
+pub fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
@@ -33,24 +34,15 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
 
     switch (reason) {
         windows.DLL_PROCESS_ATTACH => blk: {
-            const kernel32 = windows.GetModuleHandle("kernel32") catch break :blk; 
+            const kernel32 = windows.GetModuleHandle("kernel32") catch break :blk;
 
             load_library_a = @ptrCast(@alignCast(windows.GetProcAddress(kernel32, "LoadLibraryA") catch unreachable));
             load_library_w = @ptrCast(@alignCast(windows.GetProcAddress(kernel32, "LoadLibraryW") catch unreachable));
 
             _ = DetourTransactionBegin();
-            _ = DetourUpdateThread(windows.GetCurrentThread());
 
             _ = DetourAttach(&load_library_a, &hookedLoadLibraryA);
             _ = DetourAttach(&load_library_a, &hookedLoadLibraryA);
-
-            //minhook.MH_Initialize() catch break :blk;
-
-            //minhook.MH_CreateHook(LoadLibraryA, load_library_a.?, &hookedLoadLibraryA, &o_load_library_a) catch break :blk;
-            //minhook.MH_EnableHook(LoadLibraryA, load_library_a.?) catch break :blk;
-
-            //minhook.MH_CreateHook(LoadLibraryW, load_library_w.?, &hookedLoadLibraryW, &o_load_library_w) catch break :blk;
-            //minhook.MH_EnableHook(LoadLibraryW, load_library_w.?) catch break :blk;
 
             const ret = DetourTransactionCommit();
             std.debug.print("done with: {d}\n", .{ret});
@@ -58,17 +50,12 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
             windows.DisableThreadLibraryCalls(@ptrCast(instance)) catch {};
         },
         windows.DLL_PROCESS_DETACH => {
-            //if (o_load_library_a) |proc| {
-                //minhook.MH_DisableHook(LoadLibraryA, proc) catch {};
-                //minhook.MH_RemoveHook(LoadLibraryA, proc) catch {};
-            //}
+            _ = DetourTransactionBegin();
 
-            //if (o_load_library_w) |proc| {
-                //minhook.MH_DisableHook(LoadLibraryW, proc) catch {};
-                //minhook.MH_RemoveHook(LoadLibraryW, proc) catch {};
-            //}
+            _ = DetourDetach(&load_library_a, &hookedLoadLibraryA);
+            _ = DetourDetach(&load_library_a, &hookedLoadLibraryA);
 
-            //minhook.MH_Uninitialize() catch {};
+            _ = DetourTransactionCommit();
         },
         else => {},
     }
