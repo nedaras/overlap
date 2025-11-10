@@ -19,6 +19,7 @@ pub const d3dcommon = @import("windows/d3dcommon.zig");
 pub const d3dcompiler = @import("windows/d3dcompiler.zig");
 
 pub const INT = windows.INT;
+pub const LONG = windows.LONG;
 pub const UINT = windows.UINT;
 pub const S_OK = windows.S_OK;
 pub const TRUE = windows.TRUE;
@@ -38,6 +39,7 @@ pub const SIZE_T = windows.SIZE_T;
 pub const LPCSTR = windows.LPCSTR;
 pub const LPSTR = windows.LPSTR;
 pub const LPDWORD = *windows.DWORD;
+pub const HANDLE = windows.HANDLE;
 pub const LPCWSTR = windows.LPCWSTR;
 pub const LRESULT = windows.LRESULT;
 pub const HMODULE = windows.HMODULE;
@@ -55,6 +57,7 @@ pub const FindWindowExA = user32.FindWindowExA;
 pub const GetWindow = user32.GetWindow;
 pub const GetAncestor = user32.GetAncestor;
 pub const EnumWindows = user32.EnumWindows;
+pub const GetCurrentThread = windows.GetCurrentThread;
 
 pub const TimeSpan = extern struct {
     Duration: i64,
