@@ -4,11 +4,8 @@ const Hook = @import("Hook.zig");
 const windows = @import("windows.zig");
 const mem = std.mem;
 const unicode = std.unicode;
+const Io = std.Io;
 const Allocator = std.mem.Allocator;
-
-//pub const std_options: std.Options = .{
-    //.logFn = 
-//};
 
 // Before alpha...
 //  Handling progressbar

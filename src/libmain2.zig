@@ -15,7 +15,27 @@ comptime {
     };
 }
 
-pub const options: std.Options = if (@hasDecl(root, "std_options")) root.std_options else .{};
+pub fn logFn(
+    comptime message_level: std.log.Level,
+    comptime scope: @Type(.enum_literal),
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    const level_txt = comptime message_level.asText();
+    const prefix2 = if (scope == .default) ": " else "(" ++ @tagName(scope) ++ "): ";
+
+    var buffer: [4096]u8 = undefined;
+    const msg = std.fmt.bufPrintZ(&buffer, level_txt ++ prefix2 ++ format ++ "\n", args) catch blk: {
+        buffer[buffer.len - 1] = '\x00';
+        break :blk buffer[0..buffer.len - 1:0];
+    };
+
+    windows.OutputDebugString(msg);
+}
+
+pub const std_options: std.Options = .{
+    .logFn = logFn,
+};
 
 const LoadLibraryA = @TypeOf(hookedLoadLibraryA);
 const LoadLibraryW = @TypeOf(hookedLoadLibraryW);
@@ -64,7 +84,7 @@ fn hookedLoadLibraryA(lpLibFileName: windows.LPCSTR) callconv(.winapi) windows.H
 
     const lib_path = std.mem.span(lpLibFileName);
     if (std.mem.eql(u8, lib_path, "d3d11.dll")) {
-        windows.kernel32.OutputDebugStringA("Overlap: D3D11 matched");
+        std.log.info("D3D11 matched", .{});
     }
 
     return library;
@@ -75,7 +95,7 @@ fn hookedLoadLibraryW(lpLibFileName: windows.LPCWSTR) callconv(.winapi) windows.
 
     const lib_path = std.mem.span(lpLibFileName);
     if (std.mem.eql(u16, lib_path, std.unicode.wtf8ToWtf16LeStringLiteral("d3d11.dll"))) {
-        windows.kernel32.OutputDebugStringA("Overlap: D3D11 matched");
+        std.log.info("D3D11 matched", .{});
     }
 
     return library;
