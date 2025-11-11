@@ -4,14 +4,14 @@ pub fn buildLibrary(b: *std.Build, options: anytype) *std.Build.Step.Compile {
     const target = options.target;
     const optimize = options.optimize;
 
-    const module = b.createModule(.{
+    const lib_mod = b.createModule(.{
         .target = target,
         .optimize = optimize,
     });
 
     const lib = b.addLibrary(.{
         .name = "detours",
-        .root_module = module,
+        .root_module = lib_mod,
     });
 
     const detours = b.dependency("detours", .{

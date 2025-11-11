@@ -2,12 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const windows = @import("windows.zig");
 const minhook = @import("minhook.zig");
-
-extern fn DetourTransactionBegin() callconv(.c) windows.LONG;
-extern fn DetourUpdateThread(hThread: windows.HANDLE) callconv(.c) windows.LONG;
-extern fn DetourAttach(ppPointer: *?*anyopaque, pDetour: ?*const anyopaque) callconv(.c) windows.LONG;
-extern fn DetourDetach(ppPointer: *?*anyopaque, pDetour: ?*const anyopaque) callconv(.c) windows.LONG;
-extern fn DetourTransactionCommit() callconv(.c) windows.LONG;
+const detours = @import("detours.zig");
 
 comptime {
     if (!builtin.is_test) switch (builtin.os.tag) {
@@ -39,23 +34,19 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
             load_library_a = @ptrCast(@alignCast(windows.GetProcAddress(kernel32, "LoadLibraryA") catch unreachable));
             load_library_w = @ptrCast(@alignCast(windows.GetProcAddress(kernel32, "LoadLibraryW") catch unreachable));
 
-            _ = DetourTransactionBegin();
-
-            _ = DetourAttach(&load_library_a, &hookedLoadLibraryA);
-            _ = DetourAttach(&load_library_a, &hookedLoadLibraryA);
-
-            const ret = DetourTransactionCommit();
-            std.debug.print("done with: {d}\n", .{ret});
+            detours.attach(hookedLoadLibraryA, &load_library_a.?) catch {};
+            detours.attach(hookedLoadLibraryW, &load_library_w.?) catch {};
 
             windows.DisableThreadLibraryCalls(@ptrCast(instance)) catch {};
         },
         windows.DLL_PROCESS_DETACH => {
-            _ = DetourTransactionBegin();
+            if (load_library_a) |*proc| {
+                detours.detach(hookedLoadLibraryA, proc) catch {};
+            }
 
-            _ = DetourDetach(&load_library_a, &hookedLoadLibraryA);
-            _ = DetourDetach(&load_library_a, &hookedLoadLibraryA);
-
-            _ = DetourTransactionCommit();
+            if (load_library_w) |*proc| {
+                detours.detach(hookedLoadLibraryW, proc) catch {};
+            }
         },
         else => {},
     }

@@ -18,7 +18,9 @@ pub const d3d11 = @import("windows/d3d11.zig");
 pub const d3dcommon = @import("windows/d3dcommon.zig");
 pub const d3dcompiler = @import("windows/d3dcompiler.zig");
 
+pub const Win32Error = windows.Win32Error;
 pub const INT = windows.INT;
+pub const PVOID = windows.PVOID;
 pub const LONG = windows.LONG;
 pub const UINT = windows.UINT;
 pub const S_OK = windows.S_OK;
@@ -79,7 +81,6 @@ pub const MediaPlaybackStatus = enum(INT) {
     Paused,
 };
 
-const Win32Error = windows.Win32Error;
 const IBitmapFrame = graphics.IBitmapFrame;
 const IBitmapDecoder = graphics.IBitmapDecoder;
 const IBitmapDecoderStatics = graphics.IBitmapDecoderStatics;
