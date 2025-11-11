@@ -24,8 +24,8 @@ pub fn logFn(
     const level_txt = comptime message_level.asText();
     const prefix2 = if (scope == .default) ": " else "(" ++ @tagName(scope) ++ "): ";
 
-    var buffer: [4096]u8 = undefined;
-    const msg = std.fmt.bufPrintZ(&buffer, level_txt ++ prefix2 ++ format ++ "\n", args) catch blk: {
+    var buffer = [_]u8{0} ** 4096;
+    const msg = std.fmt.bufPrintZ(&buffer, level_txt ++ prefix2 ++ format, args) catch blk: {
         buffer[buffer.len - 1] = '\x00';
         break :blk buffer[0..buffer.len - 1:0];
     };
@@ -92,8 +92,10 @@ fn hookedLoadLibraryA(lpLibFileName: windows.LPCSTR) callconv(.winapi) windows.H
 
 fn hookedLoadLibraryW(lpLibFileName: windows.LPCWSTR) callconv(.winapi) windows.HMODULE {
     const library = load_library_w.?(lpLibFileName);
-
     const lib_path = std.mem.span(lpLibFileName);
+
+    std.log.info("{f}", .{std.unicode.fmtUtf16Le(lib_path)});
+
     if (std.mem.eql(u16, lib_path, std.unicode.wtf8ToWtf16LeStringLiteral("d3d11.dll"))) {
         std.log.info("D3D11 matched", .{});
     }
