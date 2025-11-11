@@ -6,6 +6,10 @@ const mem = std.mem;
 const unicode = std.unicode;
 const Allocator = std.mem.Allocator;
 
+//pub const std_options: std.Options = .{
+    //.logFn = 
+//};
+
 // Before alpha...
 //  Handling progressbar
 //  handling non square covers

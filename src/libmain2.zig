@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 const windows = @import("windows.zig");
 const minhook = @import("minhook.zig");
 const detours = @import("detours.zig");
+const root = @import("main.zig");
 
 comptime {
     if (!builtin.is_test) switch (builtin.os.tag) {
@@ -13,6 +14,8 @@ comptime {
         else => |os| @compileError("unsupported operating system: " ++ @tagName(os)),
     };
 }
+
+pub const options: std.Options = if (@hasDecl(root, "std_options")) root.std_options else .{};
 
 const LoadLibraryA = @TypeOf(hookedLoadLibraryA);
 const LoadLibraryW = @TypeOf(hookedLoadLibraryW);
@@ -25,6 +28,7 @@ pub fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.
 }
 
 pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
+    _ = instance;
     _ = reserved;
 
     switch (reason) {
@@ -36,10 +40,9 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
 
             detours.attach(hookedLoadLibraryA, &load_library_a.?) catch {};
             detours.attach(hookedLoadLibraryW, &load_library_w.?) catch {};
-
-            windows.DisableThreadLibraryCalls(@ptrCast(instance)) catch {};
         },
         windows.DLL_PROCESS_DETACH => {
+            windows.kernel32.OutputDebugStringA("Overlap: Cleanup now!");
             if (load_library_a) |*proc| {
                 detours.detach(hookedLoadLibraryA, proc) catch {};
             }
@@ -59,7 +62,10 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
 fn hookedLoadLibraryA(lpLibFileName: windows.LPCSTR) callconv(.winapi) windows.HMODULE {
     const library = load_library_a.?(lpLibFileName);
 
-    windows.kernel32.OutputDebugStringA(lpLibFileName);
+    const lib_path = std.mem.span(lpLibFileName);
+    if (std.mem.eql(u8, lib_path, "d3d11.dll")) {
+        windows.kernel32.OutputDebugStringA("Overlap: D3D11 matched");
+    }
 
     return library;
 }
@@ -67,7 +73,10 @@ fn hookedLoadLibraryA(lpLibFileName: windows.LPCSTR) callconv(.winapi) windows.H
 fn hookedLoadLibraryW(lpLibFileName: windows.LPCWSTR) callconv(.winapi) windows.HMODULE {
     const library = load_library_w.?(lpLibFileName);
 
-    windows.kernel32.OutputDebugStringW(lpLibFileName);
+    const lib_path = std.mem.span(lpLibFileName);
+    if (std.mem.eql(u16, lib_path, std.unicode.wtf8ToWtf16LeStringLiteral("d3d11.dll"))) {
+        windows.kernel32.OutputDebugStringA("Overlap: D3D11 matched");
+    }
 
     return library;
 }
