@@ -113,6 +113,7 @@ pub const RO_INIT_MULTITHREADED = 1;
 pub const UINT32 = u32;
 pub const HSTRING = *opaque {};
 pub const HHOOK = *opaque {};
+pub const HMENU = windows.HMENU;
 pub const PCNZWCH = windows.PCWSTR;
 pub const REFIID = *const windows.GUID;
 pub const HINTERNET = winhttp.HINTERNET;
@@ -165,6 +166,37 @@ pub const ExifOrientationMode_IgnoreExifOrientation = 0;
 pub const ColorManagementMode = INT;
 pub const ColorManagementMode_DoNotColorManage = 0;
 
+pub const WS_BORDER        = 0x00800000;
+pub const WS_CAPTION       = 0x00C00000;
+pub const WS_CHILD         = 0x40000000;
+pub const WS_CHILDWINDOW   = 0x40000000;
+pub const WS_CLIPCHILDREN  = 0x02000000;
+pub const WS_CLIPSIBLINGS  = 0x04000000;
+pub const WS_DISABLED      = 0x08000000;
+pub const WS_DLGFRAME      = 0x00400000;
+pub const WS_GROUP         = 0x00020000;
+pub const WS_HSCROLL       = 0x00100000;
+pub const WS_ICONIC        = 0x20000000;
+pub const WS_MAXIMIZE      = 0x01000000;
+pub const WS_MAXIMIZEBOX   = 0x00010000;
+pub const WS_MINIMIZE      = 0x20000000;
+pub const WS_MINIMIZEBOX   = 0x00020000;
+pub const WS_OVERLAPPED    = 0x00000000;
+pub const WS_POPUP         = 0x80000000;
+pub const WS_SIZEBOX       = 0x00040000;
+pub const WS_SYSMENU       = 0x00080000;
+pub const WS_TABSTOP       = 0x00010000;
+pub const WS_THICKFRAME    = 0x00040000;
+pub const WS_TILED         = 0x00000000;
+pub const WS_VISIBLE       = 0x10000000;
+pub const WS_VSCROLL       = 0x00200000;
+
+pub const WS_OVERLAPPEDWINDOW = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+pub const WS_POPUPWINDOW = WS_POPUP | WS_BORDER | WS_SYSMENU;
+pub const WS_TILEDWINDOW = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+
+pub const CW_USEDEFAULT = @as(c_int, @bitCast(@as(c_uint, 0x80000000)));
+
 pub const GWLP_WNDPROC = -4;
 
 pub const DLL_PROCESS_DETACH = 0;
@@ -198,6 +230,54 @@ pub const WINHTTP_DEFAULT_ACCEPT_TYPES = &[_:null]?LPCWSTR{
 pub const WINHTTP_QUERY_CONTENT_LENGTH = 5;
 pub const WINHTTP_QUERY_STATUS_CODE = 19;
 pub const WINHTTP_QUERY_FLAG_NUMBER = 0x20000000;
+
+pub const CreateWindowExError = error {
+    Unexpected,
+};
+
+pub fn CreateWindowEx(
+    dwExStyle: DWORD,
+    lpClassName: ?[:0]const u8,
+    lpWindowName: ?[:0]const u8,
+    dwStyle: DWORD,
+    X: c_int,
+    Y: c_int,
+    nWidth: c_int,
+    nHeight: c_int,
+    hWndParent: ?HWND,
+    hMenu: ?HMENU,
+    hInstance: ?HINSTANCE,
+    lpParam: ?LPVOID,
+) CreateWindowExError!HWND {
+    const lpClassName_ptr = if (lpClassName) |slice| slice.ptr else null;
+    const lpWindowName_ptr = if (lpWindowName) |slice| slice.ptr else null;
+
+    if (user32.CreateWindowExA(
+        dwExStyle,
+        lpClassName_ptr,
+        lpWindowName_ptr,
+        dwStyle,
+        X,
+        Y,
+        nWidth,
+        nHeight,
+        hWndParent,
+        hMenu,
+        hInstance,
+        lpParam,
+    )) |hwnd| {
+        return hwnd;
+    }
+
+    return switch (windows.kernel32.GetLastError()) {
+        else => |err| windows.unexpectedError(err),
+    };
+}
+
+pub fn DestroyWindow(hWnd: HWND) void {
+    // todo: idk check for errors maybe
+    _ = user32.DestroyWindow(hWnd);
+}
 
 pub const IAgileObject = extern struct {
     vtable: [*]const *const anyopaque,

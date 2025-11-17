@@ -3,9 +3,11 @@ const windows = @import("../windows.zig");
 const HWND = windows.HWND;
 const BOOL = windows.BOOL;
 const UINT = windows.UINT;
+const HMENU = windows.HMENU;
 const DWORD = windows.DWORD;
 const WPARAM = windows.WPARAM;
 const LPARAM = windows.LPARAM;
+const LPVOID = windows.LPVOID;
 const LPRECT = *windows.RECT;
 const LPCSTR = windows.LPCSTR;
 const LPSTR = windows.LPSTR;
@@ -14,6 +16,7 @@ const WNDPROC = windows.WNDPROC;
 const LRESULT = windows.LRESULT;
 const LONG_PTR = windows.LONG_PTR;
 const LPDWORD = windows.LPDWORD;
+const HINSTANCE = windows.HINSTANCE;
 const WNDENUMPROC = windows.WNDENUMPROC;
 
 pub extern "user32" fn GetForegroundWindow() callconv(.winapi) ?HWND;
@@ -67,3 +70,20 @@ pub extern "user32" fn CallNextHookEx(
     wParam: WPARAM,
     lParam: LPARAM,
 ) callconv(.winapi) LRESULT;
+
+pub extern "user32" fn CreateWindowExA(
+    dwExStyle: DWORD,
+    lpClassName: ?LPCSTR,
+    lpWindowName: ?LPCSTR,
+    dwStyle: DWORD,
+    X: c_int,
+    Y: c_int,
+    nWidth: c_int,
+    nHeight: c_int,
+    hWndParent: ?HWND,
+    hMenu: ?HMENU,
+    hInstance: ?HINSTANCE,
+    lpParam: ?LPVOID,
+) callconv(.winapi) ?HWND;
+
+pub extern "user32" fn DestroyWindow(hWnd: HWND) BOOL;
