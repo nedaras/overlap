@@ -42,9 +42,12 @@ pub const std_options: std.Options = .{
 
 const LoadLibraryA = @TypeOf(hookedLoadLibraryA);
 const LoadLibraryW = @TypeOf(hookedLoadLibraryW);
+const Present = @TypeOf(hookedPresent);
 
 var load_library_a: ?*LoadLibraryA = null;
 var load_library_w: ?*LoadLibraryW = null;
+
+var present: ?*Present = null;
 
 pub fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
@@ -65,13 +68,17 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
             detours.attach(hookedLoadLibraryW, &load_library_w.?) catch {};
         },
         windows.DLL_PROCESS_DETACH => {
-            windows.kernel32.OutputDebugStringA("Overlap: Cleanup now!");
+            std.log.info("cleanup", .{});
             if (load_library_a) |*proc| {
                 detours.detach(hookedLoadLibraryA, proc) catch {};
             }
 
             if (load_library_w) |*proc| {
                 detours.detach(hookedLoadLibraryW, proc) catch {};
+            }
+
+            if (present) |*proc| {
+                detours.detach(hookedPresent, proc) catch {};
             }
         },
         else => {},
@@ -97,8 +104,6 @@ fn hookedLoadLibraryA(lpLibFileName: windows.LPCSTR) callconv(.winapi) windows.H
 fn hookedLoadLibraryW(lpLibFileName: windows.LPCWSTR) callconv(.winapi) windows.HMODULE {
     const library = load_library_w.?(lpLibFileName);
     const lib_path = std.mem.span(lpLibFileName);
-
-    std.log.info("{f}", .{std.unicode.fmtUtf16Le(lib_path)});
 
     if (std.mem.eql(u16, lib_path, std.unicode.wtf8ToWtf16LeStringLiteral("d3d11.dll"))) {
         std.log.info("D3D11 matched", .{});
@@ -176,4 +181,17 @@ fn hook_d3d11(library: windows.HMODULE) !void {
     defer device_context.Release();
 
     std.log.info("DXGI initalized", .{});
+
+    present = @constCast(@ptrCast(swap_chain.vtable[8]));
+
+    try detours.attach(hookedPresent, &present.?);
+}
+
+fn hookedPresent(
+    pSwapChain: *dxgi.IDXGISwapChain,
+    SyncInterval: windows.UINT,
+    Flags: windows.UINT,
+) callconv(.winapi) windows.HRESULT {
+    std.log.info("frame", .{});
+    return present.?(pSwapChain, SyncInterval, Flags);
 }
