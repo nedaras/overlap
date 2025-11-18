@@ -55,10 +55,8 @@ pub fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.
 
 var nt_terminate_process: ?*@TypeOf(NtTerminateProcess) = null;
 fn NtTerminateProcess(ProcessHandle: ?windows.HANDLE, ExitStatus: windows.NTSTATUS) callconv(.winapi) void {
-    _ = ProcessHandle;
-    _ = ExitStatus;
-    //std.log.info("exit: {d}", .{windows.GetCurrentProcessId()});
-    //nt_terminate_process.?(ProcessHandle, ExitStatus);
+    std.log.info("exit: {d}", .{windows.GetCurrentProcessId()});
+    nt_terminate_process.?(ProcessHandle, ExitStatus);
 }
 
 pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
@@ -75,6 +73,7 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
             detours.attach(NtTerminateProcess, &nt_terminate_process.?) catch break :blk;
 
             std.log.info("hooked: {d}", .{windows.GetCurrentProcessId()});
+            std.process.exit(0);
 
             //const kernel32 = windows.GetModuleHandle("kernel32") catch break :blk;
 
