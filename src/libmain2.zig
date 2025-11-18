@@ -55,7 +55,7 @@ pub fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.
 
 var rtl_exit_user_process: ?*@TypeOf(RtlExitUserProcess) = null;
 fn RtlExitUserProcess(ExitStatus: windows.NTSTATUS) noreturn {
-    std.log.info("exit: {d}", .{windows.GetCurrentProcessId()});
+    std.log.info("exit", .{});
     rtl_exit_user_process.?(ExitStatus);
 }
 
