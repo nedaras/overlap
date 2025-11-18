@@ -54,9 +54,11 @@ pub fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.
 }
 
 var nt_terminate_process: ?*@TypeOf(NtTerminateProcess) = null;
-fn NtTerminateProcess(ProcessHandle: ?windows.HANDLE, ExitStatus: windows.NTSTATUS) callconv(.winapi) noreturn {
-    std.log.info("exit: {d}", .{windows.GetCurrentProcessId()});
-    nt_terminate_process.?(ProcessHandle, ExitStatus);
+fn NtTerminateProcess(ProcessHandle: ?windows.HANDLE, ExitStatus: windows.NTSTATUS) callconv(.winapi) void {
+    _ = ProcessHandle;
+    _ = ExitStatus;
+    //std.log.info("exit: {d}", .{windows.GetCurrentProcessId()});
+    //nt_terminate_process.?(ProcessHandle, ExitStatus);
 }
 
 pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
