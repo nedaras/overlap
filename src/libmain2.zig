@@ -53,19 +53,32 @@ pub fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
+var rtl_exit_user_process: ?*@TypeOf(RtlExitUserProcess) = null;
+fn RtlExitUserProcess(ExitStatus: windows.NTSTATUS) noreturn {
+    std.log.info("exit: {d}", .{windows.GetCurrentProcessId()});
+    rtl_exit_user_process.?(ExitStatus);
+}
+
 pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
     _ = instance;
     _ = reserved;
 
     switch (reason) {
-        windows.DLL_PROCESS_ATTACH => { //blk: {
+        windows.DLL_PROCESS_ATTACH => blk: {
             std.log.info("attaching: {d}", .{windows.GetCurrentProcessId()});
+
+            const ntdll = windows.GetModuleHandle("ntdll") catch break :blk;
+            rtl_exit_user_process = @ptrCast(@alignCast(windows.GetProcAddress(ntdll, "RtlExitUserProcess") catch break :blk));
+
+            detours.attach(RtlExitUserProcess, &rtl_exit_user_process.?) catch {};
+
+            std.log.info("hooked: {d}", .{windows.GetCurrentProcessId()});
+
             //const kernel32 = windows.GetModuleHandle("kernel32") catch break :blk;
 
             //load_library_a = @ptrCast(@alignCast(windows.GetProcAddress(kernel32, "LoadLibraryA") catch unreachable));
             //load_library_w = @ptrCast(@alignCast(windows.GetProcAddress(kernel32, "LoadLibraryW") catch unreachable));
 
-            //detours.attach(hookedLoadLibraryA, &load_library_a.?) catch {};
             //detours.attach(hookedLoadLibraryW, &load_library_w.?) catch {};
         },
         windows.DLL_PROCESS_DETACH => {
