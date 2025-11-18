@@ -55,7 +55,7 @@ pub fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.
 
 var rtl_exit_user_process: ?*@TypeOf(RtlExitUserProcess) = null;
 fn RtlExitUserProcess(ExitStatus: windows.NTSTATUS) noreturn {
-    std.log.info("exit", .{});
+    std.log.info("exit: {d}", .{windows.GetCurrentProcessId()});
     rtl_exit_user_process.?(ExitStatus);
 }
 
@@ -70,7 +70,7 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
             const ntdll = windows.GetModuleHandle("ntdll") catch break :blk;
             rtl_exit_user_process = @ptrCast(@alignCast(windows.GetProcAddress(ntdll, "RtlExitUserProcess") catch break :blk));
 
-            detours.attach(RtlExitUserProcess, &rtl_exit_user_process.?) catch {};
+            detours.attach(RtlExitUserProcess, &rtl_exit_user_process.?) catch break :blk;
 
             std.log.info("hooked: {d}", .{windows.GetCurrentProcessId()});
 
