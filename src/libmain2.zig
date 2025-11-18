@@ -53,10 +53,10 @@ pub fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
-var rtl_exit_user_process: ?*@TypeOf(RtlExitUserProcess) = null;
-fn RtlExitUserProcess(ExitStatus: windows.NTSTATUS) noreturn {
+var nt_terminate_process: ?*@TypeOf(NtTerminateProcess) = null;
+fn NtTerminateProcess(ProcessHandle: ?windows.HANDLE, ExitStatus: windows.NTSTATUS) callconv(.winapi) noreturn {
     std.log.info("exit: {d}", .{windows.GetCurrentProcessId()});
-    rtl_exit_user_process.?(ExitStatus);
+    nt_terminate_process.?(ProcessHandle, ExitStatus);
 }
 
 pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
@@ -68,9 +68,9 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
             std.log.info("attaching: {d}", .{windows.GetCurrentProcessId()});
 
             const ntdll = windows.GetModuleHandle("ntdll") catch break :blk;
-            rtl_exit_user_process = @ptrCast(@alignCast(windows.GetProcAddress(ntdll, "RtlExitUserProcess") catch break :blk));
+            nt_terminate_process = @ptrCast(@alignCast(windows.GetProcAddress(ntdll, "RtlExitUserProcess") catch break :blk));
 
-            detours.attach(RtlExitUserProcess, &rtl_exit_user_process.?) catch break :blk;
+            detours.attach(NtTerminateProcess, &nt_terminate_process.?) catch break :blk;
 
             std.log.info("hooked: {d}", .{windows.GetCurrentProcessId()});
 
