@@ -58,28 +58,29 @@ pub fn DllMain(instance: windows.HINSTANCE, reason: windows.DWORD, reserved: win
     _ = reserved;
 
     switch (reason) {
-        windows.DLL_PROCESS_ATTACH => blk: {
-            const kernel32 = windows.GetModuleHandle("kernel32") catch break :blk;
+        windows.DLL_PROCESS_ATTACH => { //blk: {
+            std.log.info("attaching: {d}", .{windows.GetCurrentProcessId()});
+            //const kernel32 = windows.GetModuleHandle("kernel32") catch break :blk;
 
-            load_library_a = @ptrCast(@alignCast(windows.GetProcAddress(kernel32, "LoadLibraryA") catch unreachable));
-            load_library_w = @ptrCast(@alignCast(windows.GetProcAddress(kernel32, "LoadLibraryW") catch unreachable));
+            //load_library_a = @ptrCast(@alignCast(windows.GetProcAddress(kernel32, "LoadLibraryA") catch unreachable));
+            //load_library_w = @ptrCast(@alignCast(windows.GetProcAddress(kernel32, "LoadLibraryW") catch unreachable));
 
-            detours.attach(hookedLoadLibraryA, &load_library_a.?) catch {};
-            detours.attach(hookedLoadLibraryW, &load_library_w.?) catch {};
+            //detours.attach(hookedLoadLibraryA, &load_library_a.?) catch {};
+            //detours.attach(hookedLoadLibraryW, &load_library_w.?) catch {};
         },
         windows.DLL_PROCESS_DETACH => {
-            std.log.info("cleanup", .{});
-            if (load_library_a) |*proc| {
-                detours.detach(hookedLoadLibraryA, proc) catch {};
-            }
+            std.log.info("detaching: {d}", .{windows.GetCurrentProcessId()});
+            //if (load_library_a) |*proc| {
+                //detours.detach(hookedLoadLibraryA, proc) catch {};
+            //}
 
-            if (load_library_w) |*proc| {
-                detours.detach(hookedLoadLibraryW, proc) catch {};
-            }
+            //if (load_library_w) |*proc| {
+                //detours.detach(hookedLoadLibraryW, proc) catch {};
+            //}
 
-            if (present) |*proc| {
-                detours.detach(hookedPresent, proc) catch {};
-            }
+            //if (present) |*proc| {
+                //detours.detach(hookedPresent, proc) catch {};
+            //}
         },
         else => {},
     }
@@ -114,7 +115,6 @@ fn hookedLoadLibraryW(lpLibFileName: windows.LPCWSTR) callconv(.winapi) windows.
 }
 
 fn hook_d3d11(library: windows.HMODULE) !void {
-
     const hwnd = try windows.CreateWindowEx(
         0,
         "STATIC",
