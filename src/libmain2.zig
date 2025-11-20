@@ -11,11 +11,11 @@ var mutex: Mutex = .{};
 var load_library_a: ?*@TypeOf(LoadLibraryA) = null;
 var load_library_w: ?*@TypeOf(LoadLibraryW) = null;
 
-export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
+pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
-export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpvReserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
+pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpvReserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
     _ = hinstDLL;
     _ = lpvReserved;
 
@@ -64,8 +64,12 @@ fn LoadLibraryA(lpLibFileName: windows.LPCSTR) callconv(.winapi) ?windows.HMODUL
 
     if (mem.eql(u8, mem.span(lpLibFileName), "d3d11")) blk: {
         mutex.lock();
-        hooks.attach(.{ .d3d11 = library }) catch break :blk;
-        mutex.unlock();
+        defer mutex.unlock();
+
+        hooks.attach(.{ .d3d11 = library }) catch |err| {
+            std.log.info("could not hook d3d11: {}", .{err});
+            break :blk;
+        };
 
         std.log.info("hooked d3d11", .{});
     }
@@ -78,8 +82,12 @@ fn LoadLibraryW(lpLibFileName: windows.LPCWSTR) callconv(.winapi) ?windows.HMODU
 
     if (mem.eql(u16, mem.span(lpLibFileName), std.unicode.wtf8ToWtf16LeStringLiteral("d3d11"))) blk: {
         mutex.lock();
-        hooks.attach(.{ .d3d11 = library }) catch break :blk;
-        mutex.unlock();
+        defer mutex.unlock();
+
+        hooks.attach(.{ .d3d11 = library }) catch |err| {
+            std.log.info("could not hook d3d11: {}", .{err});
+            break :blk;
+        };
 
         std.log.info("hooked d3d11", .{});
     }
