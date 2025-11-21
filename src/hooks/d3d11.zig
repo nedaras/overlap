@@ -109,6 +109,8 @@ fn Present(
     SyncInterval: windows.UINT,
     Flags: windows.UINT,
 ) callconv(.winapi) windows.HRESULT {
+    // we do not need a global mutex just one that handles d3d11 i guess
+
     global.?.handle.mutex.lock();
     defer global.?.handle.mutex.unlock();
 
@@ -118,10 +120,12 @@ fn Present(
     };
     defer device.deinit();
 
+    // kinad not bad of an idea just to init Gui on the stack
+    // as we will not need to worry about thread safety
     const Gui = @import("../Gui2.zig");
     var gui: Gui = .init;
 
-    Hooks.test_(&gui);
+    @import("../main2.zig").render(&gui);
 
     device.render(gui.draw_verticies.slice(), gui.draw_indecies.slice(), gui.draw_commands.slice()) catch |err| {
         std.log.err("could not render d3d11 device: {}", .{err});

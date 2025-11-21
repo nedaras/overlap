@@ -10,10 +10,6 @@ const Hooks = @This();
 
 mutex: Mutex,
 
-pub fn test_(gui: *Gui) void {
-    gui.rect(.{ 0.0, 0.0 }, .{ 100.0, 100.0 }, 0xFFFFFFFF);
-}
-
 pub const init: Hooks = .{
     .mutex = .{},
 };
