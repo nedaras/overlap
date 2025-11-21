@@ -2,6 +2,8 @@ const std = @import("std");
 const set = @import("set");
 const windows = @import("../windows.zig");
 const detours = @import("../detours.zig");
+const Hooks = @import("../Hooks.zig");
+const graphics = @import("../graphics.zig");
 
 const d3d11 = windows.d3d11;
 const dxgi = windows.dxgi;
@@ -9,6 +11,8 @@ const d3dcommon = windows.d3dcommon;
 const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 const Mutex = std.Thread.Mutex;
+
+handle: *Hooks,
 
 //release: *@TypeOf(Release),
 present: *@TypeOf(Present),
@@ -18,8 +22,10 @@ const Hook = @This();
 
 var global: ?Hook = null;
 
-pub fn attach(d3d11_lib: windows.HMODULE, window: windows.HWND) !void {
-    assert(global == null);
+pub fn attach(d3d11_lib: windows.HMODULE, handle: *Hooks, window: windows.HWND) !void {
+    if (global != null) {
+        return error.AlreadyHooked;
+    }
 
     const D3D11CreateDeviceAndSwapChain = *const @TypeOf(d3d11.D3D11CreateDeviceAndSwapChain);
     const d3d11_create_device_and_swap_chain: D3D11CreateDeviceAndSwapChain = @ptrCast(try windows.GetProcAddress(
@@ -80,16 +86,17 @@ pub fn attach(d3d11_lib: windows.HMODULE, window: windows.HWND) !void {
     errdefer detours.detach(ResizeBuffers, &resize_buffers) catch {};
 
     global = .{
+        .handle = handle,
         .present = present,
         .resize_buffers = resize_buffers,
     };
 }
 
 pub fn detach() void {
-    assert(global != null);
-
-    detours.detach(Present, &global.?.present) catch {};
-    detours.detach(ResizeBuffers, &global.?.resize_buffers) catch {};
+    if (global != null) {
+        detours.detach(Present, &global.?.present) catch {};
+        detours.detach(ResizeBuffers, &global.?.resize_buffers) catch {};
+    }
 }
 
 fn Release(pIUnknown: *windows.IUnknown) callconv(.winapi) windows.ULONG {
@@ -102,6 +109,25 @@ fn Present(
     SyncInterval: windows.UINT,
     Flags: windows.UINT,
 ) callconv(.winapi) windows.HRESULT {
+    global.?.handle.mutex.lock();
+    defer global.?.handle.mutex.unlock();
+
+    const device = graphics.d3d11.Device.init(pSwapChain) catch |err| {
+        std.log.err("could not init d3d11 device: {}", .{err});
+        return global.?.present(pSwapChain, SyncInterval, Flags);
+    };
+    defer device.deinit();
+
+    const Gui = @import("../Gui2.zig");
+    var gui: Gui = .init;
+
+    Hooks.test_(&gui);
+
+    device.render(gui.draw_verticies.slice(), gui.draw_indecies.slice(), gui.draw_commands.slice()) catch |err| {
+        std.log.err("could not render d3d11 device: {}", .{err});
+        return global.?.present(pSwapChain, SyncInterval, Flags);
+    };
+
     return global.?.present(pSwapChain, SyncInterval, Flags);
 }
 

@@ -1,12 +1,11 @@
 const std = @import("std");
 const windows = @import("windows.zig");
 const detours = @import("detours.zig");
-const hooks = @import("hooks.zig");
+const Hooks = @import("Hooks.zig");
 
 const mem = std.mem;
-const Mutex = std.Thread.Mutex;
 
-var mutex: Mutex = .{};
+var hooks: Hooks = .init;
 
 var load_library_a: ?*@TypeOf(LoadLibraryA) = null;
 var load_library_w: ?*@TypeOf(LoadLibraryW) = null;
@@ -41,7 +40,9 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             std.log.info("hooked 'LoadLibraryA'", .{});
         },
         windows.DLL_PROCESS_DETACH => {
-            hooks.detach();
+            // !!! if d3d11 is unloaded this will probably fail rly badly
+            // hook FreeLibrary i guess idk
+            hooks.deinit();
 
             if (load_library_a) |*func| {
                 detours.detach(LoadLibraryA, func) catch {};
@@ -62,12 +63,9 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
 fn LoadLibraryA(lpLibFileName: windows.LPCSTR) callconv(.winapi) ?windows.HMODULE {
     const library = load_library_a.?(lpLibFileName) orelse return null;
 
-    if (mem.eql(u8, mem.span(lpLibFileName), "d3d11")) blk: {
-        mutex.lock();
-        defer mutex.unlock();
-
+    if (mem.eql(u8, mem.span(lpLibFileName), "d3d11.dll")) blk: {
         hooks.attach(.{ .d3d11 = library }) catch |err| {
-            std.log.info("could not hook d3d11: {}", .{err});
+            std.log.err("could not hook d3d11: {}", .{err});
             break :blk;
         };
 
@@ -80,12 +78,9 @@ fn LoadLibraryA(lpLibFileName: windows.LPCSTR) callconv(.winapi) ?windows.HMODUL
 fn LoadLibraryW(lpLibFileName: windows.LPCWSTR) callconv(.winapi) ?windows.HMODULE {
     const library = load_library_w.?(lpLibFileName) orelse return null;
 
-    if (mem.eql(u16, mem.span(lpLibFileName), std.unicode.wtf8ToWtf16LeStringLiteral("d3d11"))) blk: {
-        mutex.lock();
-        defer mutex.unlock();
-
+    if (mem.eql(u16, mem.span(lpLibFileName), std.unicode.wtf8ToWtf16LeStringLiteral("d3d11.dll"))) blk: {
         hooks.attach(.{ .d3d11 = library }) catch |err| {
-            std.log.info("could not hook d3d11: {}", .{err});
+            std.log.err("could not hook d3d11: {}", .{err});
             break :blk;
         };
 
