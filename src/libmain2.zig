@@ -1,13 +1,23 @@
 const std = @import("std");
 const windows = @import("windows.zig");
 const detours = @import("detours.zig");
+const Hooks = @import("Hooks.zig");
+
+var hooks: Hooks = .init;
 
 fn setup() void {
     std.log.info("prepare them hooks and state...", .{});
+
+    if (windows.GetModuleHandle("d3d11")) |d3d11_lib| {
+        hooks.attach(.{ .d3d11 = d3d11_lib }) catch |err| {
+            std.log.err("failed to hook d3d11: {}", .{err});
+        };
+    }
 }
 
 fn cleanup() void {
     std.log.info("restore modified state...", .{});
+    hooks.deinit();
 }
 
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
