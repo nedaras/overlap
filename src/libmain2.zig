@@ -5,12 +5,13 @@ const Hooks = @import("Hooks.zig");
 const Thread = std.Thread;
 
 var count: u32 = 0;
-var main_proc: Thread = undefined;
+var detach_event: Thread.ResetEvent = .{};
 
 fn entry() void {
     std.log.info("thread: count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
     Thread.sleep(std.time.ns_per_s * 3);
     std.log.info("done", .{});
+    detach_event.set();
 }
 
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
@@ -28,12 +29,12 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             std.log.info("count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
             count += 1;
 
-            main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
+            const main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
             main_proc.detach();
         },
         windows.DLL_PROCESS_DETACH => {
             std.log.info("DLL_PROCESS_DETACH {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
-            Thread.sleep(std.time.ns_per_s * 3);
+            detach_event.wait();
         },
         else => {},
     }
