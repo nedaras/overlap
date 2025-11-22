@@ -16,6 +16,14 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
 
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
+            const exe = windows.GetModuleHandle(null) orelse return windows.FALSE;
+            const ignore = windows.GetProcAddress(exe, "__overlap_ignore_proc") catch null;
+
+            if (ignore != null) {
+                std.log.info("ignoring", .{});
+                return windows.FALSE;
+            }
+
             windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch return windows.FALSE;
             main_proc = Thread.spawn(.{}, entry, .{ hinstDLL }) catch return windows.FALSE;
         },
