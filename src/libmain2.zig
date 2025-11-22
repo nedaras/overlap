@@ -6,9 +6,13 @@ const Thread = std.Thread;
 
 var count: u32 = 0;
 //var detach_event: Thread.ResetEvent = .{};
+var flag = true;
 
 fn entry() void {
     std.log.info("thread: count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
+
+    while (flag) {}
+
     std.log.info("done", .{});
 }
 
@@ -32,6 +36,7 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
         },
         windows.DLL_PROCESS_DETACH => {
             std.log.info("DLL_PROCESS_DETACH {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
+            flag = false;
             Thread.sleep(std.time.ns_per_s * 3);
             std.log.info("bye bye!", .{});
         },
