@@ -49,7 +49,7 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             flag = false;
             //Thread.sleep(std.time.ns_per_s * 3);
 
-            const thread = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
+            const thread = Thread.spawn(.{}, cleanup, .{}) catch return windows.FALSE;
             thread.join();
 
             std.log.info("bye bye!", .{});
