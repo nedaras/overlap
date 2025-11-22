@@ -21,7 +21,7 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
 
             if (ignore != null) {
                 std.log.info("ignoring", .{});
-                return windows.FALSE;
+                return windows.TRUE;
             }
 
             windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch return windows.FALSE;
