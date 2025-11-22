@@ -18,11 +18,12 @@ pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: w
 }
 
 pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpvReserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
-    _ = hinstDLL;
     _ = lpvReserved;
 
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
+            windows.DisableThreadLibraryCalls(hinstDLL) catch return windows.FALSE;
+
             //const kernel32 = windows.GetModuleHandle("kernel32.dll") orelse {
                 //std.log.err("module 'kernel32.dll' is not loaded.", .{});
                 //return windows.FALSE;
