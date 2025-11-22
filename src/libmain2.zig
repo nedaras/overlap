@@ -9,6 +9,7 @@ var main_proc: Thread = undefined;
 
 fn entry() void {
     std.log.info("thread: count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
+    Thread.sleep(std.time.ns_per_s * 3);
 }
 
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
