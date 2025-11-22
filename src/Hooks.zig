@@ -19,9 +19,6 @@ pub const Backend = union(enum) {
 };
 
 pub fn attach(hooks: *Hooks, backend: Backend) !void {
-    hooks.mutex.lock();
-    defer hooks.mutex.unlock();
-
     const window = try windows.CreateWindowEx(
         0,
         "STATIC",
