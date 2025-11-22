@@ -20,7 +20,7 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
         },
         windows.DLL_PROCESS_DETACH => if (main_proc) |thread| {
-            detach_event.reset();
+            detach_event.set();
             thread.join();
         },
         else => {},
