@@ -17,8 +17,18 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
             windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch {};
-            const main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
-            main_proc.detach();
+
+            _ = std.os.windows.kernel32.CreateThread(
+                null,
+                0,
+                &entry,
+                null,
+                0,
+                null,
+            );
+
+            //const main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
+            //main_proc.detach();
         },
         windows.DLL_PROCESS_DETACH => {
             detach_event.set();
@@ -30,10 +40,11 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
 }
 
 
-fn entry() void {
+fn entry(_: windows.LPVOID) callconv(.winapi) u32 {
     std.log.info("DLL_PROCESS_ATTACH", .{});
     detach_event.wait();
     std.log.info("DLL_PROCESS_DETACH", .{});
+    return 0;
 }
 
 fn logFn(
