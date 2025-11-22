@@ -4,11 +4,10 @@ const detours = @import("detours.zig");
 
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
     const Static = struct {
-        var enabled = false;
+        var enabled: std.atomic.Value(bool) = .init(false);
     };
 
-    if (Static.enabled == false) {
-        Static.enabled = true;
+    if (Static.enabled.cmpxchgStrong(false, true, .acq_rel, .acquire)) {
         std.log.info("enabled", .{});
     }
 
