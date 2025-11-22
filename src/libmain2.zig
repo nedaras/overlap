@@ -7,7 +7,7 @@ pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: w
         var enabled: std.atomic.Value(bool) = .init(false);
     };
 
-    if (Static.enabled.cmpxchgStrong(false, true, .acq_rel, .acquire)) {
+    if (Static.enabled.cmpxchgStrong(false, true, .acq_rel, .acquire)) |_| {
         std.log.info("enabled", .{});
     }
 
