@@ -18,12 +18,11 @@ pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: w
 }
 
 pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpvReserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
+    _ = hinstDLL;
     _ = lpvReserved;
 
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
-            windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch return windows.FALSE;
-
             //const kernel32 = windows.GetModuleHandle("kernel32.dll") orelse {
                 //std.log.err("module 'kernel32.dll' is not loaded.", .{});
                 //return windows.FALSE;
@@ -47,6 +46,12 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             //std.log.info("hooked 'LoadLibraryA'", .{});
 
             if (windows.GetModuleHandle("d3d11.dll")) |d3d11_lib| {
+                if (windows.GetModuleHandle("dxgi.dll") == null) {
+                    std.log.info("dxgi not loaded!", .{});
+                    return windows.FALSE;
+                }
+
+
                 std.log.info("d3d11 is already loaded!", .{});
 
                 const d3d11 = windows.d3d11;
