@@ -16,6 +16,10 @@ fn entry() void {
     std.log.info("done", .{});
 }
 
+fn cleanup() void {
+    Thread.sleep(std.time.ns_per_s * 3);
+}
+
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
@@ -37,13 +41,17 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             std.log.info("count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
             count += 1;
 
-            const main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
-            main_proc.detach();
+            //const main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
+            //main_proc.detach();
         },
         windows.DLL_PROCESS_DETACH => {
             std.log.info("DLL_PROCESS_DETACH {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
             flag = false;
-            Thread.sleep(std.time.ns_per_s * 3);
+            //Thread.sleep(std.time.ns_per_s * 3);
+
+            const thread = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
+            thread.join();
+
             std.log.info("bye bye!", .{});
         },
         else => {},
