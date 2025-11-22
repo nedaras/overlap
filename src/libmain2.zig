@@ -10,6 +10,39 @@ var hooks: Hooks = .init;
 var load_library_a: ?*@TypeOf(LoadLibraryA) = null;
 var load_library_w: ?*@TypeOf(LoadLibraryW) = null;
 
+fn attach() void {
+    const kernel32 = windows.GetModuleHandle("kernel32.dll") orelse {
+        std.log.err("module 'kernel32.dll' is not loaded.", .{});
+        return;
+    };
+
+    load_library_a = @ptrCast(windows.GetProcAddress(kernel32, "LoadLibraryA") catch return);
+    load_library_w = @ptrCast(windows.GetProcAddress(kernel32, "LoadLibraryW") catch return);
+
+    detours.attach(LoadLibraryA, &load_library_a.?) catch |err| {
+        std.log.err("failed to hook 'LoadLibraryA': {}`", .{err});
+        load_library_a = null;
+        return;
+    };
+    std.log.info("hooked 'LoadLibraryA'", .{});
+
+    detours.attach(LoadLibraryW, &load_library_w.?) catch |err| {
+        std.log.err("failed to hook 'LoadLibraryW': {}`", .{err});
+        load_library_w = null;
+        return;
+    };
+    std.log.info("hooked 'LoadLibraryA'", .{});
+
+    if (windows.GetModuleHandle("d3d11.dll")) |d3d11| blk: {
+        hooks.attach(.{ .d3d11 = d3d11 }) catch |err| {
+            std.log.err("could not hook d3d11: {}", .{err});
+            break :blk;
+        };
+
+        std.log.info("hooked d3d11", .{});
+    }
+}
+
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
@@ -20,36 +53,8 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
 
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
-            const kernel32 = windows.GetModuleHandle("kernel32.dll") orelse {
-                std.log.err("module 'kernel32.dll' is not loaded.", .{});
-                return windows.FALSE;
-            };
-
-            load_library_a = @ptrCast(windows.GetProcAddress(kernel32, "LoadLibraryA") catch return windows.FALSE);
-            load_library_w = @ptrCast(windows.GetProcAddress(kernel32, "LoadLibraryW") catch return windows.FALSE);
-
-            detours.attach(LoadLibraryA, &load_library_a.?) catch |err| {
-                std.log.err("failed to hook 'LoadLibraryA': {}`", .{err});
-                load_library_a = null;
-                return windows.FALSE;
-            };
-            std.log.info("hooked 'LoadLibraryA'", .{});
-
-            detours.attach(LoadLibraryW, &load_library_w.?) catch |err| {
-                std.log.err("failed to hook 'LoadLibraryW': {}`", .{err});
-                load_library_w = null;
-                return windows.FALSE;
-            };
-            std.log.info("hooked 'LoadLibraryA'", .{});
-
-            if (windows.GetModuleHandle("d3d11.dll")) |d3d11| blk: {
-                hooks.attach(.{ .d3d11 = d3d11 }) catch |err| {
-                    std.log.err("could not hook d3d11: {}", .{err});
-                    break :blk;
-                };
-
-                std.log.info("hooked d3d11", .{});
-            }
+            const thread = std.Thread.spawn(.{}, attach, .{}) catch return windows.FALSE;
+            thread.detach();
         },
         windows.DLL_PROCESS_DETACH => {
             // !!! if d3d11 is unloaded this will probably fail rly badly
