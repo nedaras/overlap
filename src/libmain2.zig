@@ -46,12 +46,15 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             //std.log.info("hooked 'LoadLibraryA'", .{});
 
             if (windows.GetModuleHandle("d3d11.dll")) |d3d11| {
-                hooks.attach(.{ .d3d11 = d3d11 }) catch |err| {
-                    std.log.err("could not hook d3d11: {}", .{err});
-                    return windows.FALSE;
-                };
+                _ = d3d11;
+                std.log.info("d3d11 is already loaded!", .{});
 
-                std.log.info("hooked d3d11", .{});
+                //hooks.attach(.{ .d3d11 = d3d11 }) catch |err| {
+                    //std.log.err("could not hook d3d11: {}", .{err});
+                    //return windows.FALSE;
+                //};
+
+                //std.log.info("hooked d3d11", .{});
             }
         },
         windows.DLL_PROCESS_DETACH => {
