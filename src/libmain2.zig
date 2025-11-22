@@ -10,12 +10,14 @@ var main_proc: Thread = undefined;
 fn entry() void {
     std.log.info("thread: count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
     Thread.sleep(std.time.ns_per_s * 3);
+    std.log.info("done", .{});
 }
 
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
+// Ok when detach is called our threads are killed, there for we cant join them
 pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpvReserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
     _ = lpvReserved;
 
@@ -27,10 +29,11 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             count += 1;
 
             main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
+            main_proc.detach();
         },
         windows.DLL_PROCESS_DETACH => {
             std.log.info("DLL_PROCESS_DETACH {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
-            main_proc.join();
+            Thread.sleep(std.time.ns_per_s * 3);
         },
         else => {},
     }
