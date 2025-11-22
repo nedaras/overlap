@@ -16,11 +16,11 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
 
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
-            std.log.info("count: {}", .{count});
+            std.log.info("count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
             count += 1;
         },
         windows.DLL_PROCESS_DETACH => {
-            std.log.info("DLL_PROCESS_DETACH {}", .{count});
+            std.log.info("DLL_PROCESS_DETACH {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
         },
         else => {},
     }

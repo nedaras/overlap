@@ -54,6 +54,7 @@ pub const HRESULT_CODE = windows.HRESULT_CODE;
 pub const E_NOINTERFACE = windows.E_NOINTERFACE;
 
 pub const GetCurrentProcessId = windows.GetCurrentProcessId;
+pub const GetCurrentThreadId = windows.GetCurrentThreadId;
 pub const unexpectedError = windows.unexpectedError;
 pub const FindWindowExA = user32.FindWindowExA;
 pub const GetWindow = user32.GetWindow;
