@@ -1,23 +1,15 @@
 const std = @import("std");
 const windows = @import("windows.zig");
 const detours = @import("detours.zig");
-const Hooks = @import("Hooks.zig");
-const Thread = std.Thread;
 
-var hooks: Hooks = .init;
-
-var first = true;
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
-    if (first) {
-        defer first = false;
-        std.log.info("__overlap_hook_proc", .{});
+    const Static = struct {
+        var enabled = false;
+    };
 
-        if (windows.GetModuleHandle("d3d11")) |d3d11_lib| {
-            hooks.attach(.{ .d3d11 = d3d11_lib }) catch |err| {
-                std.log.info("faield to hook d3d11: {}", .{err});
-            };
-            std.log.info("hooked d3d11", .{});
-        }
+    if (Static.enabled == false) {
+        Static.enabled = true;
+        std.log.info("enabled", .{});
     }
 
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
@@ -25,24 +17,11 @@ pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: w
 
 // Ok when detach is called our threads are killed, there for we cant join them
 pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpvReserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
+    _ = hinstDLL;
     _ = lpvReserved;
 
-    const exe = windows.GetModuleHandle(null) orelse return windows.FALSE;
-    blk: {
-        _ = windows.GetProcAddress(exe, "__overlap_ignore_proc") catch break :blk;
-        return windows.TRUE;
-    }
-
-    switch (fdwReason) {
-        windows.DLL_PROCESS_ATTACH => {
-            windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch return windows.FALSE;
-            std.log.info("DLL_PROCESS_ATTACH", .{});
-        },
-        windows.DLL_PROCESS_DETACH => {
-            std.log.info("DLL_PROCESS_DETACH", .{});
-            hooks.deinit();
-        },
-        else => {},
+    if (fdwReason == windows.DLL_PROCESS_DETACH) {
+        std.log.info("cleanup", .{});
     }
 
     return windows.TRUE;
