@@ -2,30 +2,43 @@ const std = @import("std");
 const windows = @import("windows.zig");
 const detours = @import("detours.zig");
 
+fn setup() void {
+    std.log.info("prepare them hooks and state...", .{});
+}
+
+fn cleanup() void {
+    std.log.info("restore modified state...", .{});
+}
+
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
     const Static = struct {
         var enabled: std.atomic.Value(bool) = .init(false);
     };
 
-    if (Static.enabled.cmpxchgStrong(false, true, .acq_rel, .acquire) == null) {
-        std.log.info("enabled", .{});
+    if (Static.enabled.cmpxchgStrong(false, true, .acq_rel, .acquire) == null and isTargetProcess()) {
+        @call(.always_inline, setup, .{});
     }
 
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
-// Ok when detach is called our threads are killed, there for we cant join them
 pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpvReserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
     _ = hinstDLL;
     _ = lpvReserved;
 
-    if (fdwReason == windows.DLL_PROCESS_DETACH) {
-        std.log.info("cleanup", .{});
+    if (fdwReason == windows.DLL_PROCESS_DETACH and isTargetProcess()) {
+        @call(.always_inline, cleanup, .{});
     }
 
     return windows.TRUE;
 }
 
+fn isTargetProcess() bool {
+    if (windows.GetModuleHandle(null)) |handle| {
+        _ = windows.GetProcAddress(handle, "__overlap_ignore_proc") catch return true;
+    }
+    return false;
+}
 
 fn logFn(
     comptime message_level: std.log.Level,
