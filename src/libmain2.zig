@@ -4,7 +4,7 @@ const detours = @import("detours.zig");
 const Hooks = @import("Hooks.zig");
 const Thread = std.Thread;
 
-var main_proc: ?Thread = null;
+//var main_proc: ?Thread = null;
 var detach_event: Thread.ResetEvent = .{};
 
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
@@ -17,13 +17,11 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
             windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch {};
-            main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
+            const main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
+            main_proc.detach();
         },
-        windows.DLL_PROCESS_DETACH => if (main_proc) |thread| {
+        windows.DLL_PROCESS_DETACH => {
             detach_event.set();
-
-            thread.join();
-            main_proc = null;
         },
         else => {},
     }
