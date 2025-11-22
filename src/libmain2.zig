@@ -22,7 +22,7 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
 
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
-            windows.DisableThreadLibraryCalls(hinstDLL) catch return windows.FALSE;
+            windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch return windows.FALSE;
 
             //const kernel32 = windows.GetModuleHandle("kernel32.dll") orelse {
                 //std.log.err("module 'kernel32.dll' is not loaded.", .{});
