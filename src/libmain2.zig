@@ -45,9 +45,88 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             //};
             //std.log.info("hooked 'LoadLibraryA'", .{});
 
-            if (windows.GetModuleHandle("d3d11.dll")) |d3d11| {
-                _ = d3d11;
+            if (windows.GetModuleHandle("d3d11.dll")) |d3d11_lib| {
                 std.log.info("d3d11 is already loaded!", .{});
+
+                const d3d11 = windows.d3d11;
+                const dxgi = windows.dxgi;
+                const d3dcommon = windows.d3dcommon;
+
+                const window = windows.CreateWindowEx(
+                    0,
+                    "STATIC",
+                    "Overlap DXGI Window",
+                    windows.WS_OVERLAPPEDWINDOW,
+                    windows.CW_USEDEFAULT,
+                    windows.CW_USEDEFAULT,
+                    640,
+                    480,
+                    null,
+                    null,
+                    null,
+                    null,
+                ) catch |err| {
+                    std.log.err("failed creating a window: {}", .{err});
+                    return windows.FALSE;
+                };
+                defer windows.DestroyWindow(window);
+
+                const D3D11CreateDeviceAndSwapChain = *const @TypeOf(d3d11.D3D11CreateDeviceAndSwapChain);
+                const d3d11_create_device_and_swap_chain: D3D11CreateDeviceAndSwapChain = @ptrCast(windows.GetProcAddress(
+                        d3d11_lib,
+                        "D3D11CreateDeviceAndSwapChain",
+                ) catch |err| {
+                    std.log.err("failed to get address for 'D3D11CreateDeviceAndSwapChain': {}", .{err});
+                    return windows.FALSE;
+                });
+
+                var sd = std.mem.zeroes(dxgi.DXGI_SWAP_CHAIN_DESC);
+                sd.BufferCount = 1;
+                sd.BufferDesc.Format = dxgi.DXGI_FORMAT_R8G8B8A8_UNORM;
+                sd.OutputWindow = window;
+                sd.SampleDesc.Count = 1;
+                sd.Windowed = windows.TRUE;
+                sd.SwapEffect = dxgi.DXGI_SWAP_EFFECT_DISCARD;
+
+                var swap_chain: *dxgi.IDXGISwapChain = undefined;
+
+                var device: *d3d11.ID3D11Device = undefined;
+                var device_context: *d3d11.ID3D11DeviceContext = undefined;
+
+                const feature_levels = [_]d3dcommon.D3D_FEATURE_LEVEL{
+                    d3dcommon.D3D_FEATURE_LEVEL_11_0,
+                    d3dcommon.D3D_FEATURE_LEVEL_10_1,
+                    d3dcommon.D3D_FEATURE_LEVEL_10_0,
+                };
+
+                const hr = d3d11_create_device_and_swap_chain(
+                    null,
+                    d3dcommon.D3D_DRIVER_TYPE_HARDWARE,
+                    null,
+                    0,
+                    &feature_levels,
+                    feature_levels.len,
+                    d3d11.D3D11_SDK_VERSION,
+                    &sd,
+                    &swap_chain,
+                    &device,
+                    null,
+                    &device_context,
+                );
+
+                switch (d3d11.D3D11_ERROR_CODE(hr)) {
+                    .S_OK => {},
+                    else => |err| {
+                        std.log.err("failed to create device and swapchain: {}", .{err});
+                        return windows.FALSE;
+                    },
+                }
+
+                defer swap_chain.Release();
+                defer device.Release();
+                defer device_context.Release();
+
+                std.log.info("all good", .{});
 
                 //hooks.attach(.{ .d3d11 = d3d11 }) catch |err| {
                     //std.log.err("could not hook d3d11: {}", .{err});
