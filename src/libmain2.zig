@@ -4,7 +4,7 @@ const detours = @import("detours.zig");
 const Hooks = @import("Hooks.zig");
 const Thread = std.Thread;
 
-//var main_proc: ?Thread = null;
+var main_proc: ?Thread = null;
 var detach_event: Thread.ResetEvent = .{};
 
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
@@ -16,22 +16,14 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
 
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
-            windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch {};
-
-            _ = std.os.windows.kernel32.CreateThread(
-                null,
-                0,
-                &entry,
-                null,
-                0,
-                null,
-            );
-
-            //const main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
-            //main_proc.detach();
+            windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch return windows.FALSE;
+            main_proc = Thread.spawn(.{}, entry, .{ hinstDLL }) catch return windows.FALSE;
         },
-        windows.DLL_PROCESS_DETACH => {
+        windows.DLL_PROCESS_DETACH => if (main_proc) |thread| {
             detach_event.set();
+
+            thread.join();
+            main_proc = null;
         },
         else => {},
     }
@@ -40,11 +32,12 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
 }
 
 
-fn entry(_: windows.LPVOID) callconv(.winapi) u32 {
+fn entry(hinstDLL: windows.HINSTANCE) void {
     std.log.info("DLL_PROCESS_ATTACH", .{});
     detach_event.wait();
     std.log.info("DLL_PROCESS_DETACH", .{});
-    return 0;
+
+    windows.FreeLibraryAndExitThread(@ptrCast(hinstDLL), 0);
 }
 
 fn logFn(
