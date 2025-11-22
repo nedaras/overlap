@@ -19,7 +19,9 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             std.log.info("count: {}", .{count});
             count += 1;
         },
-        windows.DLL_PROCESS_DETACH => {},
+        windows.DLL_PROCESS_DETACH => {
+            std.log.info("DLL_PROCESS_DETACH", .{});
+        },
         else => {},
     }
 
