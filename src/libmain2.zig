@@ -4,11 +4,16 @@ const detours = @import("detours.zig");
 const Hooks = @import("Hooks.zig");
 const Thread = std.Thread;
 
+var first = true;
+
 fn entry() void {
 }
 
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
-    std.log.info("__overlap_hook_proc", .{});
+    if (first) {
+        std.log.info("__overlap_hook_proc", .{});
+        first = false;
+    }
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
