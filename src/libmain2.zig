@@ -21,7 +21,11 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
         },
         windows.DLL_PROCESS_DETACH => if (main_proc) |thread| {
             detach_event.set();
+
+            std.log.info("some stuff: {}", .{thread.impl.thread.completion.load(.seq_cst)});
+
             thread.join();
+            main_proc = null;
         },
         else => {},
     }
