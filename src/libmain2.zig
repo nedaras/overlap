@@ -6,18 +6,26 @@ const Thread = std.Thread;
 
 var count: u32 = 0;
 
+fn entry() void {
+    std.log.info("thread: count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
+}
+
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
 pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpvReserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
-    _ = hinstDLL;
     _ = lpvReserved;
 
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
+            windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch return windows.FALSE;
+
             std.log.info("count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
             count += 1;
+
+            const thread = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
+            thread.detach();
         },
         windows.DLL_PROCESS_DETACH => {
             std.log.info("DLL_PROCESS_DETACH {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
