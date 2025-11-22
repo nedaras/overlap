@@ -4,16 +4,22 @@ const detours = @import("detours.zig");
 const Hooks = @import("Hooks.zig");
 const Thread = std.Thread;
 
+var hooks: Hooks = .init;
+
 var first = true;
-
-fn entry() void {
-}
-
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
     if (first) {
+        defer first = false;
         std.log.info("__overlap_hook_proc", .{});
-        first = false;
+
+        if (windows.GetModuleHandle("d3d11")) |d3d11_lib| {
+            hooks.attach(.{ .d3d11 = d3d11_lib }) catch |err| {
+                std.log.info("faield to hook d3d11: {}", .{err});
+            };
+            std.log.info("hooked d3d11", .{});
+        }
     }
+
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
@@ -31,12 +37,10 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
         windows.DLL_PROCESS_ATTACH => {
             windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch return windows.FALSE;
             std.log.info("DLL_PROCESS_ATTACH", .{});
-
-            //const thread = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
-            //thread.detach();
         },
         windows.DLL_PROCESS_DETACH => {
             std.log.info("DLL_PROCESS_DETACH", .{});
+            hooks.deinit();
         },
         else => {},
     }
