@@ -24,6 +24,12 @@ pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: w
 pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpvReserved: windows.LPVOID) callconv(.winapi) windows.BOOL {
     _ = lpvReserved;
 
+    const exe = windows.GetModuleHandle(null) orelse return windows.FALSE;
+    blk: {
+        _ = windows.GetProcAddress(exe, "__overlap_ignore_proc") catch break :blk;
+        return windows.TRUE;
+    }
+
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
             windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch return windows.FALSE;
