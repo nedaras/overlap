@@ -20,7 +20,10 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
 
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
-            const kernel32 = windows.GetModuleHandle("kernel32") catch return windows.FALSE;
+            const kernel32 = windows.GetModuleHandle("kernel32.dll") orelse {
+                std.log.err("module 'kernel32.dll' is not loaded.", .{});
+                return windows.FALSE;
+            };
 
             load_library_a = @ptrCast(windows.GetProcAddress(kernel32, "LoadLibraryA") catch return windows.FALSE);
             load_library_w = @ptrCast(windows.GetProcAddress(kernel32, "LoadLibraryW") catch return windows.FALSE);
@@ -38,6 +41,15 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
                 return windows.FALSE;
             };
             std.log.info("hooked 'LoadLibraryA'", .{});
+
+            if (windows.GetModuleHandle("d3d11.dll")) |d3d11| blk: {
+                hooks.attach(.{ .d3d11 = d3d11 }) catch |err| {
+                    std.log.err("could not hook d3d11: {}", .{err});
+                    break :blk;
+                };
+
+                std.log.info("hooked d3d11", .{});
+            }
         },
         windows.DLL_PROCESS_DETACH => {
             // !!! if d3d11 is unloaded this will probably fail rly badly
