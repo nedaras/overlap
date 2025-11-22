@@ -8,7 +8,7 @@ fn entry() void {
 }
 
 pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
-    std.log.info("hello", .{});
+    std.log.info("__overlap_hook_proc", .{});
     return windows.user32.CallNextHookEx(null, code, wParam, lParam);
 }
 
@@ -25,11 +25,13 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
     switch (fdwReason) {
         windows.DLL_PROCESS_ATTACH => {
             windows.DisableThreadLibraryCalls(@ptrCast(hinstDLL)) catch return windows.FALSE;
+            std.log.info("DLL_PROCESS_ATTACH", .{});
 
-            const thread = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
-            thread.detach();
+            //const thread = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
+            //thread.detach();
         },
         windows.DLL_PROCESS_DETACH => {
+            std.log.info("DLL_PROCESS_DETACH", .{});
         },
         else => {},
     }
