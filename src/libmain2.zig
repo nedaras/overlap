@@ -5,6 +5,7 @@ const Hooks = @import("Hooks.zig");
 const Thread = std.Thread;
 
 var count: u32 = 0;
+var main_proc: Thread = undefined;
 
 fn entry() void {
     std.log.info("thread: count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
@@ -24,11 +25,11 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
             std.log.info("count: {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
             count += 1;
 
-            const thread = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
-            thread.detach();
+            main_proc = Thread.spawn(.{}, entry, .{}) catch return windows.FALSE;
         },
         windows.DLL_PROCESS_DETACH => {
             std.log.info("DLL_PROCESS_DETACH {}, {}, {}", .{count, windows.GetCurrentProcessId(), windows.GetCurrentThreadId()});
+            main_proc.join();
         },
         else => {},
     }
