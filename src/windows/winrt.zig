@@ -94,7 +94,7 @@ pub fn TypedEventHandler(comptime TSender: type, comptime TResult: type) type {
                     const prev = self.ref_count.fetchSub(1, .release);
 
                     if (prev == 1) {
-                        _ = self.ref_count.load(.acquire);
+                        assert(self.ref_count.load(.acquire) == 0);
                         self.allocator.destroy(self);
                     }
 

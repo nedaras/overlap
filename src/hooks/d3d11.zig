@@ -2,7 +2,7 @@ const std = @import("std");
 const set = @import("set");
 const windows = @import("../windows.zig");
 const detours = @import("../detours.zig");
-const Hooks = @import("../Hooks.zig");
+const hooks = @import("../hooks.zig");
 const graphics = @import("../graphics.zig");
 
 const d3d11 = windows.d3d11;
@@ -12,7 +12,7 @@ const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 const Mutex = std.Thread.Mutex;
 
-handle: *Hooks,
+mutex: *Mutex,
 
 //release: *@TypeOf(Release),
 present: *@TypeOf(Present),
@@ -20,12 +20,10 @@ resize_buffers: *@TypeOf(ResizeBuffers),
 
 const Hook = @This();
 
-var global: ?Hook = null;
+var self: ?Hook = null;
 
-pub fn attach(d3d11_lib: windows.HMODULE, handle: *Hooks, window: windows.HWND) !void {
-    if (global != null) {
-        return error.AlreadyHooked;
-    }
+pub fn attach(d3d11_lib: windows.HMODULE, window: windows.HWND, mutex: *Mutex) !void {
+    assert(self == null);
 
     const D3D11CreateDeviceAndSwapChain = *const @TypeOf(d3d11.D3D11CreateDeviceAndSwapChain);
     const d3d11_create_device_and_swap_chain: D3D11CreateDeviceAndSwapChain = @ptrCast(try windows.GetProcAddress(
@@ -85,23 +83,25 @@ pub fn attach(d3d11_lib: windows.HMODULE, handle: *Hooks, window: windows.HWND) 
     try detours.attach(ResizeBuffers, &resize_buffers);
     errdefer detours.detach(ResizeBuffers, &resize_buffers) catch {};
 
-    global = .{
-        .handle = handle,
+    self = .{
+        .mutex = mutex,
         .present = present,
         .resize_buffers = resize_buffers,
     };
 }
 
 pub fn detach() void {
-    if (global != null) {
-        detours.detach(Present, &global.?.present) catch {};
-        detours.detach(ResizeBuffers, &global.?.resize_buffers) catch {};
-    }
+    const hook = &self.?;
+
+    detours.detach(Present, &hook.present) catch {};
+    detours.detach(ResizeBuffers, &hook.resize_buffers) catch {};
 }
 
 fn Release(pIUnknown: *windows.IUnknown) callconv(.winapi) windows.ULONG {
-    const refs = global.?.release(pIUnknown);
-    return refs;
+    _ = pIUnknown;
+    //const refs = global.?.release(pIUnknown);
+    //return refs;
+    return 0;
 }
 
 fn Present(
@@ -110,13 +110,14 @@ fn Present(
     Flags: windows.UINT,
 ) callconv(.winapi) windows.HRESULT {
     // we do not need a global mutex just one that handles d3d11 i guess
+    const hook = &self.?;
 
-    global.?.handle.mutex.lock();
-    defer global.?.handle.mutex.unlock();
+    hook.mutex.lock();
+    defer hook.mutex.unlock();
 
     const device = graphics.d3d11.Device.init(pSwapChain) catch |err| {
         std.log.err("could not init d3d11 device: {}", .{err});
-        return global.?.present(pSwapChain, SyncInterval, Flags);
+        return hook.present(pSwapChain, SyncInterval, Flags);
     };
     defer device.deinit();
 
@@ -129,10 +130,10 @@ fn Present(
 
     device.render(gui.draw_verticies.slice(), gui.draw_indecies.slice(), gui.draw_commands.slice()) catch |err| {
         std.log.err("could not render d3d11 device: {}", .{err});
-        return global.?.present(pSwapChain, SyncInterval, Flags);
+        return hook.present(pSwapChain, SyncInterval, Flags);
     };
 
-    return global.?.present(pSwapChain, SyncInterval, Flags);
+    return hook.present(pSwapChain, SyncInterval, Flags);
 }
 
 fn ResizeBuffers(
@@ -143,6 +144,8 @@ fn ResizeBuffers(
     NewFormat: dxgi.DXGI_FORMAT,
     SwapChainFlags: windows.UINT,
 ) callconv(.winapi) windows.HRESULT {
-    const hr = global.?.resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+    const hook = &self.?;
+
+    const hr = hook.resize_buffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
     return hr;
 }

@@ -1,18 +1,19 @@
 const std = @import("std");
 const windows = @import("windows.zig");
 const detours = @import("detours.zig");
-const Hooks = @import("Hooks.zig");
+const hooks = @import("hooks.zig");
 
-var hooks: Hooks = .init;
-
+// maybe return like an error.Failed or smth so cleanup would not be called
 fn setup() void {
     std.log.info("prepare them hooks and state...", .{});
 
-    if (windows.GetModuleHandle("d3d11")) |d3d11_lib| {
-        hooks.attach(.{ .d3d11 = d3d11_lib }) catch |err| {
-            std.log.err("failed to hook d3d11: {}", .{err});
-        };
-    }
+    hooks.init() catch unreachable;
+
+    //if (windows.GetModuleHandle("d3d11")) |d3d11_lib| {
+        //hooks.attach(.{ .d3d11 = d3d11_lib }) catch |err| {
+            //std.log.err("failed to hook d3d11: {}", .{err});
+        //};
+    //}
 }
 
 fn cleanup() void {
@@ -20,12 +21,10 @@ fn cleanup() void {
     hooks.deinit();
 }
 
-pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
-    const Static = struct {
-        var enabled: std.atomic.Value(bool) = .init(false);
-    };
+var enabled: std.atomic.Value(bool) = .init(false);
 
-    if (Static.enabled.cmpxchgStrong(false, true, .acq_rel, .acquire) == null and isTargetProcess()) {
+pub export fn __overlap_hook_proc(code: c_int, wParam: windows.WPARAM, lParam: windows.LPARAM) callconv(.winapi) windows.LRESULT {
+    if (isTargetProcess() and enabled.cmpxchgStrong(false, true, .acq_rel, .monotonic) == null) {
         @call(.always_inline, setup, .{});
     }
 
@@ -36,7 +35,8 @@ pub export fn DllMain(hinstDLL: windows.HINSTANCE, fdwReason: windows.DWORD, lpv
     _ = hinstDLL;
     _ = lpvReserved;
 
-    if (fdwReason == windows.DLL_PROCESS_DETACH and isTargetProcess()) {
+    if (fdwReason == windows.DLL_PROCESS_DETACH and isTargetProcess() and enabled.load(.acquire)) {
+        // calling winapi inside DllMain is 'forbidden'
         @call(.always_inline, cleanup, .{});
     }
 
